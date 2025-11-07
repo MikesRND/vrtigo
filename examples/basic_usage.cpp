@@ -14,10 +14,9 @@ int main() {
     {
         std::cout << "Example 1: Signal packet without stream ID\n";
 
-        using SimplePacket = vrtio::signal_packet<
+        using SimplePacket = vrtio::SignalPacket<
             vrtio::packet_type::signal_data_no_stream,
-            vrtio::tsi_type::utc,
-            vrtio::tsf_type::none,
+            vrtio::TimeStampUTC,  // Using UTC timestamps
             false,  // No trailer
             256     // 1024 bytes payload
         >;
@@ -48,10 +47,9 @@ int main() {
     {
         std::cout << "Example 2: Signal packet with stream ID (builder pattern)\n";
 
-        using StreamPacket = vrtio::signal_packet<
+        using StreamPacket = vrtio::SignalPacket<
             vrtio::packet_type::signal_data_with_stream,
-            vrtio::tsi_type::gps,
-            vrtio::tsf_type::real_time,
+            vrtio::TimeStampUTC,  // Using UTC timestamps
             true,   // Has trailer
             512     // 2048 bytes payload
         >;
@@ -65,13 +63,13 @@ int main() {
         // Use builder pattern
         std::array<uint8_t, 2048> sensor_data{};
 
-        auto builder = vrtio::packet_builder<StreamPacket>(tx_buffer.data());
+        auto builder = vrtio::PacketBuilder<StreamPacket>(tx_buffer.data());
         auto packet = builder
             .stream_id(0x12345678)
             .timestamp_integer(1699000000)
             .timestamp_fractional(500000)  // 500ns in picoseconds
             .trailer(0x00000001)
-            .packet_count(42)
+            .packet_count(10)  // 4-bit field: valid range 0-15
             .payload(sensor_data.data(), sensor_data.size())
             .build();
 
@@ -87,10 +85,9 @@ int main() {
     {
         std::cout << "Example 3: Parsing untrusted packet data\n";
 
-        using RxPacket = vrtio::signal_packet<
+        using RxPacket = vrtio::SignalPacket<
             vrtio::packet_type::signal_data_with_stream,
-            vrtio::tsi_type::utc,
-            vrtio::tsf_type::none,
+            vrtio::NoTimeStamp,  // No timestamp for this example
             false,
             256
         >;
@@ -99,10 +96,9 @@ int main() {
         alignas(4) std::array<uint8_t, RxPacket::size_bytes> rx_buffer;
 
         // Build a packet to simulate received data
-        vrtio::packet_builder<RxPacket>(rx_buffer.data())
+        vrtio::PacketBuilder<RxPacket>(rx_buffer.data())
             .stream_id(0xABCDEF00)
-            .timestamp_integer(1234567890)
-            .packet_count(99)
+            .packet_count(3)  // 4-bit field: valid range 0-15
             .build();
 
         // SAFE parsing pattern: Parse WITHOUT init, then validate
@@ -119,7 +115,6 @@ int main() {
         // Now safe to access fields after successful validation
         std::cout << "  Validation: PASSED\n";
         std::cout << "  Received stream ID: 0x" << std::hex << received.stream_id() << std::dec << "\n";
-        std::cout << "  Received timestamp: " << received.timestamp_integer() << "\n";
         std::cout << "  Received count: " << static_cast<int>(received.packet_count()) << "\n";
         std::cout << "  Packet size: " << received.packet_size_words() << " words\n";
         std::cout << "\n";
@@ -129,10 +124,9 @@ int main() {
     {
         std::cout << "Example 4: Compile-time type safety\n";
 
-        using NoStreamPacket = vrtio::signal_packet<
+        using NoStreamPacket = vrtio::SignalPacket<
             vrtio::packet_type::signal_data_no_stream,
-            vrtio::tsi_type::none,
-            vrtio::tsf_type::none,
+            vrtio::NoTimeStamp,
             false,
             128
         >;

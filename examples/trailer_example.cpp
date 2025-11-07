@@ -1,0 +1,161 @@
+#include <vrtio/packet/signal_packet.hpp>
+#include <vrtio/packet/builder.hpp>
+#include <iostream>
+#include <iomanip>
+#include <vector>
+
+// Example demonstrating trailer field usage
+
+int main() {
+    // Define a packet type with trailer enabled
+    using PacketType = vrtio::SignalPacket<
+        vrtio::packet_type::signal_data_with_stream,
+        vrtio::TimeStampUTC,  // Using UTC timestamps
+        true,   // HasTrailer = true
+        128     // Payload words
+    >;
+
+    std::cout << "=== VRTIO Trailer Fields Example ===\n\n";
+
+    // Allocate buffer for packet
+    std::vector<uint8_t> buffer(PacketType::size_bytes);
+
+    // Example 1: Build a packet with good status
+    std::cout << "Example 1: Building a packet with good status\n";
+    std::cout << "----------------------------------------------\n";
+
+    auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
+        .stream_id(0x12345678)
+        .timestamp_integer(1000000)
+        .trailer_good_status()  // Sets valid data and calibrated time
+        .packet_count(0)
+        .build();
+
+    std::cout << "Stream ID: 0x" << std::hex << std::setw(8) << std::setfill('0')
+              << packet.stream_id() << std::dec << "\n";
+    std::cout << "Timestamp: " << packet.timestamp_integer() << "\n";
+    std::cout << "Trailer raw value: 0x" << std::hex << std::setw(8)
+              << std::setfill('0') << packet.trailer() << std::dec << "\n";
+    std::cout << "Valid data: " << (packet.trailer_valid_data() ? "Yes" : "No") << "\n";
+    std::cout << "Calibrated time: " << (packet.trailer_calibrated_time() ? "Yes" : "No") << "\n";
+    std::cout << "Has errors: " << (packet.trailer_has_errors() ? "Yes" : "No") << "\n";
+    std::cout << "\n";
+
+    // Example 2: Set individual trailer fields
+    std::cout << "Example 2: Setting individual trailer fields\n";
+    std::cout << "----------------------------------------------\n";
+
+    packet.set_trailer_reference_lock(true);
+    packet.set_trailer_context_packets(5);
+
+    std::cout << "Reference locked: " << (packet.trailer_reference_lock() ? "Yes" : "No") << "\n";
+    std::cout << "Context packets: " << (int)packet.trailer_context_packets() << "\n";
+    std::cout << "Trailer raw value: 0x" << std::hex << std::setw(8)
+              << std::setfill('0') << packet.trailer() << std::dec << "\n";
+    std::cout << "\n";
+
+    // Example 3: Build a packet with error conditions
+    std::cout << "Example 3: Indicating error conditions\n";
+    std::cout << "---------------------------------------\n";
+
+    auto error_packet = vrtio::PacketBuilder<PacketType>(buffer.data())
+        .stream_id(0xAABBCCDD)
+        .timestamp_integer(2000000)
+        .trailer_valid_data(false)    // Data not valid
+        .trailer_over_range(true)     // Over-range error
+        .trailer_sample_loss(true)    // Sample loss error
+        .packet_count(1)
+        .build();
+
+    std::cout << "Stream ID: 0x" << std::hex << std::setw(8) << std::setfill('0')
+              << error_packet.stream_id() << std::dec << "\n";
+    std::cout << "Valid data: " << (error_packet.trailer_valid_data() ? "Yes" : "No") << "\n";
+    std::cout << "Over-range: " << (error_packet.trailer_over_range() ? "Yes" : "No") << "\n";
+    std::cout << "Sample loss: " << (error_packet.trailer_sample_loss() ? "Yes" : "No") << "\n";
+    std::cout << "Has errors: " << (error_packet.trailer_has_errors() ? "Yes" : "No") << "\n";
+    std::cout << "Trailer raw value: 0x" << std::hex << std::setw(8)
+              << std::setfill('0') << error_packet.trailer() << std::dec << "\n";
+    std::cout << "\n";
+
+    // Example 4: Bulk status configuration
+    std::cout << "Example 4: Bulk status configuration\n";
+    std::cout << "-------------------------------------\n";
+
+    auto status_packet = vrtio::PacketBuilder<PacketType>(buffer.data())
+        .stream_id(0x11111111)
+        .timestamp_integer(3000000)
+        .trailer_status(
+            true,   // valid_data
+            true,   // calibrated_time
+            false,  // over_range
+            false   // sample_loss
+        )
+        .trailer_reference_lock(true)
+        .trailer_context_packets(10)
+        .packet_count(2)
+        .build();
+
+    std::cout << "Stream ID: 0x" << std::hex << std::setw(8) << std::setfill('0')
+              << status_packet.stream_id() << std::dec << "\n";
+    std::cout << "Valid data: " << (status_packet.trailer_valid_data() ? "Yes" : "No") << "\n";
+    std::cout << "Calibrated time: " << (status_packet.trailer_calibrated_time() ? "Yes" : "No") << "\n";
+    std::cout << "Reference locked: " << (status_packet.trailer_reference_lock() ? "Yes" : "No") << "\n";
+    std::cout << "Context packets: " << (int)status_packet.trailer_context_packets() << "\n";
+    std::cout << "Has errors: " << (status_packet.trailer_has_errors() ? "Yes" : "No") << "\n";
+    std::cout << "\n";
+
+    // Example 5: Processing received packets
+    std::cout << "Example 5: Processing received packets\n";
+    std::cout << "---------------------------------------\n";
+
+    // Simulate receiving a packet
+    auto rx_packet = vrtio::PacketBuilder<PacketType>(buffer.data())
+        .stream_id(0xFEDCBA98)
+        .timestamp_integer(4000000)
+        .trailer_good_status()
+        .trailer_signal_detected(true)
+        .trailer_context_packets(3)
+        .packet_count(3)
+        .build();
+
+    // Process the packet
+    std::cout << "Received packet from stream 0x" << std::hex << std::setw(8)
+              << std::setfill('0') << rx_packet.stream_id() << std::dec << "\n";
+
+    if (rx_packet.trailer_valid_data()) {
+        std::cout << "✓ Data is valid\n";
+    } else {
+        std::cout << "✗ Data is invalid\n";
+    }
+
+    if (rx_packet.trailer_calibrated_time()) {
+        std::cout << "✓ Timestamp is calibrated\n";
+    } else {
+        std::cout << "✗ Timestamp is not calibrated\n";
+    }
+
+    if (rx_packet.trailer_signal_detected()) {
+        std::cout << "✓ Signal detected\n";
+    }
+
+    if (rx_packet.trailer_has_errors()) {
+        std::cout << "✗ ERROR: Packet has error conditions\n";
+        if (rx_packet.trailer_over_range()) {
+            std::cout << "  - Over-range detected\n";
+        }
+        if (rx_packet.trailer_sample_loss()) {
+            std::cout << "  - Sample loss detected\n";
+        }
+    } else {
+        std::cout << "✓ No errors detected\n";
+    }
+
+    uint8_t ctx_count = rx_packet.trailer_context_packets();
+    if (ctx_count > 0) {
+        std::cout << "Note: " << (int)ctx_count << " context packet(s) associated\n";
+    }
+
+    std::cout << "\n=== All examples completed successfully ===\n";
+
+    return 0;
+}
