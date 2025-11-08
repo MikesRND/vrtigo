@@ -1,0 +1,166 @@
+#include "context_test_fixture.hpp"
+
+TEST_F(ContextPacketTest, RoundTrip) {
+    // Create packet with template
+    constexpr uint32_t cif0_mask = cif0::BANDWIDTH | cif0::GAIN;
+    using TestContext = ContextPacket<
+        true,           // Has stream ID
+        NoTimeStamp,
+        NoClassId,
+        cif0_mask, 0, 0, 0,
+        false
+    >;
+
+    TestContext tx_packet(buffer.data());
+    tx_packet.set_stream_id(0xDEADBEEF);
+    set(tx_packet, field::bandwidth, 100'000'000ULL);  // 100 MHz
+    set(tx_packet, field::gain, 0x12345678U);
+
+    // Parse same buffer with view
+    ContextPacketView view(buffer.data(), TestContext::size_bytes);
+    EXPECT_EQ(view.validate(), validation_error::none);
+
+    EXPECT_EQ(view.stream_id().value(), 0xDEADBEEF);
+    EXPECT_EQ(get(view, field::bandwidth).value(), 100'000'000);
+    EXPECT_EQ(get(view, field::gain).value(), 0x12345678);
+}
+
+TEST_F(ContextPacketTest, CombinedCIF1AndCIF2CompileTime) {
+    // Create packet with both CIF1 and CIF2 fields
+    constexpr uint32_t cif0_mask = cif0::BANDWIDTH;
+    constexpr uint32_t cif1_mask = cif1::AUX_FREQUENCY;
+    constexpr uint32_t cif2_mask = cif2::CONTROLLER_UUID;
+
+    using TestContext = ContextPacket<
+        true,           // Has stream ID
+        NoTimeStamp,
+        NoClassId,
+        cif0_mask,      // CIF0 has bandwidth
+        cif1_mask,      // CIF1 has aux frequency
+        cif2_mask,      // CIF2 has controller UUID
+        0,              // No CIF3
+        false
+    >;
+
+    // Compile-time assertions: verify both enable bits are auto-set
+    static_assert((TestContext::cif0_value & (1U << cif::CIF1_ENABLE_BIT)) != 0,
+        "CIF1 enable bit should be set when CIF1 != 0");
+    static_assert((TestContext::cif0_value & (1U << cif::CIF2_ENABLE_BIT)) != 0,
+        "CIF2 enable bit should be set when CIF2 != 0");
+    static_assert((TestContext::cif0_value & (1U << 29)) != 0,
+        "Bandwidth bit should be preserved from CIF0 parameter");
+
+    TestContext tx_packet(buffer.data());
+    tx_packet.set_stream_id(0x11223344);
+    set(tx_packet, field::bandwidth, 50'000'000ULL);
+    set(tx_packet, field::aux_frequency, 25'000'000ULL);
+
+    // Parse with runtime view
+    ContextPacketView view(buffer.data(), TestContext::size_bytes);
+    EXPECT_EQ(view.validate(), validation_error::none);
+
+    // Verify CIF0 has both enable bits set
+    constexpr uint32_t cif_enable_mask = (1U << cif::CIF1_ENABLE_BIT) | (1U << cif::CIF2_ENABLE_BIT);
+    EXPECT_EQ(view.cif0() & cif_enable_mask, cif_enable_mask);
+    EXPECT_EQ(view.cif1(), cif1_mask);
+    EXPECT_EQ(view.cif2(), cif2_mask);
+
+    // Verify fields
+    EXPECT_EQ(view.stream_id().value(), 0x11223344);
+    EXPECT_EQ(get(view, field::bandwidth).value(), 50'000'000);
+    EXPECT_EQ(get(view, field::aux_frequency).value(), 25'000'000);
+}
+
+TEST_F(ContextPacketTest, CombinedCIF1AndCIF2Runtime) {
+    // Manually build a packet with both CIF1 and CIF2
+    // Structure: header(1) + stream_id(1) + CIF0(1) + CIF1(1) + CIF2(1) + bandwidth(2) + aux_freq(2) + uuid(4) = 13 words
+    uint32_t header = (static_cast<uint32_t>(packet_type::context) << header::PACKET_TYPE_SHIFT) | header::STREAM_ID_INDICATOR | 13;  // Type 4, has stream ID, 13 words
+    cif::write_u32_safe(buffer.data(), 0, header);
+
+    // Stream ID
+    cif::write_u32_safe(buffer.data(), 4, 0xAABBCCDD);
+
+    // CIF0: Enable CIF1, CIF2, and Bandwidth
+    uint32_t cif0_mask = (1U << 1) | (1U << 2) | cif0::BANDWIDTH;
+    cif::write_u32_safe(buffer.data(), 8, cif0_mask);
+
+    // CIF1: Aux Frequency
+    uint32_t cif1_mask = cif1::AUX_FREQUENCY;
+    cif::write_u32_safe(buffer.data(), 12, cif1_mask);
+
+    // CIF2: Controller UUID
+    uint32_t cif2_mask = cif2::CONTROLLER_UUID;
+    cif::write_u32_safe(buffer.data(), 16, cif2_mask);
+
+    // Bandwidth (2 words)
+    cif::write_u64_safe(buffer.data(), 20, 100'000'000);
+
+    // Aux Frequency (2 words)
+    cif::write_u64_safe(buffer.data(), 28, 75'000'000);
+
+    // Controller UUID (4 words)
+    cif::write_u32_safe(buffer.data(), 36, 0x12345678);
+    cif::write_u32_safe(buffer.data(), 40, 0x9ABCDEF0);
+    cif::write_u32_safe(buffer.data(), 44, 0x11111111);
+    cif::write_u32_safe(buffer.data(), 48, 0x22222222);
+
+    // Parse and validate
+    ContextPacketView view(buffer.data(), 13 * 4);
+    EXPECT_EQ(view.validate(), validation_error::none);
+
+    // Verify structure
+    EXPECT_EQ(view.cif0(), cif0_mask);
+    EXPECT_EQ(view.cif1(), cif1_mask);
+    EXPECT_EQ(view.cif2(), cif2_mask);
+
+    // Verify fields
+    EXPECT_EQ(view.stream_id().value(), 0xAABBCCDD);
+    EXPECT_EQ(get(view, field::bandwidth).value(), 100'000'000);
+    EXPECT_EQ(get(view, field::aux_frequency).value(), 75'000'000);
+
+    auto uuid = view.controller_uuid();
+    ASSERT_TRUE(uuid.has_value());
+    EXPECT_EQ(cif::read_u32_safe(uuid->data(), 0), 0x12345678);
+}
+
+TEST_F(ContextPacketTest, MultiWordFieldWrite) {
+    // Create a compile-time packet with Data Payload Format (2 words, FieldView<2>)
+    constexpr uint32_t cif0_mask = cif0::DATA_PAYLOAD_FORMAT;
+    using TestContext = ContextPacket<
+        true,
+        NoTimeStamp,
+        NoClassId,
+        cif0_mask,
+        0, 0, 0,
+        false
+    >;
+
+    TestContext packet(buffer.data());
+
+    // Create source data for the field (2 words = 8 bytes)
+    alignas(4) uint8_t source_data[8];
+    cif::write_u32_safe(source_data, 0, 0xAABBCCDD);
+    cif::write_u32_safe(source_data, 4, 0x11223344);
+
+    // Create a FieldView from the source data
+    FieldView<2> field_value(source_data, 0);
+
+    // Write the field to the packet
+    set(packet, field::data_payload_format, field_value);
+
+    // Read it back and verify
+    auto read_value = get(packet, field::data_payload_format);
+    ASSERT_TRUE(read_value.has_value());
+    EXPECT_EQ(read_value->word(0), 0xAABBCCDD);
+    EXPECT_EQ(read_value->word(1), 0x11223344);
+
+    // Verify round-trip through runtime parser
+    ContextPacketView view(buffer.data(), TestContext::size_bytes);
+    EXPECT_EQ(view.validate(), validation_error::none);
+
+    auto runtime_value = get(view, field::data_payload_format);
+    ASSERT_TRUE(runtime_value.has_value());
+    EXPECT_EQ(runtime_value->word(0), 0xAABBCCDD);
+    EXPECT_EQ(runtime_value->word(1), 0x11223344);
+}
+

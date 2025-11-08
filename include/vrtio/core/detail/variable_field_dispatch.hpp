@@ -34,7 +34,7 @@ inline size_t compute_variable_field_size(
 /// Runtime field offset calculation with bounds checking
 /// Uses FieldTraits dispatch for variable field size computation
 inline size_t calculate_field_offset_runtime(
-    uint32_t cif0, uint32_t cif1, uint32_t cif2,
+    uint32_t cif0, uint32_t cif1, uint32_t cif2, uint32_t cif3,
     uint8_t target_cif_word, uint8_t target_bit,
     const uint8_t* buffer,
     size_t base_offset_bytes,
@@ -68,7 +68,7 @@ inline size_t calculate_field_offset_runtime(
         return base_offset_bytes + (offset_words * 4);
     }
 
-    // Count all CIF0 fields if target is in CIF1/CIF2
+    // Count all CIF0 fields if target is in CIF1/CIF2/CIF3
     for (int bit = 31; bit >= 0; --bit) {
         if (cif0 & (1U << bit)) {
             if (cif::CIF0_FIELDS[bit].is_variable) {
@@ -91,7 +91,7 @@ inline size_t calculate_field_offset_runtime(
     }
 
     // Process CIF1 fields if needed
-    if (target_cif_word >= 1 && (cif0 & 0x02)) {
+    if (target_cif_word >= 1 && (cif0 & (1U << cif::CIF1_ENABLE_BIT))) {
         const cif::FieldInfo* table = cif::CIF1_FIELDS;
         uint32_t cif = cif1;
 
@@ -110,11 +110,28 @@ inline size_t calculate_field_offset_runtime(
         }
     }
 
-    // Process CIF2 fields if target is in CIF2
-    if (target_cif_word == 2 && (cif0 & 0x04)) {
+    // Process CIF2 fields if needed
+    if (target_cif_word >= 2 && (cif0 & (1U << cif::CIF2_ENABLE_BIT))) {
+        if (target_cif_word == 2) {
+            for (int bit = 31; bit > static_cast<int>(target_bit); --bit) {
+                if (cif2 & (1U << bit)) {
+                    offset_words += cif::CIF2_FIELDS[bit].size_words;
+                }
+            }
+        } else {
+            for (int bit = 31; bit >= 0; --bit) {
+                if (cif2 & (1U << bit)) {
+                    offset_words += cif::CIF2_FIELDS[bit].size_words;
+                }
+            }
+        }
+    }
+
+    // Process CIF3 fields if target is in CIF3
+    if (target_cif_word == 3 && (cif0 & (1U << cif::CIF3_ENABLE_BIT))) {
         for (int bit = 31; bit > static_cast<int>(target_bit); --bit) {
-            if (cif2 & (1U << bit)) {
-                offset_words += cif::CIF2_FIELDS[bit].size_words;
+            if (cif3 & (1U << bit)) {
+                offset_words += cif::CIF3_FIELDS[bit].size_words;
             }
         }
     }

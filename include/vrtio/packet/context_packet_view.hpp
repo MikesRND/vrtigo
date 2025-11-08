@@ -32,6 +32,7 @@ private:
         uint32_t cif0 = 0;
         uint32_t cif1 = 0;
         uint32_t cif2 = 0;
+        uint32_t cif3 = 0;
 
         // Variable field info (populated during validation)
         struct VariableFieldInfo {
@@ -113,7 +114,7 @@ public:
         structure_.cif0 = cif::read_u32_safe(buffer_, offset_words * 4);
         offset_words++;
 
-        if (structure_.cif0 & 0x02) {  // CIF1 present
+        if (structure_.cif0 & (1U << cif::CIF1_ENABLE_BIT)) {
             if ((offset_words + 1) * 4 > buffer_size_) {
                 return validation_error::buffer_too_small;
             }
@@ -121,11 +122,19 @@ public:
             offset_words++;
         }
 
-        if (structure_.cif0 & 0x04) {  // CIF2 present
+        if (structure_.cif0 & (1U << cif::CIF2_ENABLE_BIT)) {
             if ((offset_words + 1) * 4 > buffer_size_) {
                 return validation_error::buffer_too_small;
             }
             structure_.cif2 = cif::read_u32_safe(buffer_, offset_words * 4);
+            offset_words++;
+        }
+
+        if (structure_.cif0 & (1U << cif::CIF3_ENABLE_BIT)) {
+            if ((offset_words + 1) * 4 > buffer_size_) {
+                return validation_error::buffer_too_small;
+            }
+            structure_.cif3 = cif::read_u32_safe(buffer_, offset_words * 4);
             offset_words++;
         }
 
@@ -136,22 +145,24 @@ public:
         }
 
         // Check CIF1 if present
-        if (structure_.cif0 & 0x02) {
+        if (structure_.cif0 & (1U << cif::CIF1_ENABLE_BIT)) {
             if (structure_.cif1 & ~cif::CIF1_SUPPORTED_MASK) {
                 return validation_error::unsupported_field;
             }
         }
 
         // Check CIF2 if present
-        if (structure_.cif0 & 0x04) {
+        if (structure_.cif0 & (1U << cif::CIF2_ENABLE_BIT)) {
             if (structure_.cif2 & ~cif::CIF2_SUPPORTED_MASK) {
                 return validation_error::unsupported_field;
             }
         }
 
-        // CIF3 is completely unsupported
+        // Check CIF3 if present
         if (structure_.cif0 & (1U << cif::CIF3_ENABLE_BIT)) {
-            return validation_error::unsupported_field;
+            if (structure_.cif3 & ~cif::CIF3_SUPPORTED_MASK) {
+                return validation_error::unsupported_field;
+            }
         }
 
         // Store context field base offset
@@ -162,7 +173,7 @@ public:
 
         // Process all fixed fields first (from MSB to LSB)
         for (int bit = 31; bit >= 0; bit--) {
-            if (bit == 10 || bit == 9) continue;  // Skip variable fields for now
+            if (bit == cif::GPS_ASCII_BIT || bit == cif::CONTEXT_ASSOC_BIT) continue;  // Skip variable fields for now
 
             if (structure_.cif0 & (1U << bit)) {
                 context_fields_words += cif::CIF0_FIELDS[bit].size_words;
@@ -170,7 +181,7 @@ public:
         }
 
         // Now handle variable fields IN ORDER (bit 10 before bit 9)
-        if (structure_.cif0 & (1U << 10)) {  // GPS ASCII
+        if (structure_.cif0 & (1U << cif::GPS_ASCII_BIT)) {
             structure_.gps_ascii.present = true;
             structure_.gps_ascii.offset_bytes = (offset_words + context_fields_words) * 4;
 
@@ -190,7 +201,7 @@ public:
             context_fields_words += structure_.gps_ascii.size_words;
         }
 
-        if (structure_.cif0 & (1U << 9)) {  // Context Association Lists
+        if (structure_.cif0 & (1U << cif::CONTEXT_ASSOC_BIT)) {
             structure_.context_assoc.present = true;
             structure_.context_assoc.offset_bytes = (offset_words + context_fields_words) * 4;
 
@@ -213,7 +224,7 @@ public:
         }
 
         // Process CIF1 fields
-        if (structure_.cif0 & 0x02) {
+        if (structure_.cif0 & (1U << cif::CIF1_ENABLE_BIT)) {
             for (int bit = 31; bit >= 0; --bit) {
                 if (structure_.cif1 & (1U << bit)) {
                     context_fields_words += cif::CIF1_FIELDS[bit].size_words;
@@ -222,10 +233,19 @@ public:
         }
 
         // Process CIF2 fields
-        if (structure_.cif0 & 0x04) {
+        if (structure_.cif0 & (1U << cif::CIF2_ENABLE_BIT)) {
             for (int bit = 31; bit >= 0; --bit) {
                 if (structure_.cif2 & (1U << bit)) {
                     context_fields_words += cif::CIF2_FIELDS[bit].size_words;
+                }
+            }
+        }
+
+        // Process CIF3 fields
+        if (structure_.cif0 & (1U << cif::CIF3_ENABLE_BIT)) {
+            for (int bit = 31; bit >= 0; --bit) {
+                if (structure_.cif3 & (1U << bit)) {
+                    context_fields_words += cif::CIF3_FIELDS[bit].size_words;
                 }
             }
         }
@@ -251,6 +271,7 @@ public:
     uint32_t cif0() const noexcept { return structure_.cif0; }
     uint32_t cif1() const noexcept { return structure_.cif1; }
     uint32_t cif2() const noexcept { return structure_.cif2; }
+    uint32_t cif3() const noexcept { return structure_.cif3; }
 
     bool has_stream_id() const noexcept { return structure_.has_stream_id; }
     bool has_class_id() const noexcept { return structure_.has_class_id; }
@@ -319,7 +340,7 @@ public:
         }
 
         size_t offset = detail::calculate_field_offset_runtime(
-            structure_.cif0, structure_.cif1, structure_.cif2,
+            structure_.cif0, structure_.cif1, structure_.cif2, structure_.cif3,
             2, bit,
             buffer_,
             structure_.context_base_bytes,

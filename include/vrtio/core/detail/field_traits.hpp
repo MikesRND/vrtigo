@@ -107,6 +107,10 @@ struct FieldTraits<0, 12> {
     static value_type read(const uint8_t* base, size_t offset) noexcept {
         return FieldView<13>{base, offset};
     }
+
+    static void write(uint8_t* base, size_t offset, const value_type& v) noexcept {
+        std::memcpy(base + offset, v.data(), 13 * 4);
+    }
 };
 
 // CIF0 Bit 13: ECEF Ephemeris (13 words)
@@ -117,6 +121,10 @@ struct FieldTraits<0, 13> {
 
     static value_type read(const uint8_t* base, size_t offset) noexcept {
         return FieldView<13>{base, offset};
+    }
+
+    static void write(uint8_t* base, size_t offset, const value_type& v) noexcept {
+        std::memcpy(base + offset, v.data(), 13 * 4);
     }
 };
 
@@ -129,6 +137,10 @@ struct FieldTraits<0, 14> {
     static value_type read(const uint8_t* base, size_t offset) noexcept {
         return FieldView<11>{base, offset};
     }
+
+    static void write(uint8_t* base, size_t offset, const value_type& v) noexcept {
+        std::memcpy(base + offset, v.data(), 11 * 4);
+    }
 };
 
 // CIF0 Bit 15: Data Payload Format (2 words)
@@ -139,6 +151,10 @@ struct FieldTraits<0, 15> {
 
     static value_type read(const uint8_t* base, size_t offset) noexcept {
         return FieldView<2>{base, offset};
+    }
+
+    static void write(uint8_t* base, size_t offset, const value_type& v) noexcept {
+        std::memcpy(base + offset, v.data(), 2 * 4);
     }
 };
 
@@ -428,6 +444,21 @@ struct FieldTraits<1, 3> {
     }
 };
 
+// CIF1 Bit 4: Health Status
+template<>
+struct FieldTraits<1, 4> {
+    using value_type = uint32_t;
+    static constexpr const char* name = "Health Status";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u32_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u32_safe(base, offset, v);
+    }
+};
+
 // CIF1 Bit 5: Discrete I/O (64-bit) (2 words)
 template<>
 struct FieldTraits<1, 5> {
@@ -466,6 +497,10 @@ struct FieldTraits<1, 10> {
 
     static value_type read(const uint8_t* base, size_t offset) noexcept {
         return FieldView<13>{base, offset};
+    }
+
+    static void write(uint8_t* base, size_t offset, const value_type& v) noexcept {
+        std::memcpy(base + offset, v.data(), 13 * 4);
     }
 };
 
@@ -639,6 +674,51 @@ template<>
 struct FieldTraits<1, 27> {
     using value_type = uint32_t;
     static constexpr const char* name = "Spatial Scan Type";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u32_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u32_safe(base, offset, v);
+    }
+};
+
+// CIF1 Bit 29: 3-D Pointing Vector (single)
+template<>
+struct FieldTraits<1, 29> {
+    using value_type = uint32_t;
+    static constexpr const char* name = "3-D Pointing Vector (single)";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u32_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u32_safe(base, offset, v);
+    }
+};
+
+// CIF1 Bit 30: Polarization
+template<>
+struct FieldTraits<1, 30> {
+    using value_type = uint32_t;
+    static constexpr const char* name = "Polarization";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u32_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u32_safe(base, offset, v);
+    }
+};
+
+// CIF1 Bit 31: Phase Offset
+template<>
+struct FieldTraits<1, 31> {
+    using value_type = uint32_t;
+    static constexpr const char* name = "Phase Offset";
 
     static value_type read(const uint8_t* base, size_t offset) noexcept {
         return cif::read_u32_safe(base, offset);
@@ -947,6 +1027,10 @@ struct FieldTraits<2, 22> {
     static value_type read(const uint8_t* base, size_t offset) noexcept {
         return FieldView<4>{base, offset};
     }
+
+    static void write(uint8_t* base, size_t offset, const value_type& v) noexcept {
+        std::memcpy(base + offset, v.data(), 4 * 4);
+    }
 };
 
 // CIF2 Bit 23: Controller ID
@@ -972,6 +1056,10 @@ struct FieldTraits<2, 24> {
 
     static value_type read(const uint8_t* base, size_t offset) noexcept {
         return FieldView<4>{base, offset};
+    }
+
+    static void write(uint8_t* base, size_t offset, const value_type& v) noexcept {
+        std::memcpy(base + offset, v.data(), 4 * 4);
     }
 };
 
@@ -1077,6 +1165,265 @@ struct FieldTraits<2, 31> {
 
     static void write(uint8_t* base, size_t offset, value_type v) noexcept {
         cif::write_u32_safe(base, offset, v);
+    }
+};
+
+// ============================================================================
+// CIF3 Field Trait Specializations - Temporal and Environmental
+// ============================================================================
+
+// CIF3 Bit 1: Network ID
+template<>
+struct FieldTraits<3, 1> {
+    using value_type = uint32_t;
+    static constexpr const char* name = "Network ID";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u32_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u32_safe(base, offset, v);
+    }
+};
+
+// CIF3 Bit 2: Tropospheric State
+template<>
+struct FieldTraits<3, 2> {
+    using value_type = uint32_t;
+    static constexpr const char* name = "Tropospheric State";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u32_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u32_safe(base, offset, v);
+    }
+};
+
+// CIF3 Bit 3: Sea and Swell State
+template<>
+struct FieldTraits<3, 3> {
+    using value_type = uint32_t;
+    static constexpr const char* name = "Sea and Swell State";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u32_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u32_safe(base, offset, v);
+    }
+};
+
+// CIF3 Bit 4: Barometric Pressure
+template<>
+struct FieldTraits<3, 4> {
+    using value_type = uint32_t;
+    static constexpr const char* name = "Barometric Pressure";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u32_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u32_safe(base, offset, v);
+    }
+};
+
+// CIF3 Bit 5: Humidity
+template<>
+struct FieldTraits<3, 5> {
+    using value_type = uint32_t;
+    static constexpr const char* name = "Humidity";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u32_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u32_safe(base, offset, v);
+    }
+};
+
+// CIF3 Bit 6: Sea/Ground Temperature
+template<>
+struct FieldTraits<3, 6> {
+    using value_type = uint32_t;
+    static constexpr const char* name = "Sea/Ground Temperature";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u32_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u32_safe(base, offset, v);
+    }
+};
+
+// CIF3 Bit 7: Air Temperature
+template<>
+struct FieldTraits<3, 7> {
+    using value_type = uint32_t;
+    static constexpr const char* name = "Air Temperature";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u32_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u32_safe(base, offset, v);
+    }
+};
+
+// CIF3 Bit 20: Jitter (2 words)
+template<>
+struct FieldTraits<3, 20> {
+    using value_type = uint64_t;
+    static constexpr const char* name = "Jitter";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u64_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u64_safe(base, offset, v);
+    }
+};
+
+// CIF3 Bit 21: Dwell (2 words)
+template<>
+struct FieldTraits<3, 21> {
+    using value_type = uint64_t;
+    static constexpr const char* name = "Dwell";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u64_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u64_safe(base, offset, v);
+    }
+};
+
+// CIF3 Bit 22: Duration (2 words)
+template<>
+struct FieldTraits<3, 22> {
+    using value_type = uint64_t;
+    static constexpr const char* name = "Duration";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u64_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u64_safe(base, offset, v);
+    }
+};
+
+// CIF3 Bit 23: Period (2 words)
+template<>
+struct FieldTraits<3, 23> {
+    using value_type = uint64_t;
+    static constexpr const char* name = "Period";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u64_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u64_safe(base, offset, v);
+    }
+};
+
+// CIF3 Bit 24: Pulse Width (2 words)
+template<>
+struct FieldTraits<3, 24> {
+    using value_type = uint64_t;
+    static constexpr const char* name = "Pulse Width";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u64_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u64_safe(base, offset, v);
+    }
+};
+
+// CIF3 Bit 25: Offset Time (2 words)
+template<>
+struct FieldTraits<3, 25> {
+    using value_type = uint64_t;
+    static constexpr const char* name = "Offset Time";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u64_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u64_safe(base, offset, v);
+    }
+};
+
+// CIF3 Bit 26: Fall Time (2 words)
+template<>
+struct FieldTraits<3, 26> {
+    using value_type = uint64_t;
+    static constexpr const char* name = "Fall Time";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u64_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u64_safe(base, offset, v);
+    }
+};
+
+// CIF3 Bit 27: Rise Time (2 words)
+template<>
+struct FieldTraits<3, 27> {
+    using value_type = uint64_t;
+    static constexpr const char* name = "Rise Time";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u64_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u64_safe(base, offset, v);
+    }
+};
+
+// CIF3 Bit 30: Timestamp Skew (2 words)
+template<>
+struct FieldTraits<3, 30> {
+    using value_type = uint64_t;
+    static constexpr const char* name = "Timestamp Skew";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u64_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u64_safe(base, offset, v);
+    }
+};
+
+// CIF3 Bit 31: Timestamp Details (2 words)
+template<>
+struct FieldTraits<3, 31> {
+    using value_type = uint64_t;
+    static constexpr const char* name = "Timestamp Details";
+
+    static value_type read(const uint8_t* base, size_t offset) noexcept {
+        return cif::read_u64_safe(base, offset);
+    }
+
+    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
+        cif::write_u64_safe(base, offset, v);
     }
 };
 

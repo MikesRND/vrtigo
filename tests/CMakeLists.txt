@@ -1,7 +1,22 @@
 # Tests for VRTIO Phase 1
 
-# Find GoogleTest
-find_package(GTest REQUIRED)
+# Find or fetch GoogleTest
+find_package(GTest QUIET)
+
+if(NOT GTest_FOUND)
+    message(STATUS "GTest not found, fetching from GitHub...")
+    include(FetchContent)
+    FetchContent_Declare(
+        googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG v1.14.0
+    )
+    # For Windows: Prevent overriding the parent project's compiler/linker settings
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+
+    # FetchContent already creates GTest::gtest and GTest::gtest_main targets
+endif()
 
 # Enable testing
 enable_testing()
@@ -36,10 +51,38 @@ add_executable(timestamp_test timestamp_test.cpp)
 target_link_libraries(timestamp_test PRIVATE vrtio GTest::gtest_main)
 add_test(NAME timestamp_test COMMAND timestamp_test)
 
-# Context packet tests
-add_executable(context_test context_test.cpp)
-target_link_libraries(context_test PRIVATE vrtio GTest::gtest_main)
-add_test(NAME context_test COMMAND context_test)
+# Context packet tests (refactored into focused test suites)
+add_executable(context_basic_test context_basic_test.cpp)
+target_link_libraries(context_basic_test PRIVATE vrtio GTest::gtest_main)
+add_test(NAME context_basic_test COMMAND context_basic_test)
+
+add_executable(context_validation_test context_validation_test.cpp)
+target_link_libraries(context_validation_test PRIVATE vrtio GTest::gtest_main)
+add_test(NAME context_validation_test COMMAND context_validation_test)
+
+add_executable(context_cif1_test context_cif1_test.cpp)
+target_link_libraries(context_cif1_test PRIVATE vrtio GTest::gtest_main)
+add_test(NAME context_cif1_test COMMAND context_cif1_test)
+
+add_executable(context_cif2_test context_cif2_test.cpp)
+target_link_libraries(context_cif2_test PRIVATE vrtio GTest::gtest_main)
+add_test(NAME context_cif2_test COMMAND context_cif2_test)
+
+add_executable(context_cif3_test context_cif3_test.cpp)
+target_link_libraries(context_cif3_test PRIVATE vrtio GTest::gtest_main)
+add_test(NAME context_cif3_test COMMAND context_cif3_test)
+
+add_executable(context_variable_test context_variable_test.cpp)
+target_link_libraries(context_variable_test PRIVATE vrtio GTest::gtest_main)
+add_test(NAME context_variable_test COMMAND context_variable_test)
+
+add_executable(context_timestamp_test context_timestamp_test.cpp)
+target_link_libraries(context_timestamp_test PRIVATE vrtio GTest::gtest_main)
+add_test(NAME context_timestamp_test COMMAND context_timestamp_test)
+
+add_executable(context_integration_test context_integration_test.cpp)
+target_link_libraries(context_integration_test PRIVATE vrtio GTest::gtest_main)
+add_test(NAME context_integration_test COMMAND context_integration_test)
 
 # Field access API tests
 add_executable(field_access_test field_access_test.cpp)
@@ -48,7 +91,10 @@ add_test(NAME field_access_test COMMAND field_access_test)
 
 # Set C++20 standard for tests
 set_target_properties(
-    roundtrip_test endian_test builder_test security_test trailer_test timestamp_test context_test field_access_test
+    roundtrip_test endian_test builder_test security_test trailer_test timestamp_test
+    context_basic_test context_validation_test context_cif1_test context_cif2_test
+    context_cif3_test context_variable_test context_timestamp_test context_integration_test
+    field_access_test
     PROPERTIES
         CXX_STANDARD 20
         CXX_STANDARD_REQUIRED ON

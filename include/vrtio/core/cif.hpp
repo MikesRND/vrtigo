@@ -16,8 +16,15 @@ struct FieldInfo {
     const char* name;         // Field name for documentation
 };
 
-// CIF3 is indicated by bit 3 of CIF0
+// CIF enable bit positions in CIF0
+constexpr uint32_t CIF1_ENABLE_BIT = 1;
+constexpr uint32_t CIF2_ENABLE_BIT = 2;
 constexpr uint32_t CIF3_ENABLE_BIT = 3;
+constexpr uint32_t CIF_ENABLE_MASK = 0x0E;  // Bits 1, 2, 3
+
+// Variable field bit positions in CIF0
+constexpr uint32_t CONTEXT_ASSOC_BIT = 9;
+constexpr uint32_t GPS_ASCII_BIT = 10;
 
 // Safe aligned buffer access helpers
 inline uint32_t read_u32_safe(const uint8_t* buffer, size_t offset) noexcept {
@@ -48,7 +55,7 @@ constexpr FieldInfo CIF0_FIELDS[32] = {
     {0, false, false, "Reserved"},                    // bit 0
     {0, false, true,  "CIF1 Enable"},                 // bit 1 - control bit, supported
     {0, false, true,  "CIF2 Enable"},                 // bit 2 - control bit, supported
-    {0, false, false, "CIF3 Enable (UNSUPPORTED)"},   // bit 3
+    {0, false, true,  "CIF3 Enable"},                 // bit 3 - control bit, supported
     {0, false, false, "Reserved"},                    // bit 4
     {0, false, false, "Reserved"},                    // bit 5
     {0, false, false, "Reserved"},                    // bit 6
@@ -86,7 +93,7 @@ constexpr FieldInfo CIF1_FIELDS[32] = {
     {1, false, true,  "Buffer Size"},                // bit 1
     {1, false, true,  "Version and Build Code"},     // bit 2
     {1, false, true,  "V49 Spec Compliance"},        // bit 3
-    {1, false, false, "Health Status"},              // bit 4
+    {1, false, true,  "Health Status"},              // bit 4
     {2, false, true,  "Discrete I/O (64 bit)"},      // bit 5
     {1, false, true,  "Discrete I/O (32 bit)"},      // bit 6
     {0, true,  false, "Index List (UNSUPPORTED)"},   // bit 7 - VARIABLE
@@ -110,10 +117,10 @@ constexpr FieldInfo CIF1_FIELDS[32] = {
     {1, false, true,  "Beam Width"},                 // bit 25
     {1, false, true,  "Spatial Ref Type"},           // bit 26
     {1, false, true,  "Spatial Scan Type"},          // bit 27
-    {0, true,  false, "3D Pointing Structure (UNSUPPORTED)"}, // bit 28
-    {0, false, false, "3D Pointing Single (CONFLICT)"}, // bit 29 - SPEC CONFLICT
-    {0, false, false, "Polarization (CONFLICT)"},    // bit 30 - SPEC CONFLICT
-    {0, false, false, "Phase Offset (CONFLICT)"}     // bit 31 - SPEC CONFLICT
+    {0, true,  false, "3D Pointing Structure (UNSUPPORTED)"}, // bit 28 - VARIABLE
+    {1, false, true,  "3D Pointing Single"},         // bit 29
+    {1, false, true,  "Polarization"},               // bit 30
+    {1, false, true,  "Phase Offset"}                // bit 31
 };
 
 // COMPLETE CIF2 field table (all supported where not reserved)
@@ -153,11 +160,49 @@ constexpr FieldInfo CIF2_FIELDS[32] = {
     {1, false, true,  "Bind"}                        // bit 31
 };
 
+// COMPLETE CIF3 field table - Temporal and Environmental Fields
+constexpr FieldInfo CIF3_FIELDS[32] = {
+    //  size, var,  supp, name
+    {0, false, false, "Reserved"},                    // bit 0
+    {1, false, true,  "Network ID"},                 // bit 1
+    {1, false, true,  "Tropospheric State"},         // bit 2
+    {1, false, true,  "Sea and Swell State"},        // bit 3
+    {1, false, true,  "Barometric Pressure"},        // bit 4
+    {1, false, true,  "Humidity"},                   // bit 5
+    {1, false, true,  "Sea/Ground Temperature"},     // bit 6
+    {1, false, true,  "Air Temperature"},            // bit 7
+    {0, false, false, "Reserved"},                    // bit 8
+    {0, false, false, "Reserved"},                    // bit 9
+    {0, false, false, "Reserved"},                    // bit 10
+    {0, false, false, "Reserved"},                    // bit 11
+    {0, false, false, "Reserved"},                    // bit 12
+    {0, false, false, "Reserved"},                    // bit 13
+    {0, false, false, "Reserved"},                    // bit 14
+    {0, false, false, "Reserved"},                    // bit 15
+    {0, false, false, "Shelf Life (TSI/TSF DEP)"},   // bit 16 - DEFERRED
+    {0, false, false, "Age (TSI/TSF DEP)"},          // bit 17 - DEFERRED
+    {0, false, false, "Reserved"},                    // bit 18
+    {0, false, false, "Reserved"},                    // bit 19
+    {2, false, true,  "Jitter"},                     // bit 20
+    {2, false, true,  "Dwell"},                      // bit 21
+    {2, false, true,  "Duration"},                   // bit 22
+    {2, false, true,  "Period"},                     // bit 23
+    {2, false, true,  "Pulse Width"},                // bit 24
+    {2, false, true,  "Offset Time"},                // bit 25
+    {2, false, true,  "Fall Time"},                  // bit 26
+    {2, false, true,  "Rise Time"},                  // bit 27
+    {0, false, false, "Reserved"},                    // bit 28
+    {0, false, false, "Reserved"},                    // bit 29
+    {2, false, true,  "Timestamp Skew"},             // bit 30
+    {2, false, true,  "Timestamp Details"}           // bit 31
+};
+
 // Build SUPPORTED masks from the tables
-// Includes CIF1/CIF2 enable control bits (1 and 2) since they are valid in CIF0
+// Includes CIF1/CIF2/CIF3 enable control bits (1, 2, 3) since they are valid in CIF0
 constexpr uint32_t CIF0_SUPPORTED_MASK =
     (1U << 1) |   // CIF1 Enable (control bit)
     (1U << 2) |   // CIF2 Enable (control bit)
+    (1U << 3) |   // CIF3 Enable (control bit)
     (1U << 9) |   // Context Association Lists
     (1U << 10) |  // GPS ASCII
     (1U << 11) |  // Ephemeris Ref ID
@@ -186,6 +231,7 @@ constexpr uint32_t CIF1_SUPPORTED_MASK =
     (1U << 1) |   // Buffer Size
     (1U << 2) |   // Version and Build Code
     (1U << 3) |   // V49 Spec Compliance
+    (1U << 4) |   // Health Status
     (1U << 5) |   // Discrete I/O (64 bit)
     (1U << 6) |   // Discrete I/O (32 bit)
     (1U << 10) |  // Spectrum
@@ -200,7 +246,10 @@ constexpr uint32_t CIF1_SUPPORTED_MASK =
     (1U << 24) |  // Range
     (1U << 25) |  // Beam Width
     (1U << 26) |  // Spatial Ref Type
-    (1U << 27);   // Spatial Scan Type
+    (1U << 27) |  // Spatial Scan Type
+    (1U << 29) |  // 3D Pointing Single
+    (1U << 30) |  // Polarization
+    (1U << 31);   // Phase Offset
 
 constexpr uint32_t CIF2_SUPPORTED_MASK =
     (1U << 3) |   // RF Footprint Range
@@ -233,6 +282,25 @@ constexpr uint32_t CIF2_SUPPORTED_MASK =
     (1U << 30) |  // Cited SID
     (1U << 31);   // Bind
 
+constexpr uint32_t CIF3_SUPPORTED_MASK =
+    (1U << 1) |   // Network ID
+    (1U << 2) |   // Tropospheric State
+    (1U << 3) |   // Sea and Swell State
+    (1U << 4) |   // Barometric Pressure
+    (1U << 5) |   // Humidity
+    (1U << 6) |   // Sea/Ground Temperature
+    (1U << 7) |   // Air Temperature
+    (1U << 20) |  // Jitter
+    (1U << 21) |  // Dwell
+    (1U << 22) |  // Duration
+    (1U << 23) |  // Period
+    (1U << 24) |  // Pulse Width
+    (1U << 25) |  // Offset Time
+    (1U << 26) |  // Fall Time
+    (1U << 27) |  // Rise Time
+    (1U << 30) |  // Timestamp Skew
+    (1U << 31);   // Timestamp Details
+
 // Variable fields that need special handling at compile-time
 constexpr uint32_t CIF0_VARIABLE_MASK =
     (1U << 10) |  // GPS ASCII
@@ -261,6 +329,8 @@ static_assert(build_supported_mask(CIF1_FIELDS) == CIF1_SUPPORTED_MASK,
     "CIF1_SUPPORTED_MASK doesn't match table");
 static_assert(build_supported_mask(CIF2_FIELDS) == CIF2_SUPPORTED_MASK,
     "CIF2_SUPPORTED_MASK doesn't match table");
+static_assert(build_supported_mask(CIF3_FIELDS) == CIF3_SUPPORTED_MASK,
+    "CIF3_SUPPORTED_MASK doesn't match table");
 
 // Variable field length reading functions
 
@@ -287,7 +357,7 @@ inline size_t read_context_assoc_length_words(const uint8_t* buffer, size_t offs
 // New code should use detail::calculate_field_offset_runtime() from variable_field_dispatch.hpp
 // which provides trait-based variable field handling
 inline size_t calculate_field_offset_runtime(
-    uint32_t cif0, uint32_t cif1, uint32_t cif2,
+    uint32_t cif0, uint32_t cif1, uint32_t cif2, uint32_t cif3,
     uint8_t target_cif_word, uint8_t target_bit,
     const uint8_t* buffer,
     size_t base_offset_bytes,
@@ -307,9 +377,9 @@ inline size_t calculate_field_offset_runtime(
                         return SIZE_MAX;  // Error indicator
                     }
 
-                    if (bit == 10) {  // GPS ASCII
+                    if (bit == GPS_ASCII_BIT) {
                         offset_words += read_gps_ascii_length_words(buffer, field_offset);
-                    } else if (bit == 9) {  // Context Assoc
+                    } else if (bit == CONTEXT_ASSOC_BIT) {
                         offset_words += read_context_assoc_length_words(buffer, field_offset);
                     }
                 } else {
@@ -320,7 +390,7 @@ inline size_t calculate_field_offset_runtime(
         return base_offset_bytes + (offset_words * 4);
     }
 
-    // Count all CIF0 fields if target is in CIF1/CIF2
+    // Count all CIF0 fields if target is in CIF1/CIF2/CIF3
     for (int bit = 31; bit >= 0; --bit) {
         if (cif0 & (1U << bit)) {
             if (CIF0_FIELDS[bit].is_variable) {
@@ -330,9 +400,9 @@ inline size_t calculate_field_offset_runtime(
                     return SIZE_MAX;
                 }
 
-                if (bit == 10) {
+                if (bit == GPS_ASCII_BIT) {
                     offset_words += read_gps_ascii_length_words(buffer, field_offset);
-                } else if (bit == 9) {
+                } else if (bit == CONTEXT_ASSOC_BIT) {
                     offset_words += read_context_assoc_length_words(buffer, field_offset);
                 }
             } else {
@@ -342,7 +412,7 @@ inline size_t calculate_field_offset_runtime(
     }
 
     // Process CIF1 fields if needed
-    if (target_cif_word >= 1 && (cif0 & 0x02)) {
+    if (target_cif_word >= 1 && (cif0 & (1U << CIF1_ENABLE_BIT))) {
         const FieldInfo* table = CIF1_FIELDS;
         uint32_t cif = cif1;
 
@@ -361,11 +431,28 @@ inline size_t calculate_field_offset_runtime(
         }
     }
 
-    // Process CIF2 fields if target is in CIF2
-    if (target_cif_word == 2 && (cif0 & 0x04)) {
+    // Process CIF2 fields if needed
+    if (target_cif_word >= 2 && (cif0 & (1U << CIF2_ENABLE_BIT))) {
+        if (target_cif_word == 2) {
+            for (int bit = 31; bit > static_cast<int>(target_bit); --bit) {
+                if (cif2 & (1U << bit)) {
+                    offset_words += CIF2_FIELDS[bit].size_words;
+                }
+            }
+        } else {
+            for (int bit = 31; bit >= 0; --bit) {
+                if (cif2 & (1U << bit)) {
+                    offset_words += CIF2_FIELDS[bit].size_words;
+                }
+            }
+        }
+    }
+
+    // Process CIF3 fields if target is in CIF3
+    if (target_cif_word == 3 && (cif0 & (1U << CIF3_ENABLE_BIT))) {
         for (int bit = 31; bit > static_cast<int>(target_bit); --bit) {
-            if (cif2 & (1U << bit)) {
-                offset_words += CIF2_FIELDS[bit].size_words;
+            if (cif3 & (1U << bit)) {
+                offset_words += CIF3_FIELDS[bit].size_words;
             }
         }
     }
@@ -374,7 +461,7 @@ inline size_t calculate_field_offset_runtime(
 }
 
 // Compile-time field offset calculation (no variable fields)
-template<uint32_t CIF0, uint32_t CIF1, uint32_t CIF2,
+template<uint32_t CIF0, uint32_t CIF1, uint32_t CIF2, uint32_t CIF3,
          uint8_t TargetCIF, uint8_t TargetBit>
 constexpr size_t calculate_field_offset_ct() {
     static_assert((CIF0 & CIF0_VARIABLE_MASK) == 0,
@@ -382,11 +469,11 @@ constexpr size_t calculate_field_offset_ct() {
 
     size_t offset_words = 0;
 
-    // Process CIF0 fields (excluding control bits 1 and 2)
+    // Process CIF0 fields (excluding control bits 1, 2, and 3)
     if constexpr (TargetCIF == 0) {
         for (int bit = 31; bit > static_cast<int>(TargetBit); --bit) {
-            // Skip CIF1/CIF2 enable bits
-            if (bit == 1 || bit == 2) continue;
+            // Skip CIF1/CIF2/CIF3 enable bits
+            if (bit == CIF1_ENABLE_BIT || bit == CIF2_ENABLE_BIT || bit == CIF3_ENABLE_BIT) continue;
 
             if (CIF0 & (1U << bit)) {
                 offset_words += CIF0_FIELDS[bit].size_words;
@@ -395,10 +482,10 @@ constexpr size_t calculate_field_offset_ct() {
         return offset_words * 4;
     }
 
-    // Count all CIF0 fields if target is in CIF1/CIF2 (excluding control bits)
+    // Count all CIF0 fields if target is in CIF1/CIF2/CIF3 (excluding control bits)
     for (int bit = 31; bit >= 0; --bit) {
-        // Skip CIF1/CIF2 enable bits
-        if (bit == 1 || bit == 2) continue;
+        // Skip CIF1/CIF2/CIF3 enable bits
+        if (bit == CIF1_ENABLE_BIT || bit == CIF2_ENABLE_BIT || bit == CIF3_ENABLE_BIT) continue;
 
         if (CIF0 & (1U << bit)) {
             offset_words += CIF0_FIELDS[bit].size_words;
@@ -423,10 +510,27 @@ constexpr size_t calculate_field_offset_ct() {
     }
 
     // Process CIF2 fields if CIF2 is used
-    if constexpr (TargetCIF == 2 && CIF2 != 0) {
+    if constexpr (TargetCIF >= 2 && CIF2 != 0) {
+        if constexpr (TargetCIF == 2) {
+            for (int bit = 31; bit > static_cast<int>(TargetBit); --bit) {
+                if (CIF2 & (1U << bit)) {
+                    offset_words += CIF2_FIELDS[bit].size_words;
+                }
+            }
+        } else {
+            for (int bit = 31; bit >= 0; --bit) {
+                if (CIF2 & (1U << bit)) {
+                    offset_words += CIF2_FIELDS[bit].size_words;
+                }
+            }
+        }
+    }
+
+    // Process CIF3 fields if CIF3 is used
+    if constexpr (TargetCIF == 3 && CIF3 != 0) {
         for (int bit = 31; bit > static_cast<int>(TargetBit); --bit) {
-            if (CIF2 & (1U << bit)) {
-                offset_words += CIF2_FIELDS[bit].size_words;
+            if (CIF3 & (1U << bit)) {
+                offset_words += CIF3_FIELDS[bit].size_words;
             }
         }
     }
@@ -435,17 +539,17 @@ constexpr size_t calculate_field_offset_ct() {
 }
 
 // Compile-time context field size calculation
-template<uint32_t CIF0, uint32_t CIF1, uint32_t CIF2>
+template<uint32_t CIF0, uint32_t CIF1, uint32_t CIF2, uint32_t CIF3>
 constexpr size_t calculate_context_size_ct() {
     static_assert((CIF0 & CIF0_VARIABLE_MASK) == 0,
         "Compile-time size calculation does not support variable fields");
 
     size_t total_words = 0;
 
-    // Count CIF0 fields (excluding control bits 1 and 2)
+    // Count CIF0 fields (excluding control bits 1, 2, and 3)
     for (int bit = 31; bit >= 0; --bit) {
-        // Skip CIF1/CIF2 enable bits - they're control bits, not data fields
-        if (bit == 1 || bit == 2) continue;
+        // Skip CIF1/CIF2/CIF3 enable bits - they're control bits, not data fields
+        if (bit == 1 || bit == 2 || bit == 3) continue;
 
         if (CIF0 & (1U << bit)) {
             total_words += CIF0_FIELDS[bit].size_words;
@@ -466,6 +570,15 @@ constexpr size_t calculate_context_size_ct() {
         for (int bit = 31; bit >= 0; --bit) {
             if (CIF2 & (1U << bit)) {
                 total_words += CIF2_FIELDS[bit].size_words;
+            }
+        }
+    }
+
+    // Count CIF3 fields if CIF3 has any bits set
+    if constexpr (CIF3 != 0) {
+        for (int bit = 31; bit >= 0; --bit) {
+            if (CIF3 & (1U << bit)) {
+                total_words += CIF3_FIELDS[bit].size_words;
             }
         }
     }
@@ -514,6 +627,7 @@ namespace cif1 {
     constexpr uint32_t BUFFER_SIZE = (1U << 1);
     constexpr uint32_t VERSION_BUILD_CODE = (1U << 2);
     constexpr uint32_t V49_SPEC_COMPLIANCE = (1U << 3);
+    constexpr uint32_t HEALTH_STATUS = (1U << 4);
     constexpr uint32_t DISCRETE_IO_64 = (1U << 5);
     constexpr uint32_t DISCRETE_IO_32 = (1U << 6);
     constexpr uint32_t SPECTRUM = (1U << 10);
@@ -529,6 +643,9 @@ namespace cif1 {
     constexpr uint32_t BEAM_WIDTH = (1U << 25);
     constexpr uint32_t SPATIAL_REF_TYPE = (1U << 26);
     constexpr uint32_t SPATIAL_SCAN_TYPE = (1U << 27);
+    constexpr uint32_t POINTING_VECTOR_3D_SINGLE = (1U << 29);
+    constexpr uint32_t POLARIZATION = (1U << 30);
+    constexpr uint32_t PHASE_OFFSET = (1U << 31);
 }  // namespace cif1
 
 // CIF2 field constants (only supported fields, matching CIF2_FIELDS table)
@@ -563,5 +680,26 @@ namespace cif2 {
     constexpr uint32_t CITED_SID = (1U << 30);
     constexpr uint32_t BIND = (1U << 31);
 }  // namespace cif2
+
+// CIF3 field constants (only supported static-sized fields)
+namespace cif3 {
+    constexpr uint32_t NETWORK_ID = (1U << 1);
+    constexpr uint32_t TROPOSPHERIC_STATE = (1U << 2);
+    constexpr uint32_t SEA_SWELL_STATE = (1U << 3);
+    constexpr uint32_t BAROMETRIC_PRESSURE = (1U << 4);
+    constexpr uint32_t HUMIDITY = (1U << 5);
+    constexpr uint32_t SEA_GROUND_TEMPERATURE = (1U << 6);
+    constexpr uint32_t AIR_TEMPERATURE = (1U << 7);
+    constexpr uint32_t JITTER = (1U << 20);
+    constexpr uint32_t DWELL = (1U << 21);
+    constexpr uint32_t DURATION = (1U << 22);
+    constexpr uint32_t PERIOD = (1U << 23);
+    constexpr uint32_t PULSE_WIDTH = (1U << 24);
+    constexpr uint32_t OFFSET_TIME = (1U << 25);
+    constexpr uint32_t FALL_TIME = (1U << 26);
+    constexpr uint32_t RISE_TIME = (1U << 27);
+    constexpr uint32_t TIMESTAMP_SKEW = (1U << 30);
+    constexpr uint32_t TIMESTAMP_DETAILS = (1U << 31);
+}  // namespace cif3
 
 }  // namespace vrtio
