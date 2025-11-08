@@ -41,9 +41,9 @@ void example_compile_time_context() {
     packet.set_stream_id(0x12345678);
 
     // Set signal parameters
-    packet.set_bandwidth(20'000'000);      // 20 MHz
-    packet.set_sample_rate(10'000'000);    // 10 MSPS
-    packet.set_gain(0x00100000);           // Gain value
+    set(packet, field::bandwidth, 20'000'000ULL);      // 20 MHz
+    set(packet, field::sample_rate, 10'000'000ULL);    // 10 MSPS
+    set(packet, field::gain, 0x00100000U);             // Gain value
 
     // Device ID is 64-bit (OUI + device code)
     // For now we'll just set a simple value
@@ -52,9 +52,9 @@ void example_compile_time_context() {
     std::cout << "Created context packet:\n";
     std::cout << "  Size: " << SignalContext::size_bytes << " bytes\n";
     std::cout << "  Stream ID: 0x" << std::hex << packet.stream_id() << std::dec << "\n";
-    std::cout << "  Bandwidth: " << packet.bandwidth() / 1'000'000.0 << " MHz\n";
-    std::cout << "  Sample Rate: " << packet.sample_rate() / 1'000'000.0 << " MSPS\n";
-    std::cout << "  Gain: 0x" << std::hex << packet.gain() << std::dec << "\n";
+    std::cout << "  Bandwidth: " << get(packet, field::bandwidth).value() / 1'000'000.0 << " MHz\n";
+    std::cout << "  Sample Rate: " << get(packet, field::sample_rate).value() / 1'000'000.0 << " MSPS\n";
+    std::cout << "  Gain: 0x" << std::hex << get(packet, field::gain).value() << std::dec << "\n";
 }
 
 // Example 2: Creating a context packet with Class ID
@@ -79,13 +79,13 @@ void example_with_class_id() {
     ClassifiedContext packet(buffer.data());
 
     packet.set_stream_id(0x87654321);
-    packet.set_bandwidth(40'000'000);  // 40 MHz
+    set(packet, field::bandwidth, 40'000'000ULL);  // 40 MHz
 
     std::cout << "Created classified context packet:\n";
     std::cout << "  Size: " << ClassifiedContext::size_bytes << " bytes\n";
     std::cout << "  Has Class ID: Yes (OUI=0x00FF00, PCC=0xABCD1234)\n";
     std::cout << "  Stream ID: 0x" << std::hex << packet.stream_id() << std::dec << "\n";
-    std::cout << "  Bandwidth: " << packet.bandwidth() / 1'000'000.0 << " MHz\n";
+    std::cout << "  Bandwidth: " << get(packet, field::bandwidth).value() / 1'000'000.0 << " MHz\n";
 }
 
 // Example 3: Parsing a context packet received from network
@@ -142,11 +142,11 @@ void example_runtime_parsing() {
 
     std::cout << "  CIF0: 0x" << std::hex << view.cif0() << std::dec << "\n";
 
-    if (auto bw = view.bandwidth()) {
+    if (auto bw = get(view, field::bandwidth)) {
         std::cout << "  Bandwidth: " << *bw / 1'000'000.0 << " MHz\n";
     }
 
-    if (auto sr = view.sample_rate()) {
+    if (auto sr = get(view, field::sample_rate)) {
         std::cout << "  Sample Rate: " << *sr / 1'000'000.0 << " MSPS\n";
     }
 

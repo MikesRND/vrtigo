@@ -32,3 +32,6 @@
 #include "vrtio/packet/builder.hpp"
 #include "vrtio/packet/context_packet_view.hpp"
 #include "vrtio/packet/context_packet.hpp"
+
+// Field access API (get, set, has for context packet fields)
+#include "vrtio/fields.hpp"

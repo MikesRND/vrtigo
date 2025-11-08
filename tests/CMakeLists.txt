@@ -41,9 +41,14 @@ add_executable(context_test context_test.cpp)
 target_link_libraries(context_test PRIVATE vrtio GTest::gtest_main)
 add_test(NAME context_test COMMAND context_test)
 
+# Field access API tests
+add_executable(field_access_test field_access_test.cpp)
+target_link_libraries(field_access_test PRIVATE vrtio)
+add_test(NAME field_access_test COMMAND field_access_test)
+
 # Set C++20 standard for tests
 set_target_properties(
-    roundtrip_test endian_test builder_test security_test trailer_test timestamp_test context_test
+    roundtrip_test endian_test builder_test security_test trailer_test timestamp_test context_test field_access_test
     PROPERTIES
         CXX_STANDARD 20
         CXX_STANDARD_REQUIRED ON

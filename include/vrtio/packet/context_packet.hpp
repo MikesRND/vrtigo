@@ -338,76 +338,6 @@ public:
         set_timestamp_fractional(ts.fractional());
     }
 
-    // Example field setters with compile-time offset calculation
-
-    // Bandwidth setter (CIF0 bit 29)
-    void set_bandwidth(uint64_t hz) noexcept
-        requires((CIF0 & (1U << 29)) != 0) {
-        constexpr size_t base = calculate_context_offset();
-        constexpr size_t offset = cif::calculate_field_offset_ct<
-            CIF0, CIF1, CIF2, 0, 29>();
-        cif::write_u64_safe(buffer_, base + offset, hz);
-    }
-
-    uint64_t bandwidth() const noexcept
-        requires((CIF0 & (1U << 29)) != 0) {
-        constexpr size_t base = calculate_context_offset();
-        constexpr size_t offset = cif::calculate_field_offset_ct<
-            CIF0, CIF1, CIF2, 0, 29>();
-        return cif::read_u64_safe(buffer_, base + offset);
-    }
-
-    // Sample rate setter (CIF0 bit 21)
-    void set_sample_rate(uint64_t hz) noexcept
-        requires((CIF0 & (1U << 21)) != 0) {
-        constexpr size_t base = calculate_context_offset();
-        constexpr size_t offset = cif::calculate_field_offset_ct<
-            CIF0, CIF1, CIF2, 0, 21>();
-        cif::write_u64_safe(buffer_, base + offset, hz);
-    }
-
-    uint64_t sample_rate() const noexcept
-        requires((CIF0 & (1U << 21)) != 0) {
-        constexpr size_t base = calculate_context_offset();
-        constexpr size_t offset = cif::calculate_field_offset_ct<
-            CIF0, CIF1, CIF2, 0, 21>();
-        return cif::read_u64_safe(buffer_, base + offset);
-    }
-
-    // Gain setter (CIF0 bit 23)
-    void set_gain(uint32_t gain) noexcept
-        requires((CIF0 & (1U << 23)) != 0) {
-        constexpr size_t base = calculate_context_offset();
-        constexpr size_t offset = cif::calculate_field_offset_ct<
-            CIF0, CIF1, CIF2, 0, 23>();
-        cif::write_u32_safe(buffer_, base + offset, gain);
-    }
-
-    uint32_t gain() const noexcept
-        requires((CIF0 & (1U << 23)) != 0) {
-        constexpr size_t base = calculate_context_offset();
-        constexpr size_t offset = cif::calculate_field_offset_ct<
-            CIF0, CIF1, CIF2, 0, 23>();
-        return cif::read_u32_safe(buffer_, base + offset);
-    }
-
-    // CIF1 field example: Aux Frequency (CIF1 bit 15)
-    void set_aux_frequency(uint64_t hz) noexcept
-        requires((CIF1 & (1U << 15)) != 0) {
-        constexpr size_t base = calculate_context_offset();
-        constexpr size_t offset = cif::calculate_field_offset_ct<
-            CIF0, CIF1, CIF2, 1, 15>();
-        cif::write_u64_safe(buffer_, base + offset, hz);
-    }
-
-    uint64_t aux_frequency() const noexcept
-        requires((CIF1 & (1U << 15)) != 0) {
-        constexpr size_t base = calculate_context_offset();
-        constexpr size_t offset = cif::calculate_field_offset_ct<
-            CIF0, CIF1, CIF2, 1, 15>();
-        return cif::read_u64_safe(buffer_, base + offset);
-    }
-
     // Trailer accessors
     uint32_t trailer() const noexcept requires(HasTrailer) {
         size_t offset = (total_words - 1) * 4;
@@ -426,6 +356,35 @@ public:
 
     static constexpr size_t packet_size_words() noexcept {
         return total_words;
+    }
+
+    // Field access API support - expose buffer and CIF state
+    const uint8_t* context_buffer() const noexcept {
+        return buffer_;
+    }
+
+    uint8_t* mutable_context_buffer() noexcept {
+        return buffer_;
+    }
+
+    static constexpr size_t context_base_offset() noexcept {
+        return calculate_context_offset();
+    }
+
+    static constexpr uint32_t cif0() noexcept {
+        return computed_cif0;
+    }
+
+    static constexpr uint32_t cif1() noexcept {
+        return CIF1;
+    }
+
+    static constexpr uint32_t cif2() noexcept {
+        return CIF2;
+    }
+
+    static constexpr size_t buffer_size() noexcept {
+        return size_bytes;
     }
 
     // Validation (primarily for testing)

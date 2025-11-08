@@ -2,7 +2,7 @@
 
 .PHONY: all build clean configure debug release examples help
 .PHONY: build-core build-io build-all
-.PHONY: test-core test-io test-all test-roundtrip test-endian test-builder test-security test-trailer test-timestamp test-context test-header-decode test-file-reader
+.PHONY: test-core test-io test-all test-roundtrip test-endian test-builder test-security test-trailer test-timestamp test-context test-field-access test-header-decode test-file-reader
 .PHONY: run-core run-io run-all run-basic-usage run-trailer-example run-timestamp-example run-context-example run-file-parsing
 .PHONY: check-core check-io check-all ci-core ci-io ci-all
 .PHONY: list-tests list-examples format install uninstall
@@ -77,11 +77,11 @@ clean:
 # Test Targets (NO BARE "make test")
 # ============================================================================
 
-# Run core tests only (8 tests)
+# Run core tests only (9 tests)
 test-core: configure
 	@cmake --build $(BUILD_DIR)
 	@echo "Running core tests..."
-	@cd $(BUILD_DIR) && ctest --output-on-failure -R "(roundtrip|endian|builder|security|trailer|timestamp|context|header_decode)_test"
+	@cd $(BUILD_DIR) && ctest --output-on-failure -R "(roundtrip|endian|builder|security|trailer|timestamp|context|field_access|header_decode)_test"
 	@echo "✓ Core tests passed"
 
 # Run I/O tests only (1 test)
@@ -126,6 +126,10 @@ test-timestamp: configure
 test-context: configure
 	@cmake --build $(BUILD_DIR) --target context_test
 	@./$(BUILD_DIR)/tests/context_test
+
+test-field-access: configure
+	@cmake --build $(BUILD_DIR) --target field_access_test
+	@./$(BUILD_DIR)/tests/field_access_test
 
 test-header-decode: configure
 	@cmake --build $(BUILD_DIR) --target header_decode_test
@@ -233,7 +237,7 @@ ci-all: check-all run-all
 # List all available tests
 list-tests:
 	@echo "Available tests:"
-	@echo "  Core Tests (8):"
+	@echo "  Core Tests (9):"
 	@echo "    - test-roundtrip      (roundtrip_test)"
 	@echo "    - test-endian         (endian_test)"
 	@echo "    - test-builder        (builder_test)"
@@ -241,6 +245,7 @@ list-tests:
 	@echo "    - test-trailer        (trailer_test)"
 	@echo "    - test-timestamp      (timestamp_test)"
 	@echo "    - test-context        (context_test)"
+	@echo "    - test-field-access   (field_access_test)"
 	@echo "    - test-header-decode  (header_decode_test)"
 	@echo "  I/O Tests (1):"
 	@echo "    - test-file-reader    (file_reader_test) [requires I/O]"
@@ -317,9 +322,9 @@ help:
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "TEST TARGETS"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "  make test-core        Run core tests only (8 tests)"
+	@echo "  make test-core        Run core tests only (9 tests)"
 	@echo "  make test-io          Run I/O tests only (1 test)"
-	@echo "  make test-all         Run all tests (9 tests)"
+	@echo "  make test-all         Run all tests (10 tests)"
 	@echo ""
 	@echo "  Individual tests:"
 	@echo "    make test-roundtrip      make test-security"
