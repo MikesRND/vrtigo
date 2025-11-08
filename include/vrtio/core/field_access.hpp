@@ -19,6 +19,7 @@ concept PacketLike = requires(const T& pkt) {
     { pkt.cif0() } -> std::same_as<uint32_t>;
     { pkt.cif1() } -> std::same_as<uint32_t>;
     { pkt.cif2() } -> std::same_as<uint32_t>;
+    { pkt.cif3() } -> std::same_as<uint32_t>;
 };
 
 /// Concept: Mutable packets (for write operations)
@@ -33,17 +34,20 @@ concept CompileTimePacket = PacketLike<T> && requires {
     { T::cif0_value } -> std::convertible_to<uint32_t>;
     { T::cif1_value } -> std::convertible_to<uint32_t>;
     { T::cif2_value } -> std::convertible_to<uint32_t>;
+    { T::cif3_value } -> std::convertible_to<uint32_t>;
 };
 
 /// Check if a field is present in the packet's CIF words
 template<uint8_t CifWord, uint8_t Bit>
-constexpr bool is_field_present(uint32_t cif0, uint32_t cif1, uint32_t cif2) noexcept {
+constexpr bool is_field_present(uint32_t cif0, uint32_t cif1, uint32_t cif2, uint32_t cif3) noexcept {
     if constexpr (CifWord == 0) {
         return (cif0 & (1U << Bit)) != 0;
     } else if constexpr (CifWord == 1) {
         return (cif1 & (1U << Bit)) != 0;
     } else if constexpr (CifWord == 2) {
         return (cif2 & (1U << Bit)) != 0;
+    } else if constexpr (CifWord == 3) {
+        return (cif3 & (1U << Bit)) != 0;
     }
     return false;
 }
@@ -69,7 +73,7 @@ auto get(const Packet& packet, field::field_tag_t<CifWord, Bit>) noexcept
 
     // Check if field is present
     if (!detail::is_field_present<CifWord, Bit>(
-            packet.cif0(), packet.cif1(), packet.cif2())) {
+            packet.cif0(), packet.cif1(), packet.cif2(), packet.cif3())) {
         return std::nullopt;
     }
 
@@ -79,13 +83,13 @@ auto get(const Packet& packet, field::field_tag_t<CifWord, Bit>) noexcept
     if constexpr (detail::CompileTimePacket<Packet>) {
         // Compile-time packet: fold offset to constant at compile time
         constexpr size_t ct_offset = cif::calculate_field_offset_ct<
-            Packet::cif0_value, Packet::cif1_value, Packet::cif2_value,
+            Packet::cif0_value, Packet::cif1_value, Packet::cif2_value, Packet::cif3_value,
             CifWord, Bit>();
         field_offset = packet.context_base_offset() + ct_offset;
     } else {
         // Runtime packet: calculate offset dynamically
         field_offset = detail::calculate_field_offset_runtime(
-            packet.cif0(), packet.cif1(), packet.cif2(),
+            packet.cif0(), packet.cif1(), packet.cif2(), packet.cif3(),
             CifWord, Bit,
             packet.context_buffer(),
             packet.context_base_offset(),
@@ -124,7 +128,7 @@ bool set(Packet& packet,
 
     // Check if field is present
     if (!detail::is_field_present<CifWord, Bit>(
-            packet.cif0(), packet.cif1(), packet.cif2())) {
+            packet.cif0(), packet.cif1(), packet.cif2(), packet.cif3())) {
         return false;
     }
 
@@ -137,13 +141,13 @@ bool set(Packet& packet,
         if constexpr (detail::CompileTimePacket<Packet>) {
             // Compile-time packet: fold offset to constant at compile time
             constexpr size_t ct_offset = cif::calculate_field_offset_ct<
-                Packet::cif0_value, Packet::cif1_value, Packet::cif2_value,
+                Packet::cif0_value, Packet::cif1_value, Packet::cif2_value, Packet::cif3_value,
                 CifWord, Bit>();
             field_offset = packet.context_base_offset() + ct_offset;
         } else {
             // Runtime packet: calculate offset dynamically
             field_offset = detail::calculate_field_offset_runtime(
-                packet.cif0(), packet.cif1(), packet.cif2(),
+                packet.cif0(), packet.cif1(), packet.cif2(), packet.cif3(),
                 CifWord, Bit,
                 packet.mutable_context_buffer(),
                 packet.context_base_offset(),
@@ -175,7 +179,7 @@ template<typename Packet, uint8_t CifWord, uint8_t Bit>
     requires detail::PacketLike<Packet>
 constexpr bool has(const Packet& packet, field::field_tag_t<CifWord, Bit>) noexcept {
     return detail::is_field_present<CifWord, Bit>(
-        packet.cif0(), packet.cif1(), packet.cif2()
+        packet.cif0(), packet.cif1(), packet.cif2(), packet.cif3()
     );
 }
 
@@ -200,7 +204,7 @@ auto get_unchecked(const Packet& packet, field::field_tag_t<CifWord, Bit>) noexc
 
     // Compile-time packet: fold offset to constant at compile time (zero overhead)
     constexpr size_t ct_offset = cif::calculate_field_offset_ct<
-        Packet::cif0_value, Packet::cif1_value, Packet::cif2_value,
+        Packet::cif0_value, Packet::cif1_value, Packet::cif2_value, Packet::cif3_value,
         CifWord, Bit>();
     size_t field_offset = packet.context_base_offset() + ct_offset;
 

@@ -57,7 +57,7 @@ inline constexpr auto& formatted_gps = formatted_gps_ins;
 inline constexpr field_tag_t<1, 1>  buffer_size;
 inline constexpr field_tag_t<1, 2>  version_build_code;
 inline constexpr field_tag_t<1, 3>  v49_spec_compliance;
-// Bit 4: Health Status (unsupported - format unclear)
+inline constexpr field_tag_t<1, 4>  health_status;
 inline constexpr field_tag_t<1, 5>  discrete_io_64;
 inline constexpr field_tag_t<1, 6>  discrete_io_32;
 // Bit 7: Index List (unsupported - variable)
@@ -79,7 +79,10 @@ inline constexpr field_tag_t<1, 24> range;
 inline constexpr field_tag_t<1, 25> beam_width;
 inline constexpr field_tag_t<1, 26> spatial_reference_type;
 inline constexpr field_tag_t<1, 27> spatial_scan_type;
-// Bits 28-31: Unsupported (spec conflicts)
+// Bit 28: 3D Pointing Structure (unsupported - variable)
+inline constexpr field_tag_t<1, 29> pointing_vector_3d_single;
+inline constexpr field_tag_t<1, 30> polarization;
+inline constexpr field_tag_t<1, 31> phase_offset;
 
 // Aliases
 inline constexpr auto& snr = snr_noise_figure;
@@ -118,5 +121,35 @@ inline constexpr field_tag_t<2, 28> parent_stream_id;
 inline constexpr field_tag_t<2, 29> sibling_stream_id;
 inline constexpr field_tag_t<2, 30> cited_sid;
 inline constexpr field_tag_t<2, 31> bind;
+
+// ============================================================================
+// CIF3 Field Tags (VITA 49.2 Table 9.7-1 - Temporal and Environmental)
+// ============================================================================
+
+// Bit 0: Reserved
+inline constexpr field_tag_t<3, 1>  network_id;
+inline constexpr field_tag_t<3, 2>  tropospheric_state;
+inline constexpr field_tag_t<3, 3>  sea_swell_state;
+inline constexpr field_tag_t<3, 4>  barometric_pressure;
+inline constexpr field_tag_t<3, 5>  humidity;
+inline constexpr field_tag_t<3, 6>  sea_ground_temperature;
+inline constexpr field_tag_t<3, 7>  air_temperature;
+// Bits 8-15: Reserved
+// Bits 16-17: Age/Shelf Life - TSI/TSF dependent (deferred)
+// Bits 18-19: Reserved
+inline constexpr field_tag_t<3, 20> jitter;
+inline constexpr field_tag_t<3, 21> dwell;
+inline constexpr field_tag_t<3, 22> duration;
+inline constexpr field_tag_t<3, 23> period;
+inline constexpr field_tag_t<3, 24> pulse_width;
+inline constexpr field_tag_t<3, 25> offset_time;
+inline constexpr field_tag_t<3, 26> fall_time;
+inline constexpr field_tag_t<3, 27> rise_time;
+// Bits 28-29: Reserved
+inline constexpr field_tag_t<3, 30> timestamp_skew;
+inline constexpr field_tag_t<3, 31> timestamp_details;
+
+// Convenient aliases
+inline constexpr auto& sea_and_swell_state = sea_swell_state;
 
 } // namespace vrtio::field

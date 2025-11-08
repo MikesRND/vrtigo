@@ -21,6 +21,7 @@ template<
     uint32_t CIF0 = 0,
     uint32_t CIF1 = 0,
     uint32_t CIF2 = 0,
+    uint32_t CIF3 = 0,
     bool HasTrailer = false
 >
     requires ValidTimestampType<TimeStampType> &&
@@ -38,16 +39,17 @@ private:
     static constexpr bool has_class_id = ClassIdTraits<ClassIdType>::has_class_id;
     static constexpr size_t class_id_words = ClassIdTraits<ClassIdType>::size_words;
 
-    // Compute actual CIF0 with automatic CIF1/CIF2 enable bits
+    // Compute actual CIF0 with automatic CIF1/CIF2/CIF3 enable bits
     static constexpr uint32_t computed_cif0 = CIF0 |
-        ((CIF1 != 0) ? 0x02 : 0) |  // Auto-set bit 1 if CIF1 is used
-        ((CIF2 != 0) ? 0x04 : 0);   // Auto-set bit 2 if CIF2 is used
+        ((CIF1 != 0) ? (1U << cif::CIF1_ENABLE_BIT) : 0) |
+        ((CIF2 != 0) ? (1U << cif::CIF2_ENABLE_BIT) : 0) |
+        ((CIF3 != 0) ? (1U << cif::CIF3_ENABLE_BIT) : 0);
 
     // COMPLETE compile-time validation
 
-    // User must NOT set CIF1/CIF2 enable bits manually - they're auto-managed
-    static_assert((CIF0 & 0x06) == 0,
-        "Do not set CIF1/CIF2 enable bits (1,2) in CIF0 - they are auto-managed based on CIF1/CIF2 parameters");
+    // User must NOT set CIF1/CIF2/CIF3 enable bits manually - they're auto-managed
+    static_assert((CIF0 & cif::CIF_ENABLE_MASK) == 0,
+        "Do not set CIF1/CIF2/CIF3 enable bits (1,2,3) in CIF0 - they are auto-managed based on CIF1/CIF2/CIF3 parameters");
 
     // Check CIF0 data fields: only supported non-variable bits allowed
     static_assert((CIF0 & ~cif::CIF0_COMPILETIME_SUPPORTED_MASK) == 0,
@@ -61,9 +63,9 @@ private:
     static_assert(CIF2 == 0 || (CIF2 & ~cif::CIF2_SUPPORTED_MASK) == 0,
         "CIF2 contains unsupported or reserved fields");
 
-    // CIF3 is never allowed (bit 3 of CIF0)
-    static_assert((CIF0 & (1U << cif::CIF3_ENABLE_BIT)) == 0,
-        "CIF3 is not supported in this implementation");
+    // Check CIF3 if enabled: only supported bits allowed
+    static_assert(CIF3 == 0 || (CIF3 & ~cif::CIF3_SUPPORTED_MASK) == 0,
+        "CIF3 contains unsupported or reserved fields");
 
     // Additional safety check: verify each set bit has non-zero size
     static constexpr bool validate_cif0_sizes() {
@@ -94,11 +96,12 @@ private:
     // CIF word count
     static constexpr size_t cif_words = 1 +
         ((CIF1 != 0) ? 1 : 0) +  // CIF1
-        ((CIF2 != 0) ? 1 : 0);   // CIF2
+        ((CIF2 != 0) ? 1 : 0) +  // CIF2
+        ((CIF3 != 0) ? 1 : 0);   // CIF3
 
     // Calculate context field size (compile-time, no variable fields)
     static constexpr size_t context_fields_words =
-        cif::calculate_context_size_ct<CIF0, CIF1, CIF2>();
+        cif::calculate_context_size_ct<CIF0, CIF1, CIF2, CIF3>();
 
     static constexpr size_t trailer_words = HasTrailer ? 1 : 0;
 
@@ -141,6 +144,9 @@ private:
         if constexpr (CIF2 != 0) {
             offset += 4;  // CIF2
         }
+        if constexpr (CIF3 != 0) {
+            offset += 4;  // CIF3
+        }
 
         return offset;
     }
@@ -151,6 +157,7 @@ public:
     static constexpr uint32_t cif0_value = computed_cif0;  // For builder (with enable bits)
     static constexpr uint32_t cif1_value = CIF1;
     static constexpr uint32_t cif2_value = CIF2;
+    static constexpr uint32_t cif3_value = CIF3;
 
     explicit ContextPacket(uint8_t* buffer, bool init = true) noexcept
         : buffer_(buffer) {
@@ -258,7 +265,7 @@ private:
     void write_cif_words() noexcept {
         size_t offset = calculate_cif_offset();
 
-        // Write CIF0 (with automatic CIF1/CIF2 enable bits)
+        // Write CIF0 (with automatic CIF1/CIF2/CIF3 enable bits)
         cif::write_u32_safe(buffer_, offset, computed_cif0);
         offset += 4;
 
@@ -271,6 +278,12 @@ private:
         // Write CIF2 if present
         if constexpr (CIF2 != 0) {
             cif::write_u32_safe(buffer_, offset, CIF2);
+            offset += 4;
+        }
+
+        // Write CIF3 if present
+        if constexpr (CIF3 != 0) {
+            cif::write_u32_safe(buffer_, offset, CIF3);
         }
     }
 
@@ -381,6 +394,10 @@ public:
 
     static constexpr uint32_t cif2() noexcept {
         return CIF2;
+    }
+
+    static constexpr uint32_t cif3() noexcept {
+        return CIF3;
     }
 
     static constexpr size_t buffer_size() noexcept {
