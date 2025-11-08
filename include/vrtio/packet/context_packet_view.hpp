@@ -4,6 +4,7 @@
 #include "../core/cif.hpp"
 #include "../core/endian.hpp"
 #include "../core/detail/header_decode.hpp"
+#include "../core/detail/variable_field_dispatch.hpp"
 #include <optional>
 #include <span>
 #include <cstring>
@@ -307,96 +308,6 @@ public:
         return validated_ && (structure_.cif2 & Bit);
     }
 
-    // Field accessors - example for bandwidth
-    std::optional<uint64_t> bandwidth() const noexcept {
-        constexpr uint8_t bit = 29;
-
-        if (!validated_ || !(structure_.cif0 & (1U << bit))) {
-            return std::nullopt;
-        }
-
-        size_t offset = cif::calculate_field_offset_runtime(
-            structure_.cif0, structure_.cif1, structure_.cif2,
-            0, bit,
-            buffer_,
-            structure_.context_base_bytes,
-            buffer_size_);
-
-        if (offset == SIZE_MAX) {  // Error check
-            return std::nullopt;
-        }
-
-        return cif::read_u64_safe(buffer_, offset);
-    }
-
-    // Sample rate accessor
-    std::optional<uint64_t> sample_rate() const noexcept {
-        constexpr uint8_t bit = 21;
-
-        if (!validated_ || !(structure_.cif0 & (1U << bit))) {
-            return std::nullopt;
-        }
-
-        size_t offset = cif::calculate_field_offset_runtime(
-            structure_.cif0, structure_.cif1, structure_.cif2,
-            0, bit,
-            buffer_,
-            structure_.context_base_bytes,
-            buffer_size_);
-
-        if (offset == SIZE_MAX) {
-            return std::nullopt;
-        }
-
-        return cif::read_u64_safe(buffer_, offset);
-    }
-
-    // Gain accessor (32-bit field)
-    std::optional<uint32_t> gain() const noexcept {
-        constexpr uint8_t bit = 23;
-
-        if (!validated_ || !(structure_.cif0 & (1U << bit))) {
-            return std::nullopt;
-        }
-
-        size_t offset = cif::calculate_field_offset_runtime(
-            structure_.cif0, structure_.cif1, structure_.cif2,
-            0, bit,
-            buffer_,
-            structure_.context_base_bytes,
-            buffer_size_);
-
-        if (offset == SIZE_MAX) {
-            return std::nullopt;
-        }
-
-        return cif::read_u32_safe(buffer_, offset);
-    }
-
-    // CIF1 field accessors
-
-    // Aux Frequency accessor (CIF1 bit 15)
-    std::optional<uint64_t> aux_frequency() const noexcept {
-        constexpr uint8_t bit = 15;
-
-        if (!validated_ || !(structure_.cif1 & (1U << bit))) {
-            return std::nullopt;
-        }
-
-        size_t offset = cif::calculate_field_offset_runtime(
-            structure_.cif0, structure_.cif1, structure_.cif2,
-            1, bit,
-            buffer_,
-            structure_.context_base_bytes,
-            buffer_size_);
-
-        if (offset == SIZE_MAX) {
-            return std::nullopt;
-        }
-
-        return cif::read_u64_safe(buffer_, offset);
-    }
-
     // CIF2 field accessors
 
     // Controller UUID accessor (CIF2 bit 22) - returns pointer to 128-bit UUID
@@ -407,7 +318,7 @@ public:
             return std::nullopt;
         }
 
-        size_t offset = cif::calculate_field_offset_runtime(
+        size_t offset = detail::calculate_field_offset_runtime(
             structure_.cif0, structure_.cif1, structure_.cif2,
             2, bit,
             buffer_,
@@ -452,6 +363,19 @@ public:
 
     size_t packet_size_words() const noexcept {
         return structure_.packet_size_words;
+    }
+
+    // Field access API support - expose buffer and offsets
+    const uint8_t* context_buffer() const noexcept {
+        return buffer_;
+    }
+
+    size_t context_base_offset() const noexcept {
+        return structure_.context_base_bytes;
+    }
+
+    size_t buffer_size() const noexcept {
+        return buffer_size_;
     }
 };
 

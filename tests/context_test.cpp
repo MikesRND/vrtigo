@@ -38,13 +38,13 @@ TEST_F(ContextPacketTest, BasicCompileTimePacket) {
 
     // Set fields
     packet.set_stream_id(0x12345678);
-    packet.set_bandwidth(20'000'000);  // 20 MHz
-    packet.set_sample_rate(10'000'000);  // 10 MSPS
+    set(packet, field::bandwidth, 20'000'000ULL);  // 20 MHz
+    set(packet, field::sample_rate, 10'000'000ULL);  // 10 MSPS
 
     // Verify fields
     EXPECT_EQ(packet.stream_id(), 0x12345678);
-    EXPECT_EQ(packet.bandwidth(), 20'000'000);
-    EXPECT_EQ(packet.sample_rate(), 10'000'000);
+    EXPECT_EQ(get(packet, field::bandwidth).value(), 20'000'000);
+    EXPECT_EQ(get(packet, field::sample_rate).value(), 10'000'000);
 }
 
 // Test context packet with Class ID
@@ -69,10 +69,10 @@ TEST_F(ContextPacketTest, PacketWithClassId) {
     EXPECT_EQ(TestContext::size_words, 1 + 1 + 2 + 1 + 2);  // header + stream + class_id + cif0 + bandwidth
 
     packet.set_stream_id(0x87654321);
-    packet.set_bandwidth(40'000'000);
+    set(packet, field::bandwidth, 40'000'000ULL);
 
     EXPECT_EQ(packet.stream_id(), 0x87654321);
-    EXPECT_EQ(packet.bandwidth(), 40'000'000);
+    EXPECT_EQ(get(packet, field::bandwidth).value(), 40'000'000);
 }
 
 // Test ContextPacketView runtime parser
@@ -110,14 +110,16 @@ TEST_F(ContextPacketTest, RuntimeParserBasic) {
     EXPECT_EQ(view.cif1(), 0);
     EXPECT_EQ(view.cif2(), 0);
 
-    EXPECT_TRUE(view.bandwidth().has_value());
-    EXPECT_EQ(view.bandwidth().value(), 25'000'000);
+    auto bw = get(view, field::bandwidth);
+    EXPECT_TRUE(bw.has_value());
+    EXPECT_EQ(bw.value(), 25'000'000);
 
-    EXPECT_TRUE(view.sample_rate().has_value());
-    EXPECT_EQ(view.sample_rate().value(), 12'500'000);
+    auto sr = get(view, field::sample_rate);
+    EXPECT_TRUE(sr.has_value());
+    EXPECT_EQ(sr.value(), 12'500'000);
 
     // Field that's not present should return nullopt
-    EXPECT_FALSE(view.gain().has_value());
+    EXPECT_FALSE(get(view, field::gain).has_value());
 }
 
 // Test rejection of unsupported fields
@@ -384,7 +386,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF1) {
     EXPECT_EQ(view.cif1(), cif1_mask);
 
     // Verify we can read back the Aux Frequency field using the accessor
-    auto aux_freq = view.aux_frequency();
+    auto aux_freq = get(view, field::aux_frequency);
     ASSERT_TRUE(aux_freq.has_value());
     EXPECT_EQ(*aux_freq, expected_freq);
 }
@@ -453,7 +455,7 @@ TEST_F(ContextPacketTest, CompileTimeCIF1RuntimeParse) {
 
     TestContext tx_packet(buffer.data());
     tx_packet.set_stream_id(0xAABBCCDD);
-    tx_packet.set_aux_frequency(15'000'000);  // 15 MHz
+    set(tx_packet, field::aux_frequency, 15'000'000ULL);  // 15 MHz
 
     // Parse with runtime view
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
@@ -522,8 +524,8 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2CompileTime) {
 
     TestContext tx_packet(buffer.data());
     tx_packet.set_stream_id(0x11223344);
-    tx_packet.set_bandwidth(50'000'000);
-    tx_packet.set_aux_frequency(25'000'000);
+    set(tx_packet, field::bandwidth, 50'000'000ULL);
+    set(tx_packet, field::aux_frequency, 25'000'000ULL);
 
     // Parse with runtime view
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
@@ -536,8 +538,8 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2CompileTime) {
 
     // Verify fields
     EXPECT_EQ(view.stream_id().value(), 0x11223344);
-    EXPECT_EQ(view.bandwidth().value(), 50'000'000);
-    EXPECT_EQ(view.aux_frequency().value(), 25'000'000);
+    EXPECT_EQ(get(view, field::bandwidth).value(), 50'000'000);
+    EXPECT_EQ(get(view, field::aux_frequency).value(), 25'000'000);
 }
 
 // Test both CIF1 and CIF2 together (runtime)
@@ -585,8 +587,8 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2Runtime) {
 
     // Verify fields
     EXPECT_EQ(view.stream_id().value(), 0xAABBCCDD);
-    EXPECT_EQ(view.bandwidth().value(), 100'000'000);
-    EXPECT_EQ(view.aux_frequency().value(), 75'000'000);
+    EXPECT_EQ(get(view, field::bandwidth).value(), 100'000'000);
+    EXPECT_EQ(get(view, field::aux_frequency).value(), 75'000'000);
 
     auto uuid = view.controller_uuid();
     ASSERT_TRUE(uuid.has_value());
@@ -607,16 +609,16 @@ TEST_F(ContextPacketTest, RoundTrip) {
 
     TestContext tx_packet(buffer.data());
     tx_packet.set_stream_id(0xDEADBEEF);
-    tx_packet.set_bandwidth(100'000'000);  // 100 MHz
-    tx_packet.set_gain(0x12345678);
+    set(tx_packet, field::bandwidth, 100'000'000ULL);  // 100 MHz
+    set(tx_packet, field::gain, 0x12345678U);
 
     // Parse same buffer with view
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
     EXPECT_EQ(view.validate(), validation_error::none);
 
     EXPECT_EQ(view.stream_id().value(), 0xDEADBEEF);
-    EXPECT_EQ(view.bandwidth().value(), 100'000'000);
-    EXPECT_EQ(view.gain().value(), 0x12345678);
+    EXPECT_EQ(get(view, field::bandwidth).value(), 100'000'000);
+    EXPECT_EQ(get(view, field::gain).value(), 0x12345678);
 }
 
 // Test timestamp initialization (should be zero)
@@ -741,15 +743,15 @@ TEST_F(ContextPacketTest, TimestampWithContextFields) {
     packet.set_stream_id(0x12345678);
     packet.set_timestamp_integer(1600000000);
     packet.set_timestamp_fractional(123456789012ULL);
-    packet.set_bandwidth(20'000'000);
-    packet.set_sample_rate(10'000'000);
+    set(packet, field::bandwidth, 20'000'000ULL);
+    set(packet, field::sample_rate, 10'000'000ULL);
 
     // Verify all fields
     EXPECT_EQ(packet.stream_id(), 0x12345678);
     EXPECT_EQ(packet.timestamp_integer(), 1600000000);
     EXPECT_EQ(packet.timestamp_fractional(), 123456789012ULL);
-    EXPECT_EQ(packet.bandwidth(), 20'000'000);
-    EXPECT_EQ(packet.sample_rate(), 10'000'000);
+    EXPECT_EQ(get(packet, field::bandwidth).value(), 20'000'000);
+    EXPECT_EQ(get(packet, field::sample_rate).value(), 10'000'000);
 }
 
 // Test timestamp without stream ID

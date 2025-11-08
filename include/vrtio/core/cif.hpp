@@ -282,7 +282,10 @@ inline size_t read_context_assoc_length_words(const uint8_t* buffer, size_t offs
     return 1 + signal_stream_count + context_count;
 }
 
-// Runtime field offset calculation with bounds checking
+// Runtime field offset calculation with bounds checking - DEPRECATED
+// This implementation is kept for backward compatibility only
+// New code should use detail::calculate_field_offset_runtime() from variable_field_dispatch.hpp
+// which provides trait-based variable field handling
 inline size_t calculate_field_offset_runtime(
     uint32_t cif0, uint32_t cif1, uint32_t cif2,
     uint8_t target_cif_word, uint8_t target_bit,
