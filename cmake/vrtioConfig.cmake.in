@@ -1,0 +1,7 @@
+@PACKAGE_INIT@
+
+# vrtio is a header-only C++20 library for VITA 49.2 VRT packet handling
+
+include("${CMAKE_CURRENT_LIST_DIR}/vrtioTargets.cmake")
+
+check_required_components(vrtio)

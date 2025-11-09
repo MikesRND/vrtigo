@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
 
     try {
         // Open VRT file
-        VRTFileReader reader(filepath);
+        VRTFileReader<> reader(filepath);
 
         std::cout << "File: " << filepath << "\n";
         std::cout << "Size: " << reader.size() << " bytes\n\n";

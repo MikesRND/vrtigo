@@ -105,11 +105,9 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/core)
     add_subdirectory(core)
 endif()
 
-# Add I/O tests subdirectory (requires both I/O helpers and I/O tests enabled)
-if(VRTIO_BUILD_IO_HELPERS AND VRTIO_BUILD_IO_TESTS)
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/io)
-        add_subdirectory(io)
-    endif()
+# Add I/O tests subdirectory (always built)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/io)
+    add_subdirectory(io)
 endif()
 
 # Add CIF field unit tests subdirectory

@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # Tier 1: Fast validation - REQUIRED status check
+  quick-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install GCC 13
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-13
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: quick-${{ runner.os }}-gcc13-${{ hashFiles('CMakeLists.txt', 'include/**', 'tests/**') }}
+
+      - name: Quick Check
+        run: ./scripts/ci/quick-check.sh build
+        env:
+          CXX: g++-13
+
+  # Tier 2: Core coverage - Advisory checks
+  debug-build:
+    needs: quick-check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install GCC 13
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-13
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: debug-${{ runner.os }}-gcc13-${{ hashFiles('CMakeLists.txt', 'include/**', 'tests/**') }}
+
+      - name: Debug Build
+        run: ./scripts/ci/debug-build.sh build
+        env:
+          CXX: g++-13
+
+  clang-build:
+    needs: quick-check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Clang 16
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-16
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: clang-${{ runner.os }}-clang16-${{ hashFiles('CMakeLists.txt', 'include/**', 'tests/**') }}
+
+      - name: Clang Build
+        run: ./scripts/ci/clang-build.sh build
+        env:
+          CXX: clang++-16
+
+  install-verification:
+    needs: quick-check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install GCC 13
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-13
+
+      - name: Install Verification
+        run: ./scripts/ci/install-verify.sh build ${{ runner.temp }}/vrtio-install
+        env:
+          CXX: g++-13
+
+  # Tier 3: Coverage - Informational, non-blocking
+  coverage:
+    needs: quick-check
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-13 lcov
+
+      - name: Generate Coverage
+        run: ./scripts/ci/coverage.sh build
+        env:
+          CXX: g++-13
+
+      - name: Upload coverage HTML
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: build/coverage_html

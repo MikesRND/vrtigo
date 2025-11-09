@@ -41,8 +41,22 @@
 *.dwo
 
 # Build directories
+# Main build directory
 build/
+
+# CI build directories (specific patterns to avoid over-matching)
+build-quick/
+build-debug/
+build-clang/
+build-coverage/
+build-install/
+build-install-consumer/
+
+# IDE build directories
 cmake-build-*/
+
+# Install test staging
+install-test/
 
 # CMake
 CMakeCache.txt

@@ -16,19 +16,12 @@ target_link_libraries(timestamp_example PRIVATE vrtio)
 add_executable(context_example context_example.cpp)
 target_link_libraries(context_example PRIVATE vrtio)
 
-# File parsing example (requires I/O helpers)
-if(VRTIO_BUILD_IO_HELPERS)
-    add_executable(file_parsing_example file_parsing_example.cpp)
-    target_link_libraries(file_parsing_example PRIVATE vrtio_io)
-    set_target_properties(file_parsing_example PROPERTIES
-        CXX_STANDARD 20
-        CXX_STANDARD_REQUIRED ON
-        CXX_EXTENSIONS OFF
-    )
-endif()
+# File parsing example
+add_executable(file_parsing_example file_parsing_example.cpp)
+target_link_libraries(file_parsing_example PRIVATE vrtio)
 
 # Set C++20 standard
-set_target_properties(basic_usage trailer_example timestamp_example context_example PROPERTIES
+set_target_properties(basic_usage trailer_example timestamp_example context_example file_parsing_example PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF

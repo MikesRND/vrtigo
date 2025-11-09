@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(vrtio VERSION 1.0.0 LANGUAGES CXX)
+project(vrtio VERSION 0.0.1 LANGUAGES CXX)
 
 # C++20 required
 set(CMAKE_CXX_STANDARD 20)
@@ -10,7 +10,15 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_library(vrtio INTERFACE)
 target_include_directories(vrtio INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
     $<INSTALL_INTERFACE:include>
+)
+
+# Generate version header
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.hpp.in
+    ${CMAKE_CURRENT_BINARY_DIR}/include/vrtio/version.hpp
+    @ONLY
 )
 
 # Compiler warnings
@@ -19,20 +27,7 @@ target_compile_options(vrtio INTERFACE
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
 )
 
-# Optional: Build I/O helpers (default OFF for minimal consumer experience)
-option(VRTIO_BUILD_IO_HELPERS "Build optional I/O helper headers" OFF)
-if(VRTIO_BUILD_IO_HELPERS)
-    add_library(vrtio_io INTERFACE)
-    target_link_libraries(vrtio_io INTERFACE vrtio)
-    target_compile_definitions(vrtio_io INTERFACE VRTIO_HAS_IO_HELPERS)
-    target_include_directories(vrtio_io INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
-    )
-endif()
-
-# Optional: Build I/O tests (only when I/O helpers are enabled)
-option(VRTIO_BUILD_IO_TESTS "Build I/O helper tests" ON)
+# I/O helpers are always available (no optional toggle)
 
 # Optional: Build tests
 option(VRTIO_BUILD_TESTS "Build tests" ON)
@@ -59,6 +54,14 @@ install(DIRECTORY include/vrtio
     FILES_MATCHING PATTERN "*.hpp"
 )
 
+install(FILES include/vrtio.hpp
+    DESTINATION include
+)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/include/vrtio/version.hpp
+    DESTINATION include/vrtio
+)
+
 install(TARGETS vrtio
     EXPORT vrtioTargets
     INCLUDES DESTINATION include
@@ -67,5 +70,26 @@ install(TARGETS vrtio
 install(EXPORT vrtioTargets
     FILE vrtioTargets.cmake
     NAMESPACE vrtio::
+    DESTINATION lib/cmake/vrtio
+)
+
+# Configure and install package config files
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/vrtioConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/vrtioConfig.cmake
+    INSTALL_DESTINATION lib/cmake/vrtio
+)
+
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/vrtioConfigVersion.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/vrtioConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/vrtioConfigVersion.cmake
     DESTINATION lib/cmake/vrtio
 )

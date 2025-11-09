@@ -1,8 +1,8 @@
-# I/O helper tests (only built when VRTIO_BUILD_IO_HELPERS is ON)
+# I/O helper tests (always built)
 
 # File reader tests
 add_executable(file_reader_test file_reader_test.cpp)
-target_link_libraries(file_reader_test PRIVATE vrtio_io GTest::gtest_main)
+target_link_libraries(file_reader_test PRIVATE vrtio GTest::gtest_main)
 add_test(NAME file_reader_test COMMAND file_reader_test)
 
 # Pass test data directory to tests
