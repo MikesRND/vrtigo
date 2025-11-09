@@ -74,17 +74,11 @@ TEST(PacketConceptsTest, ContextPacketViewIsVariablePacketViewLike) {
 TEST(PacketConceptsTest, SignalPacketHelperConcepts) {
     using WithStreamId = DataPacket<PacketType::SignalData, NoTimeStamp, Trailer::None, 64>;
     using NoStreamId = DataPacket<PacketType::SignalDataNoId, NoTimeStamp, Trailer::None, 64>;
-    using WithTimestamp = DataPacket<PacketType::SignalData, TimeStampUTC, Trailer::None, 64>;
     using WithTrailer = DataPacket<PacketType::SignalData, NoTimeStamp, Trailer::Included, 64>;
 
     // Stream ID
     static_assert(HasStreamId<WithStreamId>);
     static_assert(!HasStreamId<NoStreamId>);
-
-    // Timestamp
-    static_assert(HasTimestampInteger<WithTimestamp>);
-    static_assert(HasTimestampFractional<WithTimestamp>);
-    static_assert(!HasTimestampInteger<NoStreamId>);
 
     // Trailer
     static_assert(HasTrailer<WithTrailer>);
@@ -166,7 +160,7 @@ TEST(PacketConceptsTest, RuntimeBehaviorConsistency) {
     EXPECT_NO_THROW({
         signal_pkt.set_stream_id(0x12345678);
         EXPECT_EQ(signal_pkt.stream_id(), 0x12345678);
-        EXPECT_EQ(signal_pkt.raw_bytes(), signal_buffer.data());
+        EXPECT_EQ(signal_pkt.as_bytes().data(), signal_buffer.data());
         auto err = signal_pkt.validate(signal_buffer.size());
         EXPECT_EQ(err, validation_error::none);
     });

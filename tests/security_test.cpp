@@ -33,9 +33,6 @@ TEST_F(SecurityTest, ValidPacketPassesValidation) {
 
     // Validate with larger buffer (typical network scenario)
     EXPECT_EQ(packet.validate(buffer.size() + 1000), vrtio::validation_error::none);
-
-    // Simplified validate() call
-    EXPECT_EQ(packet.validate(), vrtio::validation_error::none);
 }
 
 // Test 2: Buffer too small
@@ -284,8 +281,8 @@ TEST_F(SecurityTest, UntrustedNetworkDataPattern) {
     // Build valid packet
     PacketType tx_packet(network_buffer.data());
     tx_packet.set_stream_id(0x12345678);
-    tx_packet.set_timestamp_integer(1234567890);
-    tx_packet.set_timestamp_fractional(999999999999ULL);
+    auto ts = vrtio::TimeStampUTC::fromComponents(1234567890, 999999999999ULL);
+    tx_packet.setTimeStamp(ts);
 
     // Parse as untrusted data (typical usage pattern)
     PacketType rx_packet(network_buffer.data(), false);
@@ -297,8 +294,9 @@ TEST_F(SecurityTest, UntrustedNetworkDataPattern) {
     if (validation_result == vrtio::validation_error::none) {
         // Safe to use packet data
         EXPECT_EQ(rx_packet.stream_id(), 0x12345678);
-        EXPECT_EQ(rx_packet.timestamp_integer(), 1234567890);
-        EXPECT_EQ(rx_packet.timestamp_fractional(), 999999999999ULL);
+        auto read_ts = rx_packet.getTimeStamp();
+        EXPECT_EQ(read_ts.seconds(), 1234567890);
+        EXPECT_EQ(read_ts.fractional(), 999999999999ULL);
     }
 }
 

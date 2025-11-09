@@ -9,6 +9,8 @@
 #include "../core/timestamp.hpp"
 #include "../core/timestamp_traits.hpp"
 #include "../core/detail/header_decode.hpp"
+#include "../core/detail/buffer_io.hpp"
+#include "../core/detail/header_init.hpp"
 #include <cstring>
 #include <cstdio>
 #include <span>
@@ -111,7 +113,7 @@ public:
 
     // Get packet count (4-bit field: valid range 0-15)
     uint8_t packet_count() const noexcept {
-        return (read_u32(header_offset) >> 16) & 0x0F;
+        return (detail::read_u32(buffer_, header_offset * vrt_word_size) >> 16) & 0x0F;
     }
 
     // Set packet count (4-bit field: valid range 0-15)
@@ -130,46 +132,26 @@ public:
         }
         #endif
 
-        uint32_t header = read_u32(header_offset);
+        uint32_t header = detail::read_u32(buffer_, header_offset * vrt_word_size);
         header = (header & 0xFFF0FFFF) | ((static_cast<uint32_t>(count) & 0x0F) << 16);
-        write_u32(header_offset, header);
+        detail::write_u32(buffer_, header_offset * vrt_word_size, header);
     }
 
     uint16_t packet_size_words() const noexcept {
-        return read_u32(header_offset) & 0xFFFF;
+        return detail::read_u32(buffer_, header_offset * vrt_word_size) & 0xFFFF;
     }
 
     // Stream ID accessors (only if has_stream_id)
 
     uint32_t stream_id() const noexcept requires(has_stream_id) {
-        return read_u32(stream_id_offset);
+        return detail::read_u32(buffer_, stream_id_offset * vrt_word_size);
     }
 
     void set_stream_id(uint32_t id) noexcept requires(has_stream_id) {
-        write_u32(stream_id_offset, id);
+        detail::write_u32(buffer_, stream_id_offset * vrt_word_size, id);
     }
 
-    // Integer timestamp accessors (only if TSI != none).  Prefer getTimeStamp()/setTimeStamp().
-
-    uint32_t timestamp_integer() const noexcept requires(TSI != tsi_type::none) {
-        return read_u32(tsi_offset);
-    }
-
-    void set_timestamp_integer(uint32_t ts) noexcept requires(TSI != tsi_type::none) {
-        write_u32(tsi_offset, ts);
-    }
-
-    // Fractional timestamp accessors (only if TSF != none) Prefer getTimeStamp()/setTimeStamp().
-
-    uint64_t timestamp_fractional() const noexcept requires(TSF != tsf_type::none) {
-        return read_u64(tsf_offset);
-    }
-
-    void set_timestamp_fractional(uint64_t ts) noexcept requires(TSF != tsf_type::none) {
-        write_u64(tsf_offset, ts);
-    }
-
-    // Unified TimeStamp accessors
+    // Timestamp accessors
 
     /**
      * Get timestamp as the packet's TimeStampType.
@@ -178,10 +160,11 @@ public:
      */
     TimeStampType getTimeStamp() const noexcept
         requires(HasTimestamp<TimeStampType>) {
-        return TimeStampType::fromComponents(
-            timestamp_integer(),
-            timestamp_fractional()
-        );
+        uint32_t tsi_val = (TSI != tsi_type::none)
+            ? detail::read_u32(buffer_, tsi_offset * vrt_word_size) : 0;
+        uint64_t tsf_val = (TSF != tsf_type::none)
+            ? detail::read_u64(buffer_, tsf_offset * vrt_word_size) : 0;
+        return TimeStampType::fromComponents(tsi_val, tsf_val);
     }
 
     /**
@@ -191,8 +174,12 @@ public:
      */
     void setTimeStamp(const TimeStampType& ts) noexcept
         requires(HasTimestamp<TimeStampType>) {
-        set_timestamp_integer(ts.seconds());
-        set_timestamp_fractional(ts.fractional());
+        if constexpr (TSI != tsi_type::none) {
+            detail::write_u32(buffer_, tsi_offset * vrt_word_size, ts.seconds());
+        }
+        if constexpr (TSF != tsf_type::none) {
+            detail::write_u64(buffer_, tsf_offset * vrt_word_size, ts.fractional());
+        }
     }
 
     // Trailer view access
@@ -237,25 +224,10 @@ public:
         return std::span<const uint8_t, size_bytes>(buffer_, size_bytes);
     }
 
-    // Raw buffer pointer
-    uint8_t* data() noexcept { return buffer_; }
-    const uint8_t* data() const noexcept { return buffer_; }
-
-    // Alias for PacketBase concept compliance
-    uint8_t* raw_bytes() noexcept { return buffer_; }
-    const uint8_t* raw_bytes() const noexcept { return buffer_; }
-
-    // Static packet size method for PacketBase concept compliance
-    static constexpr size_t packet_size_bytes() noexcept { return size_bytes; }
-
     // Validation: verify packet header matches template configuration
     //
     // CRITICAL: You MUST call this method when parsing untrusted data before
-    // accessing any packet fields. The current API doesn't enforce this!
-    //
-    // Phase 2 Enhancement: This will be called automatically by the parse()
-    // factory method, making validation impossible to forget. Until then,
-    // manually calling validate() is the developer's responsibility.
+    // accessing any packet fields.
     //
     // Returns: validation_error::none on success, or specific error code
     validation_error validate(size_t buffer_size) const noexcept {
@@ -265,7 +237,7 @@ public:
         }
 
         // Read and decode header using shared utility
-        uint32_t header = read_u32(header_offset);
+        uint32_t header = detail::read_u32(buffer_, header_offset * vrt_word_size);
         auto decoded = detail::decode_header(header);
 
         // Check 2: Packet type field (bits 31-28)
@@ -296,70 +268,25 @@ public:
         return validation_error::none;
     }
 
-    // Simplified validation without buffer size check
-    validation_error validate() const noexcept {
-        return validate(size_bytes);
-    }
-
 private:
     uint8_t* buffer_;  // View over user-provided memory
 
     // Initialize header with packet metadata
     void init_header() noexcept {
-        uint32_t header = 0;
+        // Build header using shared helper
+        uint32_t header = detail::build_header(
+            static_cast<uint8_t>(Type),              // Packet type
+            false,                                    // Class ID indicator (not supported for data packets)
+            HasTrailer == Trailer::Included,         // Bit 26: Trailer indicator
+            false,                                    // Bit 25: Nd0 indicator (V49.0 compatible mode)
+            false,                                    // Bit 24: Spectrum/Time (not used for signal/extension data)
+            TSI,                                      // TSI field
+            TSF,                                      // TSF field
+            0,                                        // Packet count (initialized to 0)
+            total_words                               // Packet size in words
+        );
 
-        // Packet type (bits 31-28)
-        header |= (static_cast<uint32_t>(Type) << header::PACKET_TYPE_SHIFT);
-
-        // Class ID indicator (bit 27) - not used in Phase 1
-        header |= (0U << header::CLASS_ID_SHIFT);
-
-        // Trailer indicator (bit 26)
-        header |= (HasTrailer == Trailer::Included ? 1U : 0U) << header::INDICATOR_BIT_26_SHIFT;
-
-        // Trailer indicator (bit 25)
-        header |= (0U << header::INDICATOR_BIT_25_SHIFT);  // Default to V49.0 compatible mode
-
-        // TSM (bit 24) - not used for signal/extension data packets
-        header |= (0U << header::INDICATOR_BIT_24_SHIFT);
-
-        // TSI (bits 23-22)
-        header |= (static_cast<uint32_t>(TSI) << header::TSI_SHIFT);
-
-        // TSF (bits 21-20)
-        header |= (static_cast<uint32_t>(TSF) << header::TSF_SHIFT);
-
-        // Packet count (bits 19-16) - initialized to 0
-        header |= (0U << header::PACKET_COUNT_SHIFT);
-
-        // Packet size in words (bits 15-0)
-        header |= ((total_words & header::SIZE_MASK) << header::SIZE_SHIFT);
-
-        write_u32(header_offset, header);
-    }
-
-    // Endianness-aware read/write helpers
-
-    uint32_t read_u32(size_t word_offset) const noexcept {
-        uint32_t value;
-        std::memcpy(&value, buffer_ + word_offset * vrt_word_size, sizeof(value));
-        return detail::network_to_host32(value);
-    }
-
-    void write_u32(size_t word_offset, uint32_t value) noexcept {
-        value = detail::host_to_network32(value);
-        std::memcpy(buffer_ + word_offset * vrt_word_size, &value, sizeof(value));
-    }
-
-    uint64_t read_u64(size_t word_offset) const noexcept {
-        uint64_t value;
-        std::memcpy(&value, buffer_ + word_offset * vrt_word_size, sizeof(value));
-        return detail::network_to_host64(value);
-    }
-
-    void write_u64(size_t word_offset, uint64_t value) noexcept {
-        value = detail::host_to_network64(value);
-        std::memcpy(buffer_ + word_offset * vrt_word_size, &value, sizeof(value));
+        detail::write_u32(buffer_, header_offset * vrt_word_size, header);
     }
 };
 

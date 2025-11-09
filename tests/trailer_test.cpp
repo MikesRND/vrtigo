@@ -259,16 +259,18 @@ TEST_F(TrailerFieldTest, BitIndependence) {
 
 // Test builder pattern with individual fields
 TEST_F(TrailerFieldTest, BuilderIndividualFields) {
+    auto ts = vrtio::TimeStampUTC::fromComponents(1000000, 0);
     auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
         .stream_id(0x12345678)
-        .timestamp_integer(1000000)
+        .timestamp(ts)
         .trailer_valid_data(true)
         .trailer_calibrated_time(true)
         .packet_count(12)  // Max 15 (4 bits)
         .build();
 
     EXPECT_EQ(packet.stream_id(), 0x12345678U);
-    EXPECT_EQ(packet.timestamp_integer(), 1000000U);
+    auto read_ts = packet.getTimeStamp();
+    EXPECT_EQ(read_ts.seconds(), 1000000U);
     EXPECT_TRUE(packet.trailer().valid_data());
     EXPECT_TRUE(packet.trailer().calibrated_time());
     EXPECT_EQ(packet.packet_count(), 12);
@@ -523,9 +525,10 @@ TEST_F(TrailerFieldTest, AllBitsSet) {
 // Test roundtrip through serialization
 TEST_F(TrailerFieldTest, SerializationRoundtrip) {
     // Create and configure packet
+    auto ts = vrtio::TimeStampUTC::fromComponents(999999, 0);
     [[maybe_unused]] auto packet1 = vrtio::PacketBuilder<PacketType>(buffer.data())
         .stream_id(0xABCDEF00)
-        .timestamp_integer(999999)
+        .timestamp(ts)
         .trailer_valid_data(true)
         .trailer_calibrated_time(true)
         .trailer_context_packets(25)
@@ -539,7 +542,8 @@ TEST_F(TrailerFieldTest, SerializationRoundtrip) {
 
     // Verify all fields match
     EXPECT_EQ(packet2.stream_id(), 0xABCDEF00U);
-    EXPECT_EQ(packet2.timestamp_integer(), 999999U);
+    auto read_ts = packet2.getTimeStamp();
+    EXPECT_EQ(read_ts.seconds(), 999999U);
     EXPECT_TRUE(packet2.trailer().valid_data());
     EXPECT_TRUE(packet2.trailer().calibrated_time());
     EXPECT_EQ(packet2.trailer().context_packets(), 25);

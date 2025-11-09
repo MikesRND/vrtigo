@@ -3,6 +3,7 @@
 #include "../core/types.hpp"
 #include "../core/endian.hpp"
 #include "../core/detail/header_decode.hpp"
+#include "../core/detail/buffer_io.hpp"
 #include <optional>
 #include <span>
 #include <cstring>
@@ -158,7 +159,7 @@ public:
         if (!is_valid() || !structure_.has_stream_id) {
             return std::nullopt;
         }
-        return read_u32(structure_.stream_id_offset);
+        return detail::read_u32(buffer_, structure_.stream_id_offset);
     }
 
     /**
@@ -169,7 +170,7 @@ public:
         if (!is_valid() || structure_.tsi == tsi_type::none) {
             return std::nullopt;
         }
-        return read_u32(structure_.tsi_offset);
+        return detail::read_u32(buffer_, structure_.tsi_offset);
     }
 
     /**
@@ -180,7 +181,7 @@ public:
         if (!is_valid() || structure_.tsf == tsf_type::none) {
             return std::nullopt;
         }
-        return read_u64(structure_.tsf_offset);
+        return detail::read_u64(buffer_, structure_.tsf_offset);
     }
 
     /**
@@ -191,7 +192,7 @@ public:
         if (!is_valid() || !structure_.has_trailer) {
             return std::nullopt;
         }
-        return read_u32(structure_.trailer_offset);
+        return detail::read_u32(buffer_, structure_.trailer_offset);
     }
 
     /**
@@ -236,14 +237,6 @@ public:
     }
 
     /**
-     * Get raw buffer pointer (for PacketBase concept compliance)
-     * @return Pointer to packet buffer
-     */
-    const uint8_t* raw_bytes() const noexcept {
-        return buffer_;
-    }
-
-    /**
      * Get payload size in bytes
      * @return Payload size in bytes
      */
@@ -257,14 +250,6 @@ public:
      */
     size_t payload_size_words() const noexcept {
         return structure_.payload_size_bytes / vrt_word_size;
-    }
-
-    /**
-     * Get raw buffer pointer
-     * @return Pointer to packet buffer
-     */
-    const uint8_t* data() const noexcept {
-        return buffer_;
     }
 
     /**
@@ -283,7 +268,7 @@ private:
         }
 
         // 2. Read and decode header
-        uint32_t header = read_u32(0);
+        uint32_t header = detail::read_u32(buffer_, 0);
         auto decoded = detail::decode_header(header);
 
         // 3. Validate packet type (must be signal or extension data)
@@ -295,7 +280,7 @@ private:
         }
 
         // 4. Reject packets with class ID bit set
-        // Signal packets don't support class IDs (data_packet.hpp:509 "not used in Phase 1")
+        // Signal packets don't support class IDs
         // If we allowed this, the two class ID words would shift all field offsets by 8 bytes,
         // causing stream_id/timestamp/payload/trailer to be misinterpreted
         if (decoded.has_class_id) {
@@ -372,19 +357,6 @@ private:
         }
 
         return validation_error::none;
-    }
-
-    // Endianness-aware read helpers
-    uint32_t read_u32(size_t byte_offset) const noexcept {
-        uint32_t value;
-        std::memcpy(&value, buffer_ + byte_offset, sizeof(value));
-        return detail::network_to_host32(value);
-    }
-
-    uint64_t read_u64(size_t byte_offset) const noexcept {
-        uint64_t value;
-        std::memcpy(&value, buffer_ + byte_offset, sizeof(value));
-        return detail::network_to_host64(value);
     }
 };
 

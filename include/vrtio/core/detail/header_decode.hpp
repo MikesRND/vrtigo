@@ -176,9 +176,6 @@ inline constexpr bool is_valid_tsf_type(tsf_type tsf) noexcept {
  * @brief Determine if packet type has stream ID field
  *
  * Per VITA 49.2 :
- * - Types 0, 2: NO stream ID (UnidentifiedData, UnidentifiedExtData)
- * - Types 1, 3, 4, 5, 6, 7: HAS stream ID (all others)
- * - Types 8-15: Reserved (no stream ID)
  *
  * @param type The packet type
  * @return true if packet has stream ID field

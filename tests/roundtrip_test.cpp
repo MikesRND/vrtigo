@@ -95,7 +95,8 @@ TEST_F(RoundTripTest, PacketWithIntegerTimestamp) {
     // Create packet
     PacketType packet(buffer.data());
     packet.set_stream_id(0xABCDEF00);
-    packet.set_timestamp_integer(1699000000);
+    auto ts = vrtio::TimeStampUTC::fromComponents(1699000000, 0);
+    packet.setTimeStamp(ts);
     packet.set_packet_count(7);
     fill_test_payload(packet.payload());
 
@@ -104,7 +105,8 @@ TEST_F(RoundTripTest, PacketWithIntegerTimestamp) {
 
     // Verify fields
     EXPECT_EQ(received.stream_id(), 0xABCDEF00);
-    EXPECT_EQ(received.timestamp_integer(), 1699000000);
+    auto read_ts = received.getTimeStamp();
+    EXPECT_EQ(read_ts.seconds(), 1699000000);
     EXPECT_EQ(received.packet_count(), 7);
     verify_test_payload(received.payload());
 }
@@ -122,8 +124,8 @@ TEST_F(RoundTripTest, PacketWithFractionalTimestamp) {
     // Create packet
     PacketType packet(buffer.data());
     packet.set_stream_id(0xCAFEBABE);
-    packet.set_timestamp_integer(1234567890);
-    packet.set_timestamp_fractional(999999999999ULL);  // Max picoseconds in a second
+    auto ts = vrtio::TimeStampUTC::fromComponents(1234567890, 999999999999ULL);  // Max picoseconds in a second
+    packet.setTimeStamp(ts);
     packet.set_packet_count(15);
     fill_test_payload(packet.payload());
 
@@ -132,8 +134,9 @@ TEST_F(RoundTripTest, PacketWithFractionalTimestamp) {
 
     // Verify fields
     EXPECT_EQ(received.stream_id(), 0xCAFEBABE);
-    EXPECT_EQ(received.timestamp_integer(), 1234567890);
-    EXPECT_EQ(received.timestamp_fractional(), 999999999999ULL);
+    auto read_ts = received.getTimeStamp();
+    EXPECT_EQ(read_ts.seconds(), 1234567890);
+    EXPECT_EQ(read_ts.fractional(), 999999999999ULL);
     EXPECT_EQ(received.packet_count(), 15);
     verify_test_payload(received.payload());
 }
@@ -151,7 +154,8 @@ TEST_F(RoundTripTest, PacketWithTrailer) {
     // Create packet
     PacketType packet(buffer.data());
     packet.set_stream_id(0xDEADBEEF);
-    packet.set_timestamp_integer(1500000000);
+    auto ts = vrtio::TimeStampUTC::fromComponents(1500000000, 0);
+    packet.setTimeStamp(ts);
     vrtio::TrailerBuilder{0x80000001}.apply(packet.trailer());  // Some status bits
     packet.set_packet_count(3);
     fill_test_payload(packet.payload());
@@ -161,7 +165,8 @@ TEST_F(RoundTripTest, PacketWithTrailer) {
 
     // Verify fields
     EXPECT_EQ(received.stream_id(), 0xDEADBEEF);
-    EXPECT_EQ(received.timestamp_integer(), 1500000000);
+    auto read_ts = received.getTimeStamp();
+    EXPECT_EQ(read_ts.seconds(), 1500000000);
     EXPECT_EQ(received.trailer().raw(), 0x80000001);
     EXPECT_EQ(received.packet_count(), 3);
     verify_test_payload(received.payload());
@@ -180,8 +185,8 @@ TEST_F(RoundTripTest, FullFeaturedPacket) {
     // Create packet with all fields
     PacketType packet(buffer.data());
     packet.set_stream_id(0x01234567);
-    packet.set_timestamp_integer(1699123456);
-    packet.set_timestamp_fractional(123456789012ULL);
+    auto ts = vrtio::TimeStampUTC::fromComponents(1699123456, 123456789012ULL);
+    packet.setTimeStamp(ts);
     vrtio::TrailerBuilder{0xF0F0F0F0}.apply(packet.trailer());
     packet.set_packet_count(13);
     fill_test_payload(packet.payload());
@@ -191,8 +196,9 @@ TEST_F(RoundTripTest, FullFeaturedPacket) {
 
     // Verify all fields
     EXPECT_EQ(received.stream_id(), 0x01234567);
-    EXPECT_EQ(received.timestamp_integer(), 1699123456);
-    EXPECT_EQ(received.timestamp_fractional(), 123456789012ULL);
+    auto read_ts = received.getTimeStamp();
+    EXPECT_EQ(read_ts.seconds(), 1699123456);
+    EXPECT_EQ(read_ts.fractional(), 123456789012ULL);
     EXPECT_EQ(received.trailer().raw(), 0xF0F0F0F0);
     EXPECT_EQ(received.packet_count(), 13);
     EXPECT_EQ(received.packet_size_words(), PacketType::total_words);
@@ -220,10 +226,10 @@ TEST_F(RoundTripTest, BuilderRoundTrip) {
         .clear()
         .context_packets(1);
 
+    auto ts = vrtio::TimeStampUTC::fromComponents(1700000000, 500000000000ULL);
     vrtio::PacketBuilder<PacketType>(tx_buffer.data())
         .stream_id(0xFEEDFACE)
-        .timestamp_integer(1700000000)
-        .timestamp_fractional(500000000000ULL)
+        .timestamp(ts)
         .trailer(trailer_cfg)
         .packet_count(9)
         .payload(payload_data.data(), payload_data.size())
@@ -238,8 +244,9 @@ TEST_F(RoundTripTest, BuilderRoundTrip) {
 
     // Verify all fields match
     EXPECT_EQ(received.stream_id(), 0xFEEDFACE);
-    EXPECT_EQ(received.timestamp_integer(), 1700000000);
-    EXPECT_EQ(received.timestamp_fractional(), 500000000000ULL);
+    auto read_ts = received.getTimeStamp();
+    EXPECT_EQ(read_ts.seconds(), 1700000000);
+    EXPECT_EQ(read_ts.fractional(), 500000000000ULL);
     EXPECT_EQ(received.trailer().raw(), 0x00000001);
     EXPECT_EQ(received.packet_count(), 9);
 
@@ -268,7 +275,8 @@ TEST_F(RoundTripTest, MultiplePackets) {
         PacketType packet(packet_buf);
 
         packet.set_stream_id(0x1000 + i);
-        packet.set_timestamp_integer(1600000000 + i * 1000);
+        auto ts = vrtio::TimeStampUTC::fromComponents(1600000000 + i * 1000, 0);
+        packet.setTimeStamp(ts);
         packet.set_packet_count(i);
 
         // Unique payload per packet
@@ -284,7 +292,8 @@ TEST_F(RoundTripTest, MultiplePackets) {
         PacketType received(packet_buf, false);
 
         EXPECT_EQ(received.stream_id(), 0x1000 + i);
-        EXPECT_EQ(received.timestamp_integer(), 1600000000 + i * 1000);
+        auto read_ts = received.getTimeStamp();
+        EXPECT_EQ(read_ts.seconds(), 1600000000 + i * 1000);
         EXPECT_EQ(received.packet_count(), i);
 
         // Verify payload
@@ -340,7 +349,8 @@ TEST_F(RoundTripTest, Type0PacketNoStreamId) {
 
     // Create packet
     PacketType packet(buffer.data());
-    packet.set_timestamp_integer(1234567890);
+    auto ts = vrtio::TimeStampUTC::fromComponents(1234567890, 0);
+    packet.setTimeStamp(ts);
     packet.set_packet_count(7);
     fill_test_payload(packet.payload());
 
@@ -351,7 +361,8 @@ TEST_F(RoundTripTest, Type0PacketNoStreamId) {
     PacketType received(buffer.data(), false);
 
     // Verify fields (note: no stream_id() method available)
-    EXPECT_EQ(received.timestamp_integer(), 1234567890);
+    auto read_ts = received.getTimeStamp();
+    EXPECT_EQ(read_ts.seconds(), 1234567890);
     EXPECT_EQ(received.packet_count(), 7);
     verify_test_payload(received.payload());
 

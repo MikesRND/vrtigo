@@ -12,8 +12,9 @@ TEST_F(ContextPacketTest, TimestampInitialization) {
     TestContext packet(buffer.data());
 
     // Timestamps should be zero-initialized
-    EXPECT_EQ(packet.timestamp_integer(), 0);
-    EXPECT_EQ(packet.timestamp_fractional(), 0);
+    auto ts = packet.getTimeStamp();
+    EXPECT_EQ(ts.seconds(), 0);
+    EXPECT_EQ(ts.fractional(), 0);
 }
 
 TEST_F(ContextPacketTest, TimestampIntegerAccess) {
@@ -27,9 +28,12 @@ TEST_F(ContextPacketTest, TimestampIntegerAccess) {
 
     TestContext packet(buffer.data());
 
-    // Set integer timestamp
-    packet.set_timestamp_integer(1699000000);
-    EXPECT_EQ(packet.timestamp_integer(), 1699000000);
+    // Set timestamp with integer only
+    TimeStampUTC ts(1699000000, 0);
+    packet.setTimeStamp(ts);
+    auto read_ts = packet.getTimeStamp();
+    EXPECT_EQ(read_ts.seconds(), 1699000000);
+    EXPECT_EQ(read_ts.fractional(), 0);
 }
 
 TEST_F(ContextPacketTest, TimestampFractionalAccess) {
@@ -43,10 +47,13 @@ TEST_F(ContextPacketTest, TimestampFractionalAccess) {
 
     TestContext packet(buffer.data());
 
-    // Set fractional timestamp
+    // Set timestamp with fractional part
     uint64_t frac = 500000000000ULL;
-    packet.set_timestamp_fractional(frac);
-    EXPECT_EQ(packet.timestamp_fractional(), frac);
+    TimeStampUTC ts(1000, frac);
+    packet.setTimeStamp(ts);
+    auto read_ts = packet.getTimeStamp();
+    EXPECT_EQ(read_ts.seconds(), 1000);
+    EXPECT_EQ(read_ts.fractional(), frac);
 }
 
 TEST_F(ContextPacketTest, UnifiedTimestampAccess) {
@@ -65,10 +72,6 @@ TEST_F(ContextPacketTest, UnifiedTimestampAccess) {
 
     // Set using unified API
     packet.setTimeStamp(ts);
-
-    // Verify individual components
-    EXPECT_EQ(packet.timestamp_integer(), 1699000000);
-    EXPECT_EQ(packet.timestamp_fractional(), 250000000000ULL);
 
     // Get using unified API
     auto retrieved = packet.getTimeStamp();
@@ -89,15 +92,17 @@ TEST_F(ContextPacketTest, TimestampWithClassId) {
     TestContext packet(buffer.data());
 
     // Timestamps should be zero-initialized even with class ID present
-    EXPECT_EQ(packet.timestamp_integer(), 0);
-    EXPECT_EQ(packet.timestamp_fractional(), 0);
+    auto ts_init = packet.getTimeStamp();
+    EXPECT_EQ(ts_init.seconds(), 0);
+    EXPECT_EQ(ts_init.fractional(), 0);
 
     // Set and verify
-    packet.set_timestamp_integer(1234567890);
-    packet.set_timestamp_fractional(999999999999ULL);
+    TimeStampUTC ts(1234567890, 999999999999ULL);
+    packet.setTimeStamp(ts);
 
-    EXPECT_EQ(packet.timestamp_integer(), 1234567890);
-    EXPECT_EQ(packet.timestamp_fractional(), 999999999999ULL);
+    auto read_ts = packet.getTimeStamp();
+    EXPECT_EQ(read_ts.seconds(), 1234567890);
+    EXPECT_EQ(read_ts.fractional(), 999999999999ULL);
 }
 
 TEST_F(ContextPacketTest, TimestampWithContextFields) {
@@ -114,15 +119,16 @@ TEST_F(ContextPacketTest, TimestampWithContextFields) {
 
     // Set all fields
     packet.set_stream_id(0x12345678);
-    packet.set_timestamp_integer(1600000000);
-    packet.set_timestamp_fractional(123456789012ULL);
+    TimeStampUTC ts(1600000000, 123456789012ULL);
+    packet.setTimeStamp(ts);
     get(packet, field::bandwidth).set_value(20'000'000.0);      // 20 MHz
     get(packet, field::sample_rate).set_value(10'000'000.0);    // 10 MSPS
 
     // Verify all fields
     EXPECT_EQ(packet.stream_id(), 0x12345678);
-    EXPECT_EQ(packet.timestamp_integer(), 1600000000);
-    EXPECT_EQ(packet.timestamp_fractional(), 123456789012ULL);
+    auto read_ts = packet.getTimeStamp();
+    EXPECT_EQ(read_ts.seconds(), 1600000000);
+    EXPECT_EQ(read_ts.fractional(), 123456789012ULL);
     EXPECT_DOUBLE_EQ(get(packet, field::bandwidth).value(), 20'000'000.0);
     EXPECT_DOUBLE_EQ(get(packet, field::sample_rate).value(), 10'000'000.0);
 }
@@ -139,10 +145,11 @@ TEST_F(ContextPacketTest, TimestampNoStreamId) {
     TestContext packet(buffer.data());
 
     // Should still work correctly
-    packet.set_timestamp_integer(987654321);
-    packet.set_timestamp_fractional(111111111111ULL);
+    TimeStampUTC ts(987654321, 111111111111ULL);
+    packet.setTimeStamp(ts);
 
-    EXPECT_EQ(packet.timestamp_integer(), 987654321);
-    EXPECT_EQ(packet.timestamp_fractional(), 111111111111ULL);
+    auto read_ts = packet.getTimeStamp();
+    EXPECT_EQ(read_ts.seconds(), 987654321);
+    EXPECT_EQ(read_ts.fractional(), 111111111111ULL);
 }
 

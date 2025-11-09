@@ -61,8 +61,6 @@ constexpr bool is_signal_data(PacketType type) noexcept {
 }
 
 // Helper: Check if packet type includes stream ID
-// Per VITA 49.2 and RedhawkSDR reference: types 1, 3, 4, 5, 6, 7 have stream ID
-// Only types 0 and 2 (UnidentifiedData, UnidentifiedExtData) lack stream ID
 constexpr bool has_stream_identifier(PacketType type) noexcept {
     uint8_t t = static_cast<uint8_t>(type);
     return (t != 0) && (t != 2) && (t <= 7);

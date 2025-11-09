@@ -1,4 +1,4 @@
-// Basic usage example for VRTIO Phase 1
+// Basic usage example for VRTIO
 
 #include <vrtio.hpp>
 #include <iostream>
@@ -7,7 +7,7 @@
 #include <ctime>
 
 int main() {
-    std::cout << "VRTIO Phase 1 - Basic Usage Example\n";
+    std::cout << "VRTIO - Basic Usage Example\n";
     std::cout << "===================================\n\n";
 
     // Example 1: Simple packet without stream ID
@@ -28,7 +28,10 @@ int main() {
 
         // Create packet view
         SimplePacket packet(buffer.data());
-        packet.set_timestamp_integer(static_cast<uint32_t>(std::time(nullptr)));
+
+        // Set timestamp using unified API
+        auto ts = vrtio::TimeStampUTC::fromComponents(static_cast<uint32_t>(std::time(nullptr)), 0);
+        packet.setTimeStamp(ts);
         packet.set_packet_count(1);
 
         // Fill payload with test data
@@ -37,7 +40,9 @@ int main() {
             payload[i] = static_cast<uint8_t>(i & 0xFF);
         }
 
-        std::cout << "  Timestamp: " << packet.timestamp_integer() << "\n";
+        // Read timestamp back
+        auto read_ts = packet.getTimeStamp();
+        std::cout << "  Timestamp: " << read_ts.seconds() << "\n";
         std::cout << "  Packet count: " << static_cast<int>(packet.packet_count()) << "\n";
         std::cout << "\n";
     }
@@ -65,19 +70,22 @@ int main() {
             .clear()
             .context_packets(1);
 
+        // Create timestamp
+        auto ts = vrtio::TimeStampUTC::fromComponents(1699000000, 500000);
+
         auto builder = vrtio::PacketBuilder<StreamPacket>(tx_buffer.data());
         auto packet = builder
             .stream_id(0x12345678)
-            .timestamp_integer(1699000000)
-            .timestamp_fractional(500000)  // 500ns in picoseconds
+            .timestamp(ts)
             .trailer(trailer_cfg)
             .packet_count(10)  // 4-bit field: valid range 0-15
             .payload(sensor_data.data(), sensor_data.size())
             .build();
 
+        auto read_ts = packet.getTimeStamp();
         std::cout << "  Stream ID: 0x" << std::hex << packet.stream_id() << std::dec << "\n";
-        std::cout << "  Timestamp (integer): " << packet.timestamp_integer() << "\n";
-        std::cout << "  Timestamp (fractional): " << packet.timestamp_fractional() << " ps\n";
+        std::cout << "  Timestamp (integer): " << read_ts.seconds() << "\n";
+        std::cout << "  Timestamp (fractional): " << read_ts.fractional() << " ps\n";
         std::cout << "  Trailer: 0x" << std::hex << packet.trailer().raw() << std::dec << "\n";
         std::cout << "  Packet count: " << static_cast<int>(packet.packet_count()) << "\n";
         std::cout << "\n";
@@ -139,9 +147,10 @@ int main() {
         std::cout << "  Payload size: " << payload.size() << " bytes\n";
 
         // These would cause compile errors (uncomment to test):
-        // packet.set_stream_id(0x123);       // Error: no stream ID for type 0
-        // packet.set_timestamp_integer(123); // Error: TSI is none
-        // packet.trailer();                  // Error: no trailer view
+        // packet.set_stream_id(0x123);  // Error: no stream ID for type 0
+        // auto ts = vrtio::TimeStampUTC::fromComponents(123, 0);
+        // packet.setTimeStamp(ts);      // Error: timestamp type is NoTimeStamp
+        // packet.trailer();              // Error: no trailer view
 
         std::cout << "  Type safety verified at compile time!\n";
         std::cout << "\n";

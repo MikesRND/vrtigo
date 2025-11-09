@@ -1,4 +1,4 @@
-# Tests for VRTIO Phase 1
+# Tests for VRTIO
 
 # Find or fetch GoogleTest
 find_package(GTest QUIET)

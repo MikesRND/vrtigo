@@ -300,8 +300,8 @@ using TimeStampUTC = TimeStamp<tsi_type::utc, tsf_type::real_time>;
 //
 // Working with packets:
 //   - All timestamp types work with getTimeStamp() / setTimeStamp()
-//   - Individual field access: timestamp_integer() / timestamp_fractional()
-//   - The typed API works uniformly for UTC, GPS, TAI, and all other timestamp types
+//   - The unified API works uniformly for UTC, GPS, TAI, and all other timestamp types
+//   - Access components via .seconds() and .fractional() on the returned timestamp object
 //
 // GPS timestamps have a different epoch (Jan 6, 1980 vs Jan 1, 1970 for UTC)
 // These require domain-specific handling that cannot be generalized.

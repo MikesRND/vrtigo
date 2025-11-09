@@ -69,10 +69,10 @@ TEST(SignalPacketViewTest, PacketWithTimestamps) {
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
 
+    auto ts = TimeStampUTC::fromComponents(1234567890, 500000000000ULL);
     [[maybe_unused]] auto packet = PacketBuilder<PacketType>(buffer.data())
         .stream_id(0xABCDEF00)
-        .timestamp_integer(1234567890)
-        .timestamp_fractional(500000000000ULL)
+        .timestamp(ts)
         .build();
 
     // Parse with runtime view
@@ -131,10 +131,10 @@ TEST(SignalPacketViewTest, FullFeaturedPacket) {
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
 
+    auto ts = TimeStampUTC::fromComponents(9999999, 123456789012ULL);
     [[maybe_unused]] auto packet = PacketBuilder<PacketType>(buffer.data())
         .stream_id(0xCAFEBABE)
-        .timestamp_integer(9999999)
-        .timestamp_fractional(123456789012ULL)
+        .timestamp(ts)
         .trailer_valid_data(true)
         .trailer_calibrated_time(true)
         .packet_count(7)
@@ -256,10 +256,11 @@ TEST(SignalPacketViewTest, RoundTripBuildParse) {
 
     auto trailer_cfg = vrtio::TrailerBuilder{0x12345678};
 
-    auto packet = PacketBuilder<PacketType>(buffer.data())
+    using GPSTimeStamp = TimeStamp<tsi_type::gps, tsf_type::real_time>;
+    auto ts = GPSTimeStamp::fromComponents(2000000000, 999999999999ULL);
+    [[maybe_unused]] auto packet = PacketBuilder<PacketType>(buffer.data())
         .stream_id(0x87654321)
-        .timestamp_integer(2000000000)
-        .timestamp_fractional(999999999999ULL)
+        .timestamp(ts)
         .trailer(trailer_cfg)
         .packet_count(15)
         .payload(payload_data.data(), payload_data.size())

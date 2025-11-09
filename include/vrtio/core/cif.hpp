@@ -1,6 +1,7 @@
 #pragma once
 
 #include "endian.hpp"
+#include "detail/buffer_io.hpp"
 #include <cstdint>
 #include <cstring>
 #include <climits>
@@ -26,27 +27,21 @@ constexpr uint32_t CIF_ENABLE_MASK = 0x0E;  // Bits 1, 2, 3
 constexpr uint32_t CONTEXT_ASSOC_BIT = 9;
 constexpr uint32_t GPS_ASCII_BIT = 10;
 
-// Safe aligned buffer access helpers
+// Buffer access helpers (redirect to shared implementation)
 inline uint32_t read_u32_safe(const uint8_t* buffer, size_t offset) noexcept {
-    uint32_t value;
-    std::memcpy(&value, buffer + offset, sizeof(value));
-    return detail::network_to_host32(value);
+    return detail::read_u32(buffer, offset);
 }
 
 inline uint64_t read_u64_safe(const uint8_t* buffer, size_t offset) noexcept {
-    uint64_t value;
-    std::memcpy(&value, buffer + offset, sizeof(value));
-    return detail::network_to_host64(value);
+    return detail::read_u64(buffer, offset);
 }
 
 inline void write_u32_safe(uint8_t* buffer, size_t offset, uint32_t value) noexcept {
-    value = detail::host_to_network32(value);
-    std::memcpy(buffer + offset, &value, sizeof(value));
+    detail::write_u32(buffer, offset, value);
 }
 
 inline void write_u64_safe(uint8_t* buffer, size_t offset, uint64_t value) noexcept {
-    value = detail::host_to_network64(value);
-    std::memcpy(buffer + offset, &value, sizeof(value));
+    detail::write_u64(buffer, offset, value);
 }
 
 // COMPLETE CIF0 field table - all 32 bits with verified sizes from VITA 49.2
