@@ -184,11 +184,6 @@ int main() {
     std::cout << "  TSI (seconds): " << gps_read_ts.seconds() << "\n";
     std::cout << "  TSF (picoseconds): " << gps_read_ts.fractional() << "\n\n";
 
-    // Alternative: use individual field accessors
-    std::cout << "Reading with individual accessors:\n";
-    std::cout << "  timestamp_integer(): " << gps_packet.timestamp_integer() << "\n";
-    std::cout << "  timestamp_fractional(): " << gps_packet.timestamp_fractional() << "\n\n";
-
     // You can also set the stream ID and other fields as normal
     gps_packet.set_stream_id(0x6B512345);
     gps_packet.set_packet_count(7);
@@ -200,15 +195,16 @@ int main() {
     // Builder pattern also works with GPS timestamps
     std::cout << "Using PacketBuilder with GPS timestamps:\n";
     alignas(4) std::array<uint8_t, GPSPacket::size_bytes> builder_buffer{};
+    auto gps_ts_builder = GPSTimeStamp::fromComponents(987654321, 123456789012);
     auto built_packet = PacketBuilder<GPSPacket>(builder_buffer.data())
         .stream_id(0xABCD1234)
-        .timestamp_integer(987654321)      // GPS seconds
-        .timestamp_fractional(123456789012) // GPS picoseconds
+        .timestamp(gps_ts_builder)
         .packet_count(15)
         .build();
 
-    std::cout << "  Built packet TSI: " << built_packet.timestamp_integer() << "\n";
-    std::cout << "  Built packet TSF: " << built_packet.timestamp_fractional() << "\n\n";
+    auto built_ts = built_packet.getTimeStamp();
+    std::cout << "  Built packet TSI: " << built_ts.seconds() << "\n";
+    std::cout << "  Built packet TSF: " << built_ts.fractional() << "\n\n";
 
     // Important notes about GPS timestamps
     std::cout << "Important GPS timestamp notes:\n";
@@ -239,11 +235,11 @@ int main() {
 
     // TAI is ahead of UTC by 37 seconds (as of 2024)
     uint32_t tai_seconds = 1699000037;  // Example: UTC + 37 seconds
-    tai_packet.set_timestamp_integer(tai_seconds);
-    tai_packet.set_timestamp_fractional(0);
+    auto tai_ts = TimeStamp<tsi_type::other, tsf_type::real_time>::fromComponents(tai_seconds, 0);
+    tai_packet.setTimeStamp(tai_ts);
 
     std::cout << "TAI timestamp example:\n";
-    std::cout << "  TAI seconds: " << tai_packet.timestamp_integer() << "\n";
+    std::cout << "  TAI seconds: " << tai_packet.getTimeStamp().seconds() << "\n";
     std::cout << "  TAI = UTC + 37 seconds (as of 2024)\n";
     std::cout << "  No leap seconds in TAI (continuous timescale)\n";
     std::cout << "  Note: TAI uses TSI type 'other' (3) in VRT standard\n\n";

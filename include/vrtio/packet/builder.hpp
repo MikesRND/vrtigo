@@ -21,7 +21,7 @@ class PacketBuilder;
  * Usage:
  *   auto packet = PacketBuilder<MyPacketType>(buffer)
  *       .stream_id(0x1234)
- *       .timestamp_integer(ts)
+ *       .timestamp(ts)
  *       .payload(data, size)
  *       .build();
  *
@@ -47,23 +47,7 @@ public:
         return *this;
     }
 
-    // Integer timestamp (only available if packet has TSI)
-    auto& timestamp_integer(uint32_t ts) noexcept
-        requires HasTimestampInteger<PacketType> {
-        PacketType packet(buffer_, false);  // Don't reinitialize
-        packet.set_timestamp_integer(ts);
-        return *this;
-    }
-
-    // Fractional timestamp (only available if packet has TSF)
-    auto& timestamp_fractional(uint64_t ts) noexcept
-        requires HasTimestampFractional<PacketType> {
-        PacketType packet(buffer_, false);  // Don't reinitialize
-        packet.set_timestamp_fractional(ts);
-        return *this;
-    }
-
-    // Unified timestamp setter (works with packet's TimeStampType)
+    // Timestamp setter (works with packet's TimeStampType)
     auto& timestamp(const typename PacketType::timestamp_type& ts) noexcept
         requires requires(PacketType& p, typename PacketType::timestamp_type t) {
             p.setTimeStamp(t);
@@ -235,24 +219,17 @@ public:
     }
 
     // Payload (from container)
+    // Accepts any container with .data() and .size() methods (e.g., std::vector, std::array)
     template<typename Container>
         requires ConstBuffer<Container> && HasPayload<PacketType>
     auto& payload(const Container& data) noexcept {
         PacketType packet(buffer_, false);  // Don't reinitialize
-        packet.set_payload(
-            reinterpret_cast<const uint8_t*>(data.data()),
-            data.size()
-        );
+        packet.set_payload(data.data(), data.size());
         return *this;
     }
 
     // Build: returns a new packet view over the buffer
     PacketType build() noexcept {
-        return PacketType(buffer_, false);  // Return view, don't reinitialize
-    }
-
-    // Get a packet view (alternative to build())
-    PacketType packet() noexcept {
         return PacketType(buffer_, false);  // Return view, don't reinitialize
     }
 

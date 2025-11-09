@@ -38,15 +38,15 @@ int main() {
     // Test get() function
     // =======================================================================
 
-    auto bw = get(packet, bandwidth);
+    [[maybe_unused]] auto bw = get(packet, bandwidth);
     assert(bw.has_value() && "Bandwidth should be present");
     assert(bw.value() == 1'000'000.0 && "Bandwidth value should match");
 
-    auto sr = get(packet, sample_rate);
+    [[maybe_unused]] auto sr = get(packet, sample_rate);
     assert(sr.has_value() && "Sample rate should be present");
     assert(sr.value() == 2'000'000.0 && "Sample rate value should match");
 
-    auto g = get(packet, gain);
+    [[maybe_unused]] auto g = get(packet, gain);
     assert(g.has_value() && "Gain should be present");
     assert(g.raw_value() == 42U && "Gain value should match");
 
@@ -63,7 +63,7 @@ int main() {
     // Test get() with missing field
     // =======================================================================
 
-    auto temp = get(packet, temperature);
+    [[maybe_unused]] auto temp = get(packet, temperature);
     assert(!temp.has_value() && "Temperature should not be present");
 
     // =======================================================================
@@ -71,7 +71,7 @@ int main() {
     // get_unchecked() returns raw values (Q52.12 for bandwidth)
     // =======================================================================
 
-    uint64_t bw_direct = get_unchecked(packet, bandwidth);
+    [[maybe_unused]] uint64_t bw_direct = get_unchecked(packet, bandwidth);
     // 1 MHz in Q52.12 format = 1'000'000 * 4096 = 4'096'000'000
     assert(bw_direct == 4'096'000'000ULL && "get_unchecked should return correct raw value");
 

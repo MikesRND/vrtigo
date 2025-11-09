@@ -6,6 +6,7 @@
 #include "../core/timestamp_traits.hpp"
 #include "../core/endian.hpp"
 #include "../core/detail/header_decode.hpp"
+#include "../core/detail/header_init.hpp"
 #include <cstring>
 #include <span>
 
@@ -168,9 +169,6 @@ public:
     }
 
     // Buffer access
-    uint8_t* data() noexcept { return buffer_; }
-    const uint8_t* data() const noexcept { return buffer_; }
-
     std::span<uint8_t> as_bytes() noexcept {
         return std::span<uint8_t>(buffer_, size_bytes);
     }
@@ -181,27 +179,18 @@ public:
 
 private:
     void init_header() noexcept {
-        uint32_t header = 0;
-
-        // Packet type: context (4)
-        header |= (4U << 28);
-
-        // Class ID bit
-        if constexpr (has_class_id) {
-            header |= (1U << 27);
-        }
-
-        // Stream ID bit (bit 25 for context packets!)
-        if constexpr (HasStreamId) {
-            header |= (1U << 25);
-        }
-
-        // TSI/TSF bits (22-24)
-        header |= (static_cast<uint8_t>(tsi) << 22);
-        header |= (static_cast<uint8_t>(tsf) << 20);
-
-        // Packet size
-        header |= (total_words & 0xFFFF);
+        // Build header using shared helper
+        uint32_t header = detail::build_header(
+            4,                                        // Packet type: context
+            has_class_id,                            // Class ID indicator
+            false,                                    // Bit 26: reserved for context packets
+            HasStreamId,                             // Bit 25: Stream ID indicator (for context packets)
+            false,                                    // Bit 24: reserved for context packets
+            tsi,                                      // TSI field
+            tsf,                                      // TSF field
+            0,                                        // Packet count (initialized to 0)
+            total_words                               // Packet size in words
+        );
 
         cif::write_u32_safe(buffer_, 0, header);
     }
@@ -290,58 +279,36 @@ public:
 
     // Timestamp accessors
 
-    // Integer timestamp accessors (only if TSI != none)
-    uint32_t timestamp_integer() const noexcept requires(tsi != tsi_type::none) {
-        size_t offset = 4;
-        if constexpr (HasStreamId) offset += 4;
-        if constexpr (has_class_id) offset += 8;
-        return cif::read_u32_safe(buffer_, offset);
-    }
-
-    void set_timestamp_integer(uint32_t ts) noexcept requires(tsi != tsi_type::none) {
-        size_t offset = 4;
-        if constexpr (HasStreamId) offset += 4;
-        if constexpr (has_class_id) offset += 8;
-        cif::write_u32_safe(buffer_, offset, ts);
-    }
-
-    // Fractional timestamp accessors (only if TSF != none)
-    uint64_t timestamp_fractional() const noexcept requires(tsf != tsf_type::none) {
-        size_t offset = 4;
-        if constexpr (HasStreamId) offset += 4;
-        if constexpr (has_class_id) offset += 8;
-        if constexpr (tsi != tsi_type::none) offset += 4;
-        return cif::read_u64_safe(buffer_, offset);
-    }
-
-    void set_timestamp_fractional(uint64_t ts) noexcept requires(tsf != tsf_type::none) {
-        size_t offset = 4;
-        if constexpr (HasStreamId) offset += 4;
-        if constexpr (has_class_id) offset += 8;
-        if constexpr (tsi != tsi_type::none) offset += 4;
-        cif::write_u64_safe(buffer_, offset, ts);
-    }
-
-    // Unified timestamp accessors
     TimeStampType getTimeStamp() const noexcept requires(has_timestamp) {
-        return TimeStampType::fromComponents(
-            timestamp_integer(),
-            timestamp_fractional()
-        );
+        size_t tsi_offset = 4;
+        if constexpr (HasStreamId) tsi_offset += 4;
+        if constexpr (has_class_id) tsi_offset += 8;
+
+        size_t tsf_offset = tsi_offset;
+        if constexpr (tsi != tsi_type::none) tsf_offset += 4;
+
+        uint32_t tsi_val = (tsi != tsi_type::none)
+            ? cif::read_u32_safe(buffer_, tsi_offset) : 0;
+        uint64_t tsf_val = (tsf != tsf_type::none)
+            ? cif::read_u64_safe(buffer_, tsf_offset) : 0;
+
+        return TimeStampType::fromComponents(tsi_val, tsf_val);
     }
 
     void setTimeStamp(const TimeStampType& ts) noexcept requires(has_timestamp) {
-        set_timestamp_integer(ts.seconds());
-        set_timestamp_fractional(ts.fractional());
-    }
+        size_t tsi_offset = 4;
+        if constexpr (HasStreamId) tsi_offset += 4;
+        if constexpr (has_class_id) tsi_offset += 8;
 
-    // Packet size queries
-    static constexpr size_t packet_size_bytes() noexcept {
-        return size_bytes;
-    }
+        size_t tsf_offset = tsi_offset;
+        if constexpr (tsi != tsi_type::none) tsf_offset += 4;
 
-    static constexpr size_t packet_size_words() noexcept {
-        return total_words;
+        if constexpr (tsi != tsi_type::none) {
+            cif::write_u32_safe(buffer_, tsi_offset, ts.seconds());
+        }
+        if constexpr (tsf != tsf_type::none) {
+            cif::write_u64_safe(buffer_, tsf_offset, ts.fractional());
+        }
     }
 
     // Field access API support - expose buffer and CIF state
@@ -350,15 +317,6 @@ public:
     }
 
     uint8_t* mutable_context_buffer() noexcept {
-        return buffer_;
-    }
-
-    // PacketBase concept compliance
-    uint8_t* raw_bytes() noexcept {
-        return buffer_;
-    }
-
-    const uint8_t* raw_bytes() const noexcept {
         return buffer_;
     }
 
@@ -407,14 +365,6 @@ public:
         }
 
         return validation_error::none;
-    }
-
-    /**
-     * Validate packet structure (convenience method assuming buffer is size_bytes)
-     * @return validation_error::none if valid, otherwise specific error
-     */
-    validation_error validate() const noexcept {
-        return validate(size_bytes);
     }
 };
 

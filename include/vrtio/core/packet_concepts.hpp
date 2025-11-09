@@ -13,7 +13,7 @@ namespace vrtio {
  * Base concept - all packet types must satisfy this
  *
  * Provides minimum interface for any packet-like object:
- * - Access to raw buffer via data() or context_buffer()
+ * - Access to buffer via as_bytes() or context_buffer()
  * - Packet size information
  *
  * This specifically excludes std::vector and other container types.
@@ -21,12 +21,12 @@ namespace vrtio {
 template<typename T>
 concept PacketBase = (
     requires(const T& pkt) {
-        { pkt.raw_bytes() } -> std::convertible_to<const uint8_t*>;
+        { pkt.as_bytes() } -> std::convertible_to<std::span<const uint8_t>>;
         // Require packet-specific size method (not container .size())
         { pkt.packet_size_bytes() } -> std::convertible_to<size_t>;
     } ||
     requires(const T& pkt) {
-        { pkt.raw_bytes() } -> std::convertible_to<const uint8_t*>;
+        { pkt.as_bytes() } -> std::convertible_to<std::span<const uint8_t>>;
         // Or compile-time static size
         { T::size_bytes } -> std::convertible_to<size_t>;
     } ||
@@ -44,7 +44,7 @@ concept PacketBase = (
  * - Fixed payload size (template parameter)
  * - No variable-length fields
  * - Zero-copy mutable view over user buffer
- * - Direct field accessors (stream_id(), timestamp_integer(), etc.)
+ * - Direct field accessors (stream_id(), getTimeStamp(), etc.)
  *
  * Examples: SignalPacket<...>
  */
@@ -61,7 +61,7 @@ concept FixedPacketLike = PacketBase<T> && requires(const T& pkt, T& mut_pkt) {
     { mut_pkt.payload() } -> std::convertible_to<std::span<uint8_t>>;
 
     // Mutable buffer access
-    { mut_pkt.raw_bytes() } -> std::convertible_to<uint8_t*>;
+    { mut_pkt.as_bytes() } -> std::convertible_to<std::span<uint8_t>>;
 };
 
 /**
@@ -120,7 +120,7 @@ concept VariablePacketLike = PacketBase<T> && requires(const T& pkt, T& mut_pkt)
     { pkt.context_base_offset() } -> std::convertible_to<size_t>;
 
     // Mutable buffer access
-    { mut_pkt.raw_bytes() } -> std::convertible_to<uint8_t*>;
+    { mut_pkt.as_bytes() } -> std::convertible_to<std::span<uint8_t>>;
 
     // Buffer size
     { pkt.buffer_size() } -> std::convertible_to<size_t>;
@@ -196,24 +196,6 @@ template<typename T>
 concept HasStreamId = requires(T& pkt) {
     { pkt.set_stream_id(uint32_t{}) } -> std::same_as<void>;
     { std::as_const(pkt).stream_id() } -> std::same_as<uint32_t>;
-};
-
-/**
- * Packet has integer timestamp field
- */
-template<typename T>
-concept HasTimestampInteger = requires(T& pkt) {
-    { pkt.set_timestamp_integer(uint32_t{}) } -> std::same_as<void>;
-    { std::as_const(pkt).timestamp_integer() } -> std::same_as<uint32_t>;
-};
-
-/**
- * Packet has fractional timestamp field
- */
-template<typename T>
-concept HasTimestampFractional = requires(T& pkt) {
-    { pkt.set_timestamp_fractional(uint64_t{}) } -> std::same_as<void>;
-    { std::as_const(pkt).timestamp_fractional() } -> std::same_as<uint64_t>;
 };
 
 template<typename T>

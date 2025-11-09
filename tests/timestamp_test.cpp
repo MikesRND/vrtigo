@@ -275,10 +275,6 @@ TEST_F(TimeStampTest, PacketIntegration) {
     auto read_ts = packet.getTimeStamp();
     EXPECT_EQ(read_ts.seconds(), test_seconds);
     EXPECT_EQ(read_ts.fractional(), test_picoseconds);
-
-    // Also verify raw accessors still work
-    EXPECT_EQ(packet.timestamp_integer(), test_seconds);
-    EXPECT_EQ(packet.timestamp_fractional(), test_picoseconds);
 }
 
 TEST_F(TimeStampTest, BuilderIntegration) {
@@ -348,10 +344,6 @@ TEST_F(TimeStampTest, GPSTimestampPacketStructure) {
     auto read_ts = packet.getTimeStamp();
     EXPECT_EQ(read_ts.seconds(), gps_seconds);
     EXPECT_EQ(read_ts.fractional(), gps_picoseconds);
-
-    // Individual accessors also work
-    EXPECT_EQ(packet.timestamp_integer(), gps_seconds);
-    EXPECT_EQ(packet.timestamp_fractional(), gps_picoseconds);
 
     // Verify header bits are correct for GPS
     uint32_t raw_header;

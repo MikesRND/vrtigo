@@ -65,6 +65,9 @@ cmake_install.cmake
 *.cmake
 !CMakeLists.txt
 
+# CTest
+Testing/
+
 # Keep custom Makefile and compile commands symlink
 !Makefile
 !compile_commands.json
