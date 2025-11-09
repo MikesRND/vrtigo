@@ -12,14 +12,14 @@ namespace vrtio {
 // Concept for types that can provide mutable buffer access
 template<typename T>
 concept MutableBuffer = requires(T t) {
-    { t.data() } -> std::convertible_to<uint8_t*>;
+    { t.raw_bytes() } -> std::convertible_to<uint8_t*>;
     { t.size() } -> std::convertible_to<size_t>;
 };
 
 // Concept for types that can provide const buffer access
 template<typename T>
 concept ConstBuffer = requires(T t) {
-    { t.data() } -> std::convertible_to<const uint8_t*>;
+    { t.raw_bytes() } -> std::convertible_to<const uint8_t*>;
     { t.size() } -> std::convertible_to<size_t>;
 };
 

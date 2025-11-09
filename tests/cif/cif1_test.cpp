@@ -1,4 +1,4 @@
-#include "context_test_fixture.hpp"
+#include "../context_test_fixture.hpp"
 
 TEST_F(ContextPacketTest, CIF1Fields) {
     // Create packet with CIF1 spectrum field
@@ -39,43 +39,46 @@ TEST_F(ContextPacketTest, NewCIF1Fields) {
     TestContext packet(buffer.data());
 
     // Set and verify Health Status (1 word)
-    set(packet, field::health_status, 0xABCDEF01);
-    EXPECT_EQ(get(packet, field::health_status).value(), 0xABCDEF01);
+    get(packet, field::health_status).set_raw_value(0xABCDEF01);
+    EXPECT_EQ(get(packet, field::health_status).raw_value(), 0xABCDEF01);
 
     // Set and verify Phase Offset (1 word)
-    set(packet, field::phase_offset, 0x12345678);
-    EXPECT_EQ(get(packet, field::phase_offset).value(), 0x12345678);
+    get(packet, field::phase_offset).set_raw_value(0x12345678);
+    EXPECT_EQ(get(packet, field::phase_offset).raw_value(), 0x12345678);
 
     // Set and verify Polarization (1 word)
-    set(packet, field::polarization, 0x87654321);
-    EXPECT_EQ(get(packet, field::polarization).value(), 0x87654321);
+    get(packet, field::polarization).set_raw_value(0x87654321);
+    EXPECT_EQ(get(packet, field::polarization).raw_value(), 0x87654321);
 
     // Set and verify 3D Pointing Single (1 word)
-    set(packet, field::pointing_vector_3d_single, 0xFEDCBA98);
-    EXPECT_EQ(get(packet, field::pointing_vector_3d_single).value(), 0xFEDCBA98);
+    get(packet, field::pointing_vector_3d_single).set_raw_value(0xFEDCBA98);
+    EXPECT_EQ(get(packet, field::pointing_vector_3d_single).raw_value(), 0xFEDCBA98);
 }
 
 TEST_F(ContextPacketTest, RuntimeParseCIF1) {
     // Build a packet with CIF1 enabled and Aux Frequency field
-    // Structure: header(1) + CIF0(1) + CIF1(1) + Aux Frequency(2) = 5 words
-    uint32_t header = (static_cast<uint32_t>(packet_type::context) << header::PACKET_TYPE_SHIFT) | 5;
+    // Type 4 has stream ID: header(1) + stream_id(1) + CIF0(1) + CIF1(1) + Aux Frequency(2) = 6 words
+    uint32_t header = (static_cast<uint32_t>(packet_type::context) << header::PACKET_TYPE_SHIFT) | 6;
     cif::write_u32_safe(buffer.data(), 0, header);
+
+    // Stream ID (type 4 has stream ID per VITA 49.2)
+    cif::write_u32_safe(buffer.data(), 4, 0x12345678);
 
     // CIF0 with CIF1 enable bit set
     uint32_t cif0_mask = (1U << cif::CIF1_ENABLE_BIT);
-    cif::write_u32_safe(buffer.data(), 4, cif0_mask);
+    cif::write_u32_safe(buffer.data(), 8, cif0_mask);
 
     // CIF1 with Aux Frequency enabled
     uint32_t cif1_mask = cif1::AUX_FREQUENCY;
-    cif::write_u32_safe(buffer.data(), 8, cif1_mask);
+    cif::write_u32_safe(buffer.data(), 12, cif1_mask);
 
     // Aux Frequency: 10 MHz = 10,000,000 Hz
     uint64_t expected_freq = 10'000'000;
-    cif::write_u64_safe(buffer.data(), 12, expected_freq);
+    cif::write_u64_safe(buffer.data(), 16, expected_freq);
 
     // Parse and validate
-    ContextPacketView view(buffer.data(), 5 * 4);
-    EXPECT_EQ(view.validate(), validation_error::none);
+    ContextPacketView view(buffer.data(), 6 * 4);
+    EXPECT_EQ(view.error(), validation_error::none);
 
     // Verify CIF0 and CIF1 are read correctly
     EXPECT_EQ(view.cif0(), cif0_mask);
@@ -84,7 +87,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF1) {
     // Verify we can read back the Aux Frequency field using the accessor
     auto aux_freq = get(view, field::aux_frequency);
     ASSERT_TRUE(aux_freq.has_value());
-    EXPECT_EQ(*aux_freq, expected_freq);
+    EXPECT_EQ(aux_freq.raw_value(), expected_freq);
 }
 
 TEST_F(ContextPacketTest, CompileTimeCIF1RuntimeParse) {
@@ -109,11 +112,11 @@ TEST_F(ContextPacketTest, CompileTimeCIF1RuntimeParse) {
 
     TestContext tx_packet(buffer.data());
     tx_packet.set_stream_id(0xAABBCCDD);
-    set(tx_packet, field::aux_frequency, 15'000'000ULL);  // 15 MHz
+    get(tx_packet, field::aux_frequency).set_raw_value(15'000'000ULL);  // 15 MHz
 
     // Parse with runtime view
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.validate(), validation_error::none);
+    EXPECT_EQ(view.error(), validation_error::none);
     EXPECT_TRUE(view.has_stream_id());
     EXPECT_EQ(view.stream_id().value(), 0xAABBCCDD);
     // CIF0 should have CIF1 enable bit set

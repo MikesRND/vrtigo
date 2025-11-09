@@ -40,10 +40,10 @@ void example_compile_time_context() {
     // Set the stream ID
     packet.set_stream_id(0x12345678);
 
-    // Set signal parameters
-    set(packet, field::bandwidth, 20'000'000ULL);      // 20 MHz
-    set(packet, field::sample_rate, 10'000'000ULL);    // 10 MSPS
-    set(packet, field::gain, 0x00100000U);             // Gain value
+    // Set signal parameters using interpreted values (Hz)
+    get(packet, field::bandwidth).set_value(20'000'000.0);   // 20 MHz
+    get(packet, field::sample_rate).set_value(10'000'000.0); // 10 MSPS
+    get(packet, field::gain).set_raw_value(0x00100000U);     // Gain value (raw format)
 
     // Device ID is 64-bit (OUI + device code)
     // For now we'll just set a simple value
@@ -54,7 +54,7 @@ void example_compile_time_context() {
     std::cout << "  Stream ID: 0x" << std::hex << packet.stream_id() << std::dec << "\n";
     std::cout << "  Bandwidth: " << get(packet, field::bandwidth).value() / 1'000'000.0 << " MHz\n";
     std::cout << "  Sample Rate: " << get(packet, field::sample_rate).value() / 1'000'000.0 << " MSPS\n";
-    std::cout << "  Gain: 0x" << std::hex << get(packet, field::gain).value() << std::dec << "\n";
+    std::cout << "  Gain: 0x" << std::hex << get(packet, field::gain).raw_value() << std::dec << "\n";
 }
 
 // Example 2: Creating a context packet with Class ID
@@ -79,7 +79,7 @@ void example_with_class_id() {
     ClassifiedContext packet(buffer.data());
 
     packet.set_stream_id(0x87654321);
-    set(packet, field::bandwidth, 40'000'000ULL);  // 40 MHz
+    get(packet, field::bandwidth).set_value(40'000'000.0);  // 40 MHz
 
     std::cout << "Created classified context packet:\n";
     std::cout << "  Size: " << ClassifiedContext::size_bytes << " bytes\n";
@@ -99,10 +99,10 @@ void example_runtime_parsing() {
     // In real use, this would come from a socket/file/etc.
     // Packet structure: header(1) + stream_id(1) + cif0(1) + bandwidth(2) + sample_rate(2) + temp(1) = 8 words
 
-    // Header: type=4 (context), has stream ID, size=8 words
+    // Header: type=4 (context), size=8 words
+    // Note: Type 4 (context) always has stream ID per VITA 49.2, no indicator bit needed
     uint32_t header =
         (static_cast<uint32_t>(packet_type::context) << header::PACKET_TYPE_SHIFT) |
-        header::STREAM_ID_INDICATOR |
         8;
     cif::write_u32_safe(rx_buffer.data(), 0, header);
 
@@ -113,11 +113,11 @@ void example_runtime_parsing() {
     uint32_t cif0_mask = cif0::BANDWIDTH | cif0::SAMPLE_RATE | cif0::TEMPERATURE;
     cif::write_u32_safe(rx_buffer.data(), 8, cif0_mask);
 
-    // Bandwidth: 100 MHz
-    cif::write_u64_safe(rx_buffer.data(), 12, 100'000'000);
+    // Bandwidth: 100 MHz (Q52.12 format: Hz * 4096)
+    cif::write_u64_safe(rx_buffer.data(), 12, static_cast<uint64_t>(100'000'000.0 * 4096.0));
 
-    // Sample Rate: 50 MSPS
-    cif::write_u64_safe(rx_buffer.data(), 20, 50'000'000);
+    // Sample Rate: 50 MSPS (Q52.12 format: Hz * 4096)
+    cif::write_u64_safe(rx_buffer.data(), 20, static_cast<uint64_t>(50'000'000.0 * 4096.0));
 
     // Temperature: 25.5°C (stored as hundredths)
     cif::write_u32_safe(rx_buffer.data(), 28, 0x09FB0000);  // 2555 in upper 16 bits
@@ -126,7 +126,7 @@ void example_runtime_parsing() {
     ContextPacketView view(rx_buffer.data(), 8 * 4);
 
     // Validate the packet
-    auto error = view.validate();
+    auto error = view.error();
     if (error != validation_error::none) {
         std::cout << "Validation failed: " << validation_error_string(error) << "\n";
         return;
@@ -143,16 +143,16 @@ void example_runtime_parsing() {
     std::cout << "  CIF0: 0x" << std::hex << view.cif0() << std::dec << "\n";
 
     if (auto bw = get(view, field::bandwidth)) {
-        std::cout << "  Bandwidth: " << *bw / 1'000'000.0 << " MHz\n";
+        std::cout << "  Bandwidth: " << bw.value() / 1'000'000.0 << " MHz\n";
     }
 
     if (auto sr = get(view, field::sample_rate)) {
-        std::cout << "  Sample Rate: " << *sr / 1'000'000.0 << " MSPS\n";
+        std::cout << "  Sample Rate: " << sr.value() / 1'000'000.0 << " MSPS\n";
     }
 
-    // Temperature field - use helper method
+    // Temperature field - use has() function
     std::cout << "  Temperature field present: "
-              << (view.has_cif0_field<cif0::TEMPERATURE>() ? "Yes" : "No") << "\n";
+              << (has(view, field::temperature) ? "Yes" : "No") << "\n";
 }
 
 // Example 4: Handling variable-length fields (GPS ASCII)
@@ -183,7 +183,7 @@ void example_variable_fields() {
 
     // Parse with view
     ContextPacketView view(buffer.data(), total_words * 4);
-    auto error = view.validate();
+    auto error = view.error();
     if (error != validation_error::none) {
         std::cout << "Validation failed: " << validation_error_string(error) << "\n";
         return;
@@ -191,8 +191,9 @@ void example_variable_fields() {
 
     std::cout << "Successfully parsed packet with GPS ASCII:\n";
 
-    if (view.has_gps_ascii()) {
-        auto gps_data = view.gps_ascii_data();
+    // Use get() API for GPS ASCII field
+    if (auto gps_proxy = get(view, field::gps_ascii)) {
+        auto gps_data = gps_proxy.raw_bytes();
         std::cout << "  GPS ASCII field size: " << gps_data.size() << " bytes\n";
 
         // Extract character count
@@ -227,7 +228,7 @@ void example_unsupported_rejection() {
     cif::write_u32_safe(buffer.data(), 4, cif0_reserved);
 
     ContextPacketView view1(buffer.data(), 3 * 4);
-    auto error1 = view1.validate();
+    auto error1 = view1.error();
     std::cout << "  Reserved bit 4: "
               << (error1 == validation_error::unsupported_field ? "Correctly rejected" : "ERROR")
               << "\n";
@@ -237,7 +238,7 @@ void example_unsupported_rejection() {
     cif::write_u32_safe(buffer.data(), 4, cif0_cif3);
 
     ContextPacketView view2(buffer.data(), 3 * 4);
-    auto error2 = view2.validate();
+    auto error2 = view2.error();
     std::cout << "  CIF3 enable bit: "
               << (error2 == validation_error::unsupported_field ? "Correctly rejected" : "ERROR")
               << "\n";
@@ -247,7 +248,7 @@ void example_unsupported_rejection() {
     cif::write_u32_safe(buffer.data(), 4, cif0_attr);
 
     ContextPacketView view3(buffer.data(), 3 * 4);
-    auto error3 = view3.validate();
+    auto error3 = view3.error();
     std::cout << "  Field Attributes bit: "
               << (error3 == validation_error::unsupported_field ? "Correctly rejected" : "ERROR")
               << "\n";

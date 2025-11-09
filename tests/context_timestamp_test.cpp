@@ -116,15 +116,15 @@ TEST_F(ContextPacketTest, TimestampWithContextFields) {
     packet.set_stream_id(0x12345678);
     packet.set_timestamp_integer(1600000000);
     packet.set_timestamp_fractional(123456789012ULL);
-    set(packet, field::bandwidth, 20'000'000ULL);
-    set(packet, field::sample_rate, 10'000'000ULL);
+    get(packet, field::bandwidth).set_value(20'000'000.0);      // 20 MHz
+    get(packet, field::sample_rate).set_value(10'000'000.0);    // 10 MSPS
 
     // Verify all fields
     EXPECT_EQ(packet.stream_id(), 0x12345678);
     EXPECT_EQ(packet.timestamp_integer(), 1600000000);
     EXPECT_EQ(packet.timestamp_fractional(), 123456789012ULL);
-    EXPECT_EQ(get(packet, field::bandwidth).value(), 20'000'000);
-    EXPECT_EQ(get(packet, field::sample_rate).value(), 10'000'000);
+    EXPECT_DOUBLE_EQ(get(packet, field::bandwidth).value(), 20'000'000.0);
+    EXPECT_DOUBLE_EQ(get(packet, field::sample_rate).value(), 10'000'000.0);
 }
 
 TEST_F(ContextPacketTest, TimestampNoStreamId) {

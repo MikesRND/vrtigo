@@ -51,6 +51,16 @@ add_executable(timestamp_test timestamp_test.cpp)
 target_link_libraries(timestamp_test PRIVATE vrtio GTest::gtest_main)
 add_test(NAME timestamp_test COMMAND timestamp_test)
 
+# Signal packet view tests (runtime parser)
+add_executable(signal_packet_view_test signal_packet_view_test.cpp)
+target_link_libraries(signal_packet_view_test PRIVATE vrtio GTest::gtest_main)
+add_test(NAME signal_packet_view_test COMMAND signal_packet_view_test)
+
+# Packet concepts tests
+add_executable(packet_concepts_test packet_concepts_test.cpp)
+target_link_libraries(packet_concepts_test PRIVATE vrtio GTest::gtest_main)
+add_test(NAME packet_concepts_test COMMAND packet_concepts_test)
+
 # Context packet tests (refactored into focused test suites)
 add_executable(context_basic_test context_basic_test.cpp)
 target_link_libraries(context_basic_test PRIVATE vrtio GTest::gtest_main)
@@ -59,18 +69,6 @@ add_test(NAME context_basic_test COMMAND context_basic_test)
 add_executable(context_validation_test context_validation_test.cpp)
 target_link_libraries(context_validation_test PRIVATE vrtio GTest::gtest_main)
 add_test(NAME context_validation_test COMMAND context_validation_test)
-
-add_executable(context_cif1_test context_cif1_test.cpp)
-target_link_libraries(context_cif1_test PRIVATE vrtio GTest::gtest_main)
-add_test(NAME context_cif1_test COMMAND context_cif1_test)
-
-add_executable(context_cif2_test context_cif2_test.cpp)
-target_link_libraries(context_cif2_test PRIVATE vrtio GTest::gtest_main)
-add_test(NAME context_cif2_test COMMAND context_cif2_test)
-
-add_executable(context_cif3_test context_cif3_test.cpp)
-target_link_libraries(context_cif3_test PRIVATE vrtio GTest::gtest_main)
-add_test(NAME context_cif3_test COMMAND context_cif3_test)
 
 add_executable(context_variable_test context_variable_test.cpp)
 target_link_libraries(context_variable_test PRIVATE vrtio GTest::gtest_main)
@@ -92,8 +90,9 @@ add_test(NAME field_access_test COMMAND field_access_test)
 # Set C++20 standard for tests
 set_target_properties(
     roundtrip_test endian_test builder_test security_test trailer_test timestamp_test
-    context_basic_test context_validation_test context_cif1_test context_cif2_test
-    context_cif3_test context_variable_test context_timestamp_test context_integration_test
+    signal_packet_view_test packet_concepts_test
+    context_basic_test context_validation_test context_variable_test
+    context_timestamp_test context_integration_test
     field_access_test
     PROPERTIES
         CXX_STANDARD 20
@@ -111,4 +110,9 @@ if(VRTIO_BUILD_IO_HELPERS AND VRTIO_BUILD_IO_TESTS)
     if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/io)
         add_subdirectory(io)
     endif()
+endif()
+
+# Add CIF field unit tests subdirectory
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cif)
+    add_subdirectory(cif)
 endif()

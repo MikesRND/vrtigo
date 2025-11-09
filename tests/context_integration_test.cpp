@@ -13,16 +13,16 @@ TEST_F(ContextPacketTest, RoundTrip) {
 
     TestContext tx_packet(buffer.data());
     tx_packet.set_stream_id(0xDEADBEEF);
-    set(tx_packet, field::bandwidth, 100'000'000ULL);  // 100 MHz
-    set(tx_packet, field::gain, 0x12345678U);
+    get(tx_packet, field::bandwidth).set_value(100'000'000.0);  // 100 MHz
+    get(tx_packet, field::gain).set_raw_value(0x12345678U);
 
     // Parse same buffer with view
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.validate(), validation_error::none);
+    EXPECT_EQ(view.error(), validation_error::none);
 
     EXPECT_EQ(view.stream_id().value(), 0xDEADBEEF);
-    EXPECT_EQ(get(view, field::bandwidth).value(), 100'000'000);
-    EXPECT_EQ(get(view, field::gain).value(), 0x12345678);
+    EXPECT_DOUBLE_EQ(get(view, field::bandwidth).value(), 100'000'000.0);
+    EXPECT_EQ(get(view, field::gain).raw_value(), 0x12345678);
 }
 
 TEST_F(ContextPacketTest, CombinedCIF1AndCIF2CompileTime) {
@@ -52,12 +52,12 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2CompileTime) {
 
     TestContext tx_packet(buffer.data());
     tx_packet.set_stream_id(0x11223344);
-    set(tx_packet, field::bandwidth, 50'000'000ULL);
-    set(tx_packet, field::aux_frequency, 25'000'000ULL);
+    get(tx_packet, field::bandwidth).set_value(50'000'000.0);      // 50 MHz (has interpreted support)
+    get(tx_packet, field::aux_frequency).set_raw_value(25'000'000ULL);  // Raw (no interpreted support)
 
     // Parse with runtime view
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.validate(), validation_error::none);
+    EXPECT_EQ(view.error(), validation_error::none);
 
     // Verify CIF0 has both enable bits set
     constexpr uint32_t cif_enable_mask = (1U << cif::CIF1_ENABLE_BIT) | (1U << cif::CIF2_ENABLE_BIT);
@@ -67,14 +67,15 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2CompileTime) {
 
     // Verify fields
     EXPECT_EQ(view.stream_id().value(), 0x11223344);
-    EXPECT_EQ(get(view, field::bandwidth).value(), 50'000'000);
-    EXPECT_EQ(get(view, field::aux_frequency).value(), 25'000'000);
+    EXPECT_DOUBLE_EQ(get(view, field::bandwidth).value(), 50'000'000.0);
+    EXPECT_EQ(get(view, field::aux_frequency).raw_value(), 25'000'000);
 }
 
 TEST_F(ContextPacketTest, CombinedCIF1AndCIF2Runtime) {
     // Manually build a packet with both CIF1 and CIF2
     // Structure: header(1) + stream_id(1) + CIF0(1) + CIF1(1) + CIF2(1) + bandwidth(2) + aux_freq(2) + uuid(4) = 13 words
-    uint32_t header = (static_cast<uint32_t>(packet_type::context) << header::PACKET_TYPE_SHIFT) | header::STREAM_ID_INDICATOR | 13;  // Type 4, has stream ID, 13 words
+    // Use ext_context (type 5) for packets with stream ID
+    uint32_t header = (static_cast<uint32_t>(packet_type::ext_context) << header::PACKET_TYPE_SHIFT) | 13;
     cif::write_u32_safe(buffer.data(), 0, header);
 
     // Stream ID
@@ -106,7 +107,7 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2Runtime) {
 
     // Parse and validate
     ContextPacketView view(buffer.data(), 13 * 4);
-    EXPECT_EQ(view.validate(), validation_error::none);
+    EXPECT_EQ(view.error(), validation_error::none);
 
     // Verify structure
     EXPECT_EQ(view.cif0(), cif0_mask);
@@ -115,12 +116,13 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2Runtime) {
 
     // Verify fields
     EXPECT_EQ(view.stream_id().value(), 0xAABBCCDD);
-    EXPECT_EQ(get(view, field::bandwidth).value(), 100'000'000);
-    EXPECT_EQ(get(view, field::aux_frequency).value(), 75'000'000);
+    EXPECT_EQ(get(view, field::bandwidth).raw_value(), 100'000'000);
+    EXPECT_EQ(get(view, field::aux_frequency).raw_value(), 75'000'000);
 
-    auto uuid = view.controller_uuid();
-    ASSERT_TRUE(uuid.has_value());
-    EXPECT_EQ(cif::read_u32_safe(uuid->data(), 0), 0x12345678);
+    auto uuid_proxy = get(view, field::controller_uuid);
+    ASSERT_TRUE(uuid_proxy.has_value());
+    auto uuid = uuid_proxy.raw_bytes();
+    EXPECT_EQ(cif::read_u32_safe(uuid.data(), 0), 0x12345678);
 }
 
 TEST_F(ContextPacketTest, MultiWordFieldWrite) {
@@ -146,21 +148,21 @@ TEST_F(ContextPacketTest, MultiWordFieldWrite) {
     FieldView<2> field_value(source_data, 0);
 
     // Write the field to the packet
-    set(packet, field::data_payload_format, field_value);
+    get(packet, field::data_payload_format).set_raw_value(field_value);
 
     // Read it back and verify
     auto read_value = get(packet, field::data_payload_format);
     ASSERT_TRUE(read_value.has_value());
-    EXPECT_EQ(read_value->word(0), 0xAABBCCDD);
-    EXPECT_EQ(read_value->word(1), 0x11223344);
+    EXPECT_EQ(read_value.raw_value().word(0), 0xAABBCCDD);
+    EXPECT_EQ(read_value.raw_value().word(1), 0x11223344);
 
     // Verify round-trip through runtime parser
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.validate(), validation_error::none);
+    EXPECT_EQ(view.error(), validation_error::none);
 
     auto runtime_value = get(view, field::data_payload_format);
     ASSERT_TRUE(runtime_value.has_value());
-    EXPECT_EQ(runtime_value->word(0), 0xAABBCCDD);
-    EXPECT_EQ(runtime_value->word(1), 0x11223344);
+    EXPECT_EQ(runtime_value.raw_value().word(0), 0xAABBCCDD);
+    EXPECT_EQ(runtime_value.raw_value().word(1), 0x11223344);
 }
 

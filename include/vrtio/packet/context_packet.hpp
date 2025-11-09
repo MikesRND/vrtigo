@@ -380,6 +380,15 @@ public:
         return buffer_;
     }
 
+    // PacketBase concept compliance
+    uint8_t* raw_bytes() noexcept {
+        return buffer_;
+    }
+
+    const uint8_t* raw_bytes() const noexcept {
+        return buffer_;
+    }
+
     static constexpr size_t context_base_offset() noexcept {
         return calculate_context_offset();
     }
@@ -425,6 +434,14 @@ public:
         }
 
         return validation_error::none;
+    }
+
+    /**
+     * Validate packet structure (convenience method assuming buffer is size_bytes)
+     * @return validation_error::none if valid, otherwise specific error
+     */
+    validation_error validate() const noexcept {
+        return validate(size_bytes);
     }
 };
 

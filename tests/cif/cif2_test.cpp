@@ -1,4 +1,4 @@
-#include "context_test_fixture.hpp"
+#include "../context_test_fixture.hpp"
 
 TEST_F(ContextPacketTest, CIF2Fields) {
     // Create packet with CIF2 controller UUID
@@ -23,41 +23,45 @@ TEST_F(ContextPacketTest, CIF2Fields) {
 
 TEST_F(ContextPacketTest, RuntimeParseCIF2) {
     // Build a packet with CIF2 enabled and Controller UUID field
-    // Structure: header(1) + CIF0(1) + CIF2(1) + Controller UUID(4) = 7 words
-    uint32_t header = (static_cast<uint32_t>(packet_type::context) << header::PACKET_TYPE_SHIFT) | 7;
+    // Type 4 has stream ID: header(1) + stream_id(1) + CIF0(1) + CIF2(1) + Controller UUID(4) = 8 words
+    uint32_t header = (static_cast<uint32_t>(packet_type::context) << header::PACKET_TYPE_SHIFT) | 8;
     cif::write_u32_safe(buffer.data(), 0, header);
+
+    // Stream ID (type 4 has stream ID per VITA 49.2)
+    cif::write_u32_safe(buffer.data(), 4, 0x12345678);
 
     // CIF0 with CIF2 enable bit set
     uint32_t cif0_mask = (1U << 2);  // Enable CIF2
-    cif::write_u32_safe(buffer.data(), 4, cif0_mask);
+    cif::write_u32_safe(buffer.data(), 8, cif0_mask);
 
     // CIF2 with Controller UUID enabled
     uint32_t cif2_mask = cif2::CONTROLLER_UUID;
-    cif::write_u32_safe(buffer.data(), 8, cif2_mask);
+    cif::write_u32_safe(buffer.data(), 12, cif2_mask);
 
     // Controller UUID: 4 words (128 bits)
     uint32_t expected_uuid[4] = {0x12345678, 0x9ABCDEF0, 0x11111111, 0x22222222};
-    cif::write_u32_safe(buffer.data(), 12, expected_uuid[0]);
-    cif::write_u32_safe(buffer.data(), 16, expected_uuid[1]);
-    cif::write_u32_safe(buffer.data(), 20, expected_uuid[2]);
-    cif::write_u32_safe(buffer.data(), 24, expected_uuid[3]);
+    cif::write_u32_safe(buffer.data(), 16, expected_uuid[0]);
+    cif::write_u32_safe(buffer.data(), 20, expected_uuid[1]);
+    cif::write_u32_safe(buffer.data(), 24, expected_uuid[2]);
+    cif::write_u32_safe(buffer.data(), 28, expected_uuid[3]);
 
     // Parse and validate
-    ContextPacketView view(buffer.data(), 7 * 4);
-    EXPECT_EQ(view.validate(), validation_error::none);
+    ContextPacketView view(buffer.data(), 8 * 4);
+    EXPECT_EQ(view.error(), validation_error::none);
 
     // Verify CIF0 and CIF2 are read correctly
     EXPECT_EQ(view.cif0(), cif0_mask);
     EXPECT_EQ(view.cif2(), cif2_mask);
 
-    // Verify we can read back the Controller UUID field using the accessor
-    auto uuid = view.controller_uuid();
-    ASSERT_TRUE(uuid.has_value());
-    ASSERT_EQ(uuid->size(), 16);  // 128 bits = 16 bytes
+    // Verify we can read back the Controller UUID field using get() API
+    auto uuid_proxy = get(view, field::controller_uuid);
+    ASSERT_TRUE(uuid_proxy.has_value());
+    auto uuid = uuid_proxy.raw_bytes();
+    ASSERT_EQ(uuid.size(), 16);  // 128 bits = 16 bytes
 
     // Verify UUID bytes match what we wrote
     for (int i = 0; i < 4; i++) {
-        uint32_t word = cif::read_u32_safe(uuid->data(), i * 4);
+        uint32_t word = cif::read_u32_safe(uuid.data(), i * 4);
         EXPECT_EQ(word, expected_uuid[i]);
     }
 }
@@ -66,7 +70,7 @@ TEST_F(ContextPacketTest, CompileTimeCIF2RuntimeParse) {
     // Create packet with CIF2 field at compile time
     constexpr uint32_t cif2_mask = cif2::CONTROLLER_UUID;
     using TestContext = ContextPacket<
-        false,          // No stream ID
+        true,           // Has stream ID (context packets require stream ID)
         NoTimeStamp,
         NoClassId,
         0,              // No CIF0 data fields (CIF2 enable bit auto-set)
@@ -82,10 +86,13 @@ TEST_F(ContextPacketTest, CompileTimeCIF2RuntimeParse) {
         "CIF1 enable bit (bit 1) should NOT be set when CIF1 == 0");
 
     TestContext tx_packet(buffer.data());
+    tx_packet.set_stream_id(0xAABBCCDD);
 
     // Parse with runtime view
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.validate(), validation_error::none);
+    EXPECT_EQ(view.error(), validation_error::none);
+    EXPECT_TRUE(view.has_stream_id());
+    EXPECT_EQ(view.stream_id().value(), 0xAABBCCDD);
     // CIF0 should have bit 2 set (CIF2 enable)
     EXPECT_EQ(view.cif0() & 0x04, 0x04);
     EXPECT_EQ(view.cif2(), cif2_mask);

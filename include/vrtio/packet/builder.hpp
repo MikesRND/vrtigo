@@ -2,17 +2,34 @@
 
 #include "signal_packet.hpp"
 #include "../core/trailer.hpp"
+#include "../core/packet_concepts.hpp"
 #include <utility>
 
 namespace vrtio {
 
 // Forward declaration
 template<typename PacketType>
+    requires FixedPacketLike<PacketType>
 class PacketBuilder;
 
-// Builder for fluent packet construction on user-provided buffer
-// CRITICAL FIX: Now operates directly on user buffer, no internal copy
+/**
+ * Builder for fluent packet construction on user-provided buffer
+ *
+ * Supports fixed-structure compile-time packet types (SignalPacket, ExtDataPacket).
+ * Methods are enabled/disabled based on packet capabilities using C++20 concepts.
+ *
+ * Usage:
+ *   auto packet = PacketBuilder<MyPacketType>(buffer)
+ *       .stream_id(0x1234)
+ *       .timestamp_integer(ts)
+ *       .payload(data, size)
+ *       .build();
+ *
+ * Note: This builder is for fixed-structure packets only. For context packets
+ * (ContextPacket), use the field access API: get/set(packet, field::name, value).
+ */
 template<typename PacketType>
+    requires FixedPacketLike<PacketType>
 class PacketBuilder {
 public:
     // Constructor takes user buffer and initializes it
@@ -24,7 +41,7 @@ public:
 
     // Stream ID (only available if packet has stream ID)
     auto& stream_id(uint32_t id) noexcept
-        requires requires(PacketType& p) { p.set_stream_id(id); } {
+        requires HasStreamId<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
         packet.set_stream_id(id);
         return *this;
@@ -32,7 +49,7 @@ public:
 
     // Integer timestamp (only available if packet has TSI)
     auto& timestamp_integer(uint32_t ts) noexcept
-        requires requires(PacketType& p) { p.set_timestamp_integer(ts); } {
+        requires HasTimestampInteger<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
         packet.set_timestamp_integer(ts);
         return *this;
@@ -40,7 +57,7 @@ public:
 
     // Fractional timestamp (only available if packet has TSF)
     auto& timestamp_fractional(uint64_t ts) noexcept
-        requires requires(PacketType& p) { p.set_timestamp_fractional(ts); } {
+        requires HasTimestampFractional<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
         packet.set_timestamp_fractional(ts);
         return *this;
@@ -58,7 +75,7 @@ public:
 
     // Trailer (only available if packet has trailer)
     auto& trailer(uint32_t t) noexcept
-        requires requires(PacketType& p) { p.set_trailer(t); } {
+        requires HasTrailer<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
         packet.set_trailer(t);
         return *this;
@@ -206,7 +223,7 @@ public:
      */
     auto& trailer_status(bool valid_data, bool calibrated_time,
                         bool over_range = false, bool sample_loss = false) noexcept
-        requires requires(PacketType& p) { p.set_trailer(0); } {
+        requires HasTrailer<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
         uint32_t t = 0;
         if (valid_data) t |= trailer::valid_data_mask;
@@ -217,22 +234,26 @@ public:
         return *this;
     }
 
-    // Packet count
-    auto& packet_count(uint8_t count) noexcept {
+    // Packet count (available for all packet types)
+    auto& packet_count(uint8_t count) noexcept
+        requires HasPacketCount<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
         packet.set_packet_count(count);
         return *this;
     }
 
     // Payload (from raw pointer and size)
-    auto& payload(const uint8_t* data, size_t size) noexcept {
+    // Only available for packet types that have a payload field
+    auto& payload(const uint8_t* data, size_t size) noexcept
+        requires HasPayload<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
         packet.set_payload(data, size);
         return *this;
     }
 
     // Payload (from span)
-    auto& payload(std::span<const uint8_t> data) noexcept {
+    auto& payload(std::span<const uint8_t> data) noexcept
+        requires HasPayload<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
         packet.set_payload(data.data(), data.size());
         return *this;
@@ -240,7 +261,7 @@ public:
 
     // Payload (from container)
     template<typename Container>
-        requires ConstBuffer<Container>
+        requires ConstBuffer<Container> && HasPayload<PacketType>
     auto& payload(const Container& data) noexcept {
         PacketType packet(buffer_, false);  // Don't reinitialize
         packet.set_payload(

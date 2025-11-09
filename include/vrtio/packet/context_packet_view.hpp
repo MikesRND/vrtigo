@@ -11,12 +11,34 @@
 
 namespace vrtio {
 
-// Runtime parser for context packets
-// Can parse arbitrary context packets from network with any CIF configuration
+/**
+ * Runtime parser for context packets
+ *
+ * Provides safe, type-erased parsing of context packets with automatic
+ * validation. Unlike ContextPacket<...>, this class doesn't require compile-time
+ * knowledge of the packet structure and automatically validates on construction.
+ *
+ * Safety:
+ * - Validates automatically on construction (no manual validate() call needed)
+ * - All accessors check validation state and return std::optional for optional fields
+ * - Const-only view (cannot modify packet)
+ * - Makes unsafe parsing patterns impossible
+ *
+ * Usage:
+ *   ContextPacketView view(rx_buffer, buffer_size);
+ *   if (view.is_valid()) {
+ *       if (auto id = view.stream_id()) {
+ *           std::cout << "Stream ID: " << *id << "\n";
+ *       }
+ *       auto bw = get(view, field::bandwidth);
+ *       // Process fields...
+ *   }
+ */
 class ContextPacketView {
 private:
     const uint8_t* buffer_;
     size_t buffer_size_;
+    validation_error error_;
 
     struct ParsedStructure {
         // Header fields
@@ -26,7 +48,6 @@ private:
         bool has_class_id = false;
         tsi_type tsi = tsi_type::none;
         tsf_type tsf = tsf_type::none;
-        bool has_trailer = false;
 
         // CIF words
         uint32_t cif0 = 0;
@@ -50,13 +71,7 @@ private:
         size_t calculated_size_words = 0;
     } structure_;
 
-    bool validated_ = false;
-
-public:
-    explicit ContextPacketView(const uint8_t* buffer, size_t size) noexcept
-        : buffer_(buffer), buffer_size_(size) {}
-
-    validation_error validate() noexcept {
+    validation_error validate_internal() noexcept {
         if (!buffer_ || buffer_size_ < 4) {
             return validation_error::buffer_too_small;
         }
@@ -68,8 +83,11 @@ public:
         // 2. Store decoded header fields
         structure_.packet_type = static_cast<uint8_t>(decoded.type);
         structure_.has_class_id = decoded.has_class_id;
-        structure_.has_trailer = decoded.has_trailer;
-        structure_.has_stream_id = decoded.has_stream_id;  // Bit 25 for context packets
+
+        // For Context packets, stream ID presence is determined by packet type
+        // Per VITA 49.2: types 1,3,4,5,6,7 have stream ID; types 0,2 do not
+        structure_.has_stream_id = detail::has_stream_id_field(decoded.type);
+
         structure_.tsi = decoded.tsi;
         structure_.tsf = decoded.tsf;
         structure_.packet_size_words = decoded.size_words;
@@ -79,13 +97,19 @@ public:
             return validation_error::invalid_packet_type;
         }
 
-        // 4. Initial buffer size check
+        // 4. Validate reserved bit 26 is 0 for Context packets
+        // Per VITA 49.2 Table 5.1.1.1-1, bit 26 is Reserved for Context packets (must be 0)
+        if (decoded.bit_26) {
+            return validation_error::unsupported_field;
+        }
+
+        // 5. Initial buffer size check
         size_t required_bytes = structure_.packet_size_words * 4;
         if (buffer_size_ < required_bytes) {
             return validation_error::buffer_too_small;
         }
 
-        // 5. Calculate position after header fields
+        // 6. Calculate position after header fields
         size_t offset_words = 1;  // Header
 
         if (structure_.has_stream_id) {
@@ -107,7 +131,7 @@ public:
         size_t tsf_words = (structure_.tsf != tsf_type::none) ? 2 : 0;
         offset_words += tsi_words + tsf_words;
 
-        // 6. Read CIF words
+        // 7. Read CIF words
         if ((offset_words + 1) * 4 > buffer_size_) {
             return validation_error::buffer_too_small;
         }
@@ -168,7 +192,7 @@ public:
         // Store context field base offset
         structure_.context_base_bytes = offset_words * 4;
 
-        // 7. Calculate context field sizes with variable field handling
+        // 8. Calculate context field sizes with variable field handling
         size_t context_fields_words = 0;
 
         // Process all fixed fields first (from MSB to LSB)
@@ -250,23 +274,46 @@ public:
             }
         }
 
-        // 8. Calculate total expected size
+        // 9. Calculate total expected size
+        // Note: Context packets do not support trailer fields (bit 26 is Reserved)
         structure_.calculated_size_words = offset_words + context_fields_words;
-        if (structure_.has_trailer) {
-            structure_.calculated_size_words++;
-        }
 
-        // 9. Final validation: calculated size must match header
+        // 10. Final validation: calculated size must match header
         if (structure_.calculated_size_words != structure_.packet_size_words) {
             return validation_error::size_field_mismatch;
         }
 
-        validated_ = true;
         return validation_error::none;
     }
 
+public:
+    /**
+     * Construct runtime parser and automatically validate
+     * @param buffer Pointer to packet buffer
+     * @param buffer_size Size of buffer in bytes
+     */
+    explicit ContextPacketView(const uint8_t* buffer, size_t buffer_size) noexcept
+        : buffer_(buffer), buffer_size_(buffer_size), error_(validation_error::none) {
+        error_ = validate_internal();
+    }
+
+    /**
+     * Get validation error
+     * @return validation_error::none if packet is valid, otherwise specific error
+     */
+    validation_error error() const noexcept {
+        return error_;
+    }
+
+    /**
+     * Check if packet is valid
+     * @return true if validation passed
+     */
+    bool is_valid() const noexcept {
+        return error_ == validation_error::none;
+    }
+
     // Query methods
-    bool is_valid() const noexcept { return validated_; }
 
     uint32_t cif0() const noexcept { return structure_.cif0; }
     uint32_t cif1() const noexcept { return structure_.cif1; }
@@ -275,11 +322,11 @@ public:
 
     bool has_stream_id() const noexcept { return structure_.has_stream_id; }
     bool has_class_id() const noexcept { return structure_.has_class_id; }
-    bool has_trailer() const noexcept { return structure_.has_trailer; }
+    // Note: Context packets do not support trailers (bit 26 is Reserved, validated during parse)
 
     // Stream ID accessor
     std::optional<uint32_t> stream_id() const noexcept {
-        if (!validated_ || !structure_.has_stream_id) {
+        if (!is_valid() || !structure_.has_stream_id) {
             return std::nullopt;
         }
         return cif::read_u32_safe(buffer_, 4);  // Right after header
@@ -293,7 +340,7 @@ public:
     };
 
     std::optional<ClassIdValue> class_id() const noexcept {
-        if (!validated_ || !structure_.has_class_id) {
+        if (!is_valid() || !structure_.has_class_id) {
             return std::nullopt;
         }
 
@@ -313,69 +360,14 @@ public:
         return result;
     }
 
-    // Runtime field presence query helpers
-    template<uint32_t Bit>
-    bool has_cif0_field() const noexcept {
-        return validated_ && (structure_.cif0 & Bit);
-    }
-
-    template<uint32_t Bit>
-    bool has_cif1_field() const noexcept {
-        return validated_ && (structure_.cif1 & Bit);
-    }
-
-    template<uint32_t Bit>
-    bool has_cif2_field() const noexcept {
-        return validated_ && (structure_.cif2 & Bit);
-    }
-
-    // CIF2 field accessors
-
-    // Controller UUID accessor (CIF2 bit 22) - returns pointer to 128-bit UUID
-    std::optional<std::span<const uint8_t>> controller_uuid() const noexcept {
-        constexpr uint8_t bit = 22;
-
-        if (!validated_ || !(structure_.cif2 & (1U << bit))) {
-            return std::nullopt;
-        }
-
-        size_t offset = detail::calculate_field_offset_runtime(
-            structure_.cif0, structure_.cif1, structure_.cif2, structure_.cif3,
-            2, bit,
-            buffer_,
-            structure_.context_base_bytes,
-            buffer_size_);
-
-        if (offset == SIZE_MAX) {
-            return std::nullopt;
-        }
-
-        // Controller UUID is 4 words (16 bytes / 128 bits)
-        return std::span<const uint8_t>(buffer_ + offset, 16);
-    }
-
-    // Variable field accessors
-    bool has_gps_ascii() const noexcept {
-        return validated_ && structure_.gps_ascii.present;
-    }
-
-    std::span<const uint8_t> gps_ascii_data() const noexcept {
-        if (!has_gps_ascii()) return {};
-        return std::span<const uint8_t>(
-            buffer_ + structure_.gps_ascii.offset_bytes,
-            structure_.gps_ascii.size_words * 4);
-    }
-
-    bool has_context_association() const noexcept {
-        return validated_ && structure_.context_assoc.present;
-    }
-
-    std::span<const uint8_t> context_association_data() const noexcept {
-        if (!has_context_association()) return {};
-        return std::span<const uint8_t>(
-            buffer_ + structure_.context_assoc.offset_bytes,
-            structure_.context_assoc.size_words * 4);
-    }
+    // Note: Field access has been standardized through the generic get() API.
+    // Use get(view, field::field_name) for all CIF field access, including:
+    //   - get(view, field::controller_uuid) - instead of controller_uuid()
+    //   - get(view, field::gps_ascii) - instead of has_gps_ascii() / gps_ascii_data()
+    //   - get(view, field::context_association_lists) - instead of has_context_association() / context_association_data()
+    //   - has(view, field::field_name) - for presence checks instead of has_cifN_field<>()
+    //
+    // This provides a uniform API with FieldProxy for raw access (.raw_bytes()) and future interpreted access (.value()).
 
     // Size queries
     size_t packet_size_bytes() const noexcept {

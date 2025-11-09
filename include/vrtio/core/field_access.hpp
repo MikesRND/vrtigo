@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fields.hpp"
+#include "field_proxy.hpp"
 #include "detail/field_traits.hpp"
 #include "detail/variable_field_dispatch.hpp"
 #include "cif.hpp"
@@ -11,9 +12,11 @@ namespace vrtio {
 
 namespace detail {
 
-/// Concept: Types that provide packet buffer access
+/// Concept: CIF-enabled packets that provide context buffer and CIF word access
+/// Note: This is distinct from the global CompileTimePacket concept in packet_concepts.hpp
+/// This concept is specifically for CIF field operations on context packets
 template<typename T>
-concept PacketLike = requires(const T& pkt) {
+concept CifPacketBase = requires(const T& pkt) {
     { pkt.context_buffer() } -> std::same_as<const uint8_t*>;
     { pkt.context_base_offset() } -> std::same_as<size_t>;
     { pkt.cif0() } -> std::same_as<uint32_t>;
@@ -22,15 +25,17 @@ concept PacketLike = requires(const T& pkt) {
     { pkt.cif3() } -> std::same_as<uint32_t>;
 };
 
-/// Concept: Mutable packets (for write operations)
+/// Concept: Mutable CIF packets (for write operations on CIF fields)
 template<typename T>
-concept MutablePacketLike = PacketLike<T> && requires(T& pkt) {
+concept MutableCifPacket = CifPacketBase<T> && requires(T& pkt) {
     { pkt.mutable_context_buffer() } -> std::same_as<uint8_t*>;
 };
 
-/// Concept: Compile-time packets with static CIF values (for zero-overhead field access)
+/// Concept: Compile-time CIF packets with static CIF values (for zero-overhead field access)
+/// Note: This is distinct from the global CompileTimePacket concept in packet_concepts.hpp
+/// This concept specifically requires static CIF values for compile-time field optimization
 template<typename T>
-concept CompileTimePacket = PacketLike<T> && requires {
+concept CifPacketLike = CifPacketBase<T> && requires {
     { T::cif0_value } -> std::convertible_to<uint32_t>;
     { T::cif1_value } -> std::convertible_to<uint32_t>;
     { T::cif2_value } -> std::convertible_to<uint32_t>;
@@ -55,32 +60,35 @@ constexpr bool is_field_present(uint32_t cif0, uint32_t cif1, uint32_t cif2, uin
 } // namespace detail
 
 // ============================================================================
-// Public API: get() - Read field value from packet
+// Public API: get() - Get field proxy for field access
 // ============================================================================
 
-/// Read a field value from a context packet
-/// Returns std::nullopt if field is not present in packet
+/// Get a FieldProxy for accessing a CIF field in a context packet
+/// The proxy provides .raw_bytes() for raw bytes and (future) .value() for interpreted access
 /// @tparam Tag Field tag type (e.g., field_tag_t<0, 29>)
 /// @param packet Context packet (ContextPacket or ContextPacketView)
 /// @param tag Field tag (e.g., field::bandwidth)
-/// @return Field value or std::nullopt if not present
+/// @return FieldProxy object (check .has_value() before using)
 template<typename Packet, uint8_t CifWord, uint8_t Bit>
-    requires detail::PacketLike<Packet>
-auto get(const Packet& packet, field::field_tag_t<CifWord, Bit>) noexcept
-    -> std::optional<typename detail::FieldTraits<CifWord, Bit>::value_type>
+    requires detail::CifPacketBase<Packet>
+auto get(Packet& packet, field::field_tag_t<CifWord, Bit>) noexcept
+    -> FieldProxy<field::field_tag_t<CifWord, Bit>, Packet>
 {
     using Trait = detail::FieldTraits<CifWord, Bit>;
+    using Tag = field::field_tag_t<CifWord, Bit>;
 
     // Check if field is present
-    if (!detail::is_field_present<CifWord, Bit>(
-            packet.cif0(), packet.cif1(), packet.cif2(), packet.cif3())) {
-        return std::nullopt;
+    bool present = detail::is_field_present<CifWord, Bit>(
+        packet.cif0(), packet.cif1(), packet.cif2(), packet.cif3());
+
+    if (!present) {
+        // Return proxy with present=false
+        return FieldProxy<Tag, Packet>(packet, 0, 0, false);
     }
 
-    // Use compile-time offset calculation for ContextPacket (zero overhead)
-    // or runtime calculation for ContextPacketView
+    // Calculate field offset (compile-time or runtime)
     size_t field_offset;
-    if constexpr (detail::CompileTimePacket<Packet>) {
+    if constexpr (detail::CifPacketLike<Packet>) {
         // Compile-time packet: fold offset to constant at compile time
         constexpr size_t ct_offset = cif::calculate_field_offset_ct<
             Packet::cif0_value, Packet::cif1_value, Packet::cif2_value, Packet::cif3_value,
@@ -98,72 +106,32 @@ auto get(const Packet& packet, field::field_tag_t<CifWord, Bit>) noexcept
 
         // Check for error sentinel (bounds check failed)
         if (field_offset == SIZE_MAX) {
-            return std::nullopt;
+            return FieldProxy<Tag, Packet>(packet, 0, 0, false);
         }
     }
 
-    // Read field using trait
-    return Trait::read(packet.context_buffer(), field_offset);
-}
+    // Calculate field size in bytes
+    size_t field_size_bytes;
 
-// ============================================================================
-// Public API: set() - Write field value to mutable packet
-// ============================================================================
+    // Determine which CIF field table to use
+    constexpr const cif::FieldInfo* field_table =
+        CifWord == 0 ? cif::CIF0_FIELDS :
+        CifWord == 1 ? cif::CIF1_FIELDS :
+        CifWord == 2 ? cif::CIF2_FIELDS :
+        cif::CIF3_FIELDS;
 
-/// Write a field value to a mutable context packet
-/// Field must be present in packet (determined at compile-time for ContextPacket)
-/// For variable-length fields, this will fail at compile-time (write not supported)
-/// @tparam Tag Field tag type
-/// @param packet Mutable context packet
-/// @param tag Field tag
-/// @param value Value to write
-/// @return true if write succeeded, false if field not present or not writable
-template<typename Packet, uint8_t CifWord, uint8_t Bit>
-    requires detail::MutablePacketLike<Packet>
-bool set(Packet& packet,
-         field::field_tag_t<CifWord, Bit>,
-         const typename detail::FieldTraits<CifWord, Bit>::value_type& value) noexcept
-{
-    using Trait = detail::FieldTraits<CifWord, Bit>;
-
-    // Check if field is present
-    if (!detail::is_field_present<CifWord, Bit>(
-            packet.cif0(), packet.cif1(), packet.cif2(), packet.cif3())) {
-        return false;
-    }
-
-    // Variable-length fields don't support write (no write() method in trait)
-    if constexpr (!detail::FixedFieldTrait<Trait>) {
-        return false;  // Cannot write variable-length fields
+    // Check if field is variable-length (needs runtime size calculation)
+    if constexpr (detail::VariableFieldTrait<Trait>) {
+        // Variable-length field - compute size from buffer
+        size_t size_words = Trait::compute_size_words(packet.context_buffer(), field_offset);
+        field_size_bytes = size_words * 4;
     } else {
-        // Calculate field offset (compile-time for ContextPacket, runtime for ContextPacketView)
-        size_t field_offset;
-        if constexpr (detail::CompileTimePacket<Packet>) {
-            // Compile-time packet: fold offset to constant at compile time
-            constexpr size_t ct_offset = cif::calculate_field_offset_ct<
-                Packet::cif0_value, Packet::cif1_value, Packet::cif2_value, Packet::cif3_value,
-                CifWord, Bit>();
-            field_offset = packet.context_base_offset() + ct_offset;
-        } else {
-            // Runtime packet: calculate offset dynamically
-            field_offset = detail::calculate_field_offset_runtime(
-                packet.cif0(), packet.cif1(), packet.cif2(), packet.cif3(),
-                CifWord, Bit,
-                packet.mutable_context_buffer(),
-                packet.context_base_offset(),
-                packet.buffer_size()
-            );
-
-            // Check for error sentinel (bounds check failed)
-            if (field_offset == SIZE_MAX) {
-                return false;
-            }
-        }
-
-        // Write field using trait
-        Trait::write(packet.mutable_context_buffer(), field_offset, value);
-        return true;
+        // Fixed-length field - use size from CIF field table
+        field_size_bytes = field_table[Bit].size_words * 4;
     }
+
+    // Return proxy with cached offset, size, and presence
+    return FieldProxy<Tag, Packet>(packet, field_offset, field_size_bytes, true);
 }
 
 // ============================================================================
@@ -176,7 +144,7 @@ bool set(Packet& packet,
 /// @param tag Field tag
 /// @return true if field is present
 template<typename Packet, uint8_t CifWord, uint8_t Bit>
-    requires detail::PacketLike<Packet>
+    requires detail::CifPacketBase<Packet>
 constexpr bool has(const Packet& packet, field::field_tag_t<CifWord, Bit>) noexcept {
     return detail::is_field_present<CifWord, Bit>(
         packet.cif0(), packet.cif1(), packet.cif2(), packet.cif3()
@@ -196,7 +164,7 @@ constexpr bool has(const Packet& packet, field::field_tag_t<CifWord, Bit>) noexc
 /// @param tag Field tag
 /// @return Field value (undefined if field not present)
 template<typename Packet, uint8_t CifWord, uint8_t Bit>
-    requires detail::CompileTimePacket<Packet>
+    requires detail::CifPacketLike<Packet>
 auto get_unchecked(const Packet& packet, field::field_tag_t<CifWord, Bit>) noexcept
     -> typename detail::FieldTraits<CifWord, Bit>::value_type
 {

@@ -36,6 +36,45 @@ concept VariableFieldTrait = FieldTraitLike<T> && requires(
     { T::compute_size_words(base, offset) } -> std::same_as<size_t>;
 };
 
+/// Helper for dependent static_assert in template contexts
+template<typename>
+inline constexpr bool always_false = false;
+
+/// Concept: Field has interpreted value support (unit conversion, etc.)
+/// A field has interpreted access if its FieldTraits specialization defines:
+/// - interpreted_type (e.g., double for Hz, dBm, °C)
+/// - to_interpreted(value_type) -> interpreted_type
+/// - from_interpreted(interpreted_type) -> value_type
+template<typename Tag>
+concept HasInterpretedAccess = requires {
+    typename FieldTraits<Tag::cif, Tag::bit>::interpreted_type;
+    { FieldTraits<Tag::cif, Tag::bit>::to_interpreted(
+        std::declval<typename FieldTraits<Tag::cif, Tag::bit>::value_type>()
+    ) } -> std::same_as<typename FieldTraits<Tag::cif, Tag::bit>::interpreted_type>;
+    { FieldTraits<Tag::cif, Tag::bit>::from_interpreted(
+        std::declval<typename FieldTraits<Tag::cif, Tag::bit>::interpreted_type>()
+    ) } -> std::same_as<typename FieldTraits<Tag::cif, Tag::bit>::value_type>;
+};
+
+/// Dummy type for fields without interpreted support
+struct NoInterpretedType {};
+
+/// Helper: Get interpreted_type if it exists, otherwise NoInterpretedType
+/// This allows return types and parameter types to be well-formed even for fields without interpreted support
+template<typename Tag>
+struct InterpretedTypeOrDummy {
+    using type = NoInterpretedType;
+};
+
+template<typename Tag>
+    requires requires { typename FieldTraits<Tag::cif, Tag::bit>::interpreted_type; }
+struct InterpretedTypeOrDummy<Tag> {
+    using type = typename FieldTraits<Tag::cif, Tag::bit>::interpreted_type;
+};
+
+template<typename Tag>
+using interpreted_type_or_dummy_t = typename InterpretedTypeOrDummy<Tag>::type;
+
 // ============================================================================
 // CIF0 Field Trait Specializations
 // ============================================================================
@@ -246,6 +285,17 @@ struct FieldTraits<0, 21> {
     static void write(uint8_t* base, size_t offset, value_type v) noexcept {
         cif::write_u64_safe(base, offset, v);
     }
+
+    // Interpreted support: Q52.12 fixed-point → Hz (double)
+    using interpreted_type = double;
+
+    static interpreted_type to_interpreted(value_type raw) noexcept {
+        return static_cast<double>(raw) / 4096.0;  // Q52.12 → Hz
+    }
+
+    static value_type from_interpreted(interpreted_type hz) noexcept {
+        return static_cast<value_type>(hz * 4096.0 + 0.5);  // Round to nearest
+    }
 };
 
 // CIF0 Bit 22: Over-Range Count
@@ -365,6 +415,19 @@ struct FieldTraits<0, 29> {
 
     static void write(uint8_t* base, size_t offset, value_type v) noexcept {
         cif::write_u64_safe(base, offset, v);
+    }
+
+    // Interpreted support: Q52.12 fixed-point → Hz (double)
+    using interpreted_type = double;
+
+    static interpreted_type to_interpreted(value_type raw) noexcept {
+        // Q52.12 format: Divide by 2^12 = 4096
+        return static_cast<double>(raw) / 4096.0;
+    }
+
+    static value_type from_interpreted(interpreted_type hz) noexcept {
+        // Convert Hz to Q52.12 format with rounding
+        return static_cast<value_type>(hz * 4096.0 + 0.5);
     }
 };
 

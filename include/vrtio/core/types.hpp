@@ -56,10 +56,16 @@ namespace header {
 
     // Indicator bits
     inline constexpr uint32_t CLASS_ID_INDICATOR = (1U << 27);
+
+    // DEPRECATED: Bit 26 only indicates trailer for Signal Data packets
+    // For Context packets, bit 26 is Reserved. For Command packets, it's Ack/Control.
+    // Use packet-type-specific helpers in detail/header_decode.hpp instead
     inline constexpr uint32_t TRAILER_INDICATOR = (1U << 26);
 
-    // Stream ID indicator (context packets use bit 25)
-    inline constexpr uint32_t STREAM_ID_INDICATOR = (1U << 25);
+    // REMOVED: STREAM_ID_INDICATOR was incorrect
+    // Stream ID presence is determined by packet TYPE (bits 31-28), NOT by bit 25!
+    // Bit 25 is "Nd0" (Not a V49.0 Packet Indicator) for Signal/Context packets
+    // Use detail::has_stream_id_field(packet_type) instead
 
     // TSI field (bits 22-23)
     inline constexpr uint8_t TSI_SHIFT = 22;
@@ -80,9 +86,11 @@ constexpr bool is_signal_data(packet_type type) noexcept {
 }
 
 // Helper: Check if packet type includes stream ID
+// Per VITA 49.2 and RedhawkSDR reference: types 1, 3, 4, 5, 6, 7 have stream ID
+// Only types 0 and 2 (UnidentifiedData, UnidentifiedExtData) lack stream ID
 constexpr bool has_stream_identifier(packet_type type) noexcept {
-    return type == packet_type::signal_data_with_stream ||
-           type == packet_type::ext_data_with_stream;
+    uint8_t t = static_cast<uint8_t>(type);
+    return (t != 0) && (t != 2) && (t <= 7);
 }
 
 // Validation error codes for packet parsing

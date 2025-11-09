@@ -5,8 +5,14 @@
 using namespace vrtio;
 using namespace vrtio::field;
 
+// =============================================================================
+// Basic Field Access API Tests
+// Tests for has(), get(), and get_unchecked() functions
+// Detailed FieldProxy tests are in tests/cif/proxy_test.cpp
+// =============================================================================
+
 int main() {
-    // Test 1: Compile-time packet with fields
+    // Test packet with multiple fields
     using TestPacket = ContextPacket<
         true,                    // HasStreamId
         NoTimeStamp,             // TimeStampType
@@ -20,47 +26,60 @@ int main() {
     uint8_t buffer[1024] = {};
     TestPacket packet(buffer);
 
-    // Test set() function
-    bool success = set(packet, bandwidth, 1'000'000ULL);
-    assert(success && "Should be able to set bandwidth");
+    // =======================================================================
+    // Test set_value() and value() via proxy (interpreted values)
+    // =======================================================================
 
-    success = set(packet, sample_rate, 2'000'000ULL);
-    assert(success && "Should be able to set sample_rate");
+    get(packet, bandwidth).set_value(1'000'000.0);      // 1 MHz
+    get(packet, sample_rate).set_value(2'000'000.0);    // 2 MSPS
+    get(packet, gain).set_raw_value(42U);               // Gain has no interpreted support
 
-    success = set(packet, gain, 42U);
-    assert(success && "Should be able to set gain");
-
+    // =======================================================================
     // Test get() function
+    // =======================================================================
+
     auto bw = get(packet, bandwidth);
     assert(bw.has_value() && "Bandwidth should be present");
-    assert(*bw == 1'000'000ULL && "Bandwidth value should match");
+    assert(bw.value() == 1'000'000.0 && "Bandwidth value should match");
 
     auto sr = get(packet, sample_rate);
     assert(sr.has_value() && "Sample rate should be present");
-    assert(*sr == 2'000'000ULL && "Sample rate value should match");
+    assert(sr.value() == 2'000'000.0 && "Sample rate value should match");
 
     auto g = get(packet, gain);
     assert(g.has_value() && "Gain should be present");
-    assert(*g == 42U && "Gain value should match");
+    assert(g.raw_value() == 42U && "Gain value should match");
 
+    // =======================================================================
     // Test has() function
+    // =======================================================================
+
     assert(has(packet, bandwidth) && "has() should return true for bandwidth");
     assert(has(packet, sample_rate) && "has() should return true for sample_rate");
     assert(has(packet, gain) && "has() should return true for gain");
     assert(!has(packet, temperature) && "has() should return false for temperature");
 
+    // =======================================================================
     // Test get() with missing field
+    // =======================================================================
+
     auto temp = get(packet, temperature);
     assert(!temp.has_value() && "Temperature should not be present");
 
-    // Test get_unchecked() for known field
+    // =======================================================================
+    // Test get_unchecked() for known field (compile-time packets only)
+    // get_unchecked() returns raw values (Q52.12 for bandwidth)
+    // =======================================================================
+
     uint64_t bw_direct = get_unchecked(packet, bandwidth);
-    assert(bw_direct == 1'000'000ULL && "get_unchecked should return correct value");
+    // 1 MHz in Q52.12 format = 1'000'000 * 4096 = 4'096'000'000
+    assert(bw_direct == 4'096'000'000ULL && "get_unchecked should return correct raw value");
 
     std::cout << "✓ All field access API tests passed!\n";
-    std::cout << "  - Bandwidth: " << *bw << " Hz\n";
-    std::cout << "  - Sample Rate: " << *sr << " Hz\n";
-    std::cout << "  - Gain: " << *g << "\n";
+    std::cout << "  - has() correctly identifies present/absent fields\n";
+    std::cout << "  - get() returns FieldProxy with correct values\n";
+    std::cout << "  - get_unchecked() provides zero-overhead access\n";
+    std::cout << "\nNote: Detailed FieldProxy tests are in tests/cif/proxy_test.cpp\n";
 
     return 0;
 }

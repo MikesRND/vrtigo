@@ -2,27 +2,32 @@
 
 TEST_F(ContextPacketTest, GPSASCIIVariableField) {
     // Manually create packet with GPS ASCII field
-    // Packet structure: header (1) + CIF0 (1) + GPS ASCII (4) = 6 words
-    uint32_t header = (static_cast<uint32_t>(packet_type::context) << header::PACKET_TYPE_SHIFT) | 6;  // type=4, size=6 words
+    // Type 4 has stream ID: header (1) + stream_id (1) + CIF0 (1) + GPS ASCII (4) = 7 words
+    uint32_t header = (static_cast<uint32_t>(packet_type::context) << header::PACKET_TYPE_SHIFT) | 7;  // type=4, size=7 words
     cif::write_u32_safe(buffer.data(), 0, header);
+
+    // Stream ID (type 4 has stream ID per VITA 49.2)
+    cif::write_u32_safe(buffer.data(), 4, 0x12345678);
 
     // CIF0 with GPS ASCII bit
     uint32_t cif0_mask = cif0::GPS_ASCII;
-    cif::write_u32_safe(buffer.data(), 4, cif0_mask);
+    cif::write_u32_safe(buffer.data(), 8, cif0_mask);
 
     // GPS ASCII field: count + data
     uint32_t char_count = 12;  // "Hello World!" = 12 chars
-    cif::write_u32_safe(buffer.data(), 8, char_count);
+    cif::write_u32_safe(buffer.data(), 12, char_count);
 
     // Write ASCII data (3 words needed for 12 chars)
     const char* msg = "Hello World!";
-    std::memcpy(buffer.data() + 12, msg, 12);
+    std::memcpy(buffer.data() + 16, msg, 12);
 
-    ContextPacketView view(buffer.data(), 6 * 4);
-    EXPECT_EQ(view.validate(), validation_error::none);
+    ContextPacketView view(buffer.data(), 7 * 4);
+    EXPECT_EQ(view.error(), validation_error::none);
 
-    EXPECT_TRUE(view.has_gps_ascii());
-    auto gps_data = view.gps_ascii_data();
+    // Use new get() API instead of has_gps_ascii() / gps_ascii_data()
+    auto gps_proxy = get(view, field::gps_ascii);
+    EXPECT_TRUE(gps_proxy.has_value());
+    auto gps_data = gps_proxy.raw_bytes();
     EXPECT_EQ(gps_data.size(), 4 * 4);  // 1 count + 3 data words (12 bytes)
 
     // Extract the character count
@@ -36,31 +41,37 @@ TEST_F(ContextPacketTest, GPSASCIIVariableField) {
 }
 
 TEST_F(ContextPacketTest, ContextAssociationLists) {
-    uint32_t header = (static_cast<uint32_t>(packet_type::context) << header::PACKET_TYPE_SHIFT) | 6;  // type=4, size=6 words
+    // Type 4 has stream ID: header (1) + stream_id (1) + CIF0 (1) + context_assoc (4) = 7 words
+    uint32_t header = (static_cast<uint32_t>(packet_type::context) << header::PACKET_TYPE_SHIFT) | 7;  // type=4, size=7 words
     cif::write_u32_safe(buffer.data(), 0, header);
+
+    // Stream ID (type 4 has stream ID per VITA 49.2)
+    cif::write_u32_safe(buffer.data(), 4, 0x12345678);
 
     // CIF0 with context association bit
     uint32_t cif0_mask = cif0::CONTEXT_ASSOCIATION_LISTS;
-    cif::write_u32_safe(buffer.data(), 4, cif0_mask);
+    cif::write_u32_safe(buffer.data(), 8, cif0_mask);
 
     // Context association: two 16-bit counts + IDs
     uint16_t stream_count = 2;
     uint16_t context_count = 1;
     uint32_t counts_word = (stream_count << 16) | context_count;
-    cif::write_u32_safe(buffer.data(), 8, counts_word);
+    cif::write_u32_safe(buffer.data(), 12, counts_word);
 
     // Stream IDs
-    cif::write_u32_safe(buffer.data(), 12, 0x1111);
-    cif::write_u32_safe(buffer.data(), 16, 0x2222);
+    cif::write_u32_safe(buffer.data(), 16, 0x1111);
+    cif::write_u32_safe(buffer.data(), 20, 0x2222);
 
     // Context ID
-    cif::write_u32_safe(buffer.data(), 20, 0x3333);
+    cif::write_u32_safe(buffer.data(), 24, 0x3333);
 
-    ContextPacketView view(buffer.data(), 6 * 4);
-    EXPECT_EQ(view.validate(), validation_error::none);
+    ContextPacketView view(buffer.data(), 7 * 4);
+    EXPECT_EQ(view.error(), validation_error::none);
 
-    EXPECT_TRUE(view.has_context_association());
-    auto assoc_data = view.context_association_data();
+    // Use new get() API instead of has_context_association() / context_association_data()
+    auto assoc_proxy = get(view, field::context_association_lists);
+    EXPECT_TRUE(assoc_proxy.has_value());
+    auto assoc_data = assoc_proxy.raw_bytes();
     EXPECT_EQ(assoc_data.size(), 4 * 4);  // 1 counts + 2 stream + 1 context
 }
 

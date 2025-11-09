@@ -443,6 +443,13 @@ public:
     uint8_t* data() noexcept { return buffer_; }
     const uint8_t* data() const noexcept { return buffer_; }
 
+    // Alias for PacketBase concept compliance
+    uint8_t* raw_bytes() noexcept { return buffer_; }
+    const uint8_t* raw_bytes() const noexcept { return buffer_; }
+
+    // Static packet size method for PacketBase concept compliance
+    static constexpr size_t packet_size_bytes() noexcept { return size_bytes; }
+
     // Validation: verify packet header matches template configuration
     //
     // CRITICAL: You MUST call this method when parsing untrusted data before
@@ -512,8 +519,12 @@ private:
         // Trailer indicator (bit 26)
         header |= (HasTrailer ? 1U : 0U) << 26;
 
-        // Reserved (bit 25)
-        header |= (0 << 25);
+        // Not a V49.0 Packet Indicator (bit 25, Nd0)
+        // Per VITA 49.2 Rule 5.1.1.1-2 and Permission 5.1.1.1-1:
+        // - Set to 0 for V49.0 compatibility (default)
+        // - Can be set to 1 to indicate V49.2-specific features
+        // Note: This is NOT the stream ID indicator - stream ID presence is indicated by packet type!
+        header |= (0 << 25);  // Default to V49.0 compatible mode
 
         // TSM (bit 24) - not used
         header |= (0 << 24);

@@ -21,13 +21,13 @@ TEST_F(ContextPacketTest, BasicCompileTimePacket) {
 
     // Set fields
     packet.set_stream_id(0x12345678);
-    set(packet, field::bandwidth, 20'000'000ULL);  // 20 MHz
-    set(packet, field::sample_rate, 10'000'000ULL);  // 10 MSPS
+    get(packet, field::bandwidth).set_value(20'000'000.0);      // 20 MHz
+    get(packet, field::sample_rate).set_value(10'000'000.0);    // 10 MSPS
 
     // Verify fields
     EXPECT_EQ(packet.stream_id(), 0x12345678);
-    EXPECT_EQ(get(packet, field::bandwidth).value(), 20'000'000);
-    EXPECT_EQ(get(packet, field::sample_rate).value(), 10'000'000);
+    EXPECT_DOUBLE_EQ(get(packet, field::bandwidth).value(), 20'000'000.0);
+    EXPECT_DOUBLE_EQ(get(packet, field::sample_rate).value(), 10'000'000.0);
 }
 
 TEST_F(ContextPacketTest, PacketWithClassId) {
@@ -51,18 +51,18 @@ TEST_F(ContextPacketTest, PacketWithClassId) {
     EXPECT_EQ(TestContext::size_words, 1 + 1 + 2 + 1 + 2);  // header + stream + class_id + cif0 + bandwidth
 
     packet.set_stream_id(0x87654321);
-    set(packet, field::bandwidth, 40'000'000ULL);
+    get(packet, field::bandwidth).set_value(40'000'000.0);  // 40 MHz
 
     EXPECT_EQ(packet.stream_id(), 0x87654321);
-    EXPECT_EQ(get(packet, field::bandwidth).value(), 40'000'000);
+    EXPECT_DOUBLE_EQ(get(packet, field::bandwidth).value(), 40'000'000.0);
 }
 
 TEST_F(ContextPacketTest, RuntimeParserBasic) {
     // Manually construct a context packet in the buffer
-    // Header: context packet (type 4), has stream ID, size
+    // Header: extension context packet (type 5), which has stream ID per spec
+    // Stream ID presence is determined by packet type (odd=has, even=no), not bit 25
     uint32_t header =
-        (static_cast<uint32_t>(packet_type::context) << header::PACKET_TYPE_SHIFT) |
-        header::STREAM_ID_INDICATOR |
+        (static_cast<uint32_t>(packet_type::ext_context) << header::PACKET_TYPE_SHIFT) |
         7;
     cif::write_u32_safe(buffer.data(), 0, header);
 
@@ -81,7 +81,7 @@ TEST_F(ContextPacketTest, RuntimeParserBasic) {
 
     // Parse with ContextPacketView
     ContextPacketView view(buffer.data(), 7 * 4);
-    EXPECT_EQ(view.validate(), validation_error::none);
+    EXPECT_EQ(view.error(), validation_error::none);
 
     // Check parsed values
     EXPECT_TRUE(view.has_stream_id());
@@ -93,11 +93,11 @@ TEST_F(ContextPacketTest, RuntimeParserBasic) {
 
     auto bw = get(view, field::bandwidth);
     EXPECT_TRUE(bw.has_value());
-    EXPECT_EQ(bw.value(), 25'000'000);
+    EXPECT_EQ(bw.raw_value(), 25'000'000);
 
     auto sr = get(view, field::sample_rate);
     EXPECT_TRUE(sr.has_value());
-    EXPECT_EQ(sr.value(), 12'500'000);
+    EXPECT_EQ(sr.raw_value(), 12'500'000);
 
     // Field that's not present should return nullopt
     EXPECT_FALSE(get(view, field::gain).has_value());
@@ -116,7 +116,7 @@ TEST_F(ContextPacketTest, SizeFieldValidation) {
 
     // Provide buffer large enough for header's claim, so we get past buffer_too_small check
     ContextPacketView view(buffer.data(), 10 * 4);
-    EXPECT_EQ(view.validate(), validation_error::size_field_mismatch);
+    EXPECT_EQ(view.error(), validation_error::size_field_mismatch);
 }
 
 TEST_F(ContextPacketTest, BufferTooSmall) {
@@ -125,7 +125,7 @@ TEST_F(ContextPacketTest, BufferTooSmall) {
 
     // Provide buffer smaller than declared size
     ContextPacketView view(buffer.data(), 3 * 4);  // Only 3 words provided
-    EXPECT_EQ(view.validate(), validation_error::buffer_too_small);
+    EXPECT_EQ(view.error(), validation_error::buffer_too_small);
 }
 
 TEST_F(ContextPacketTest, InvalidPacketType) {
@@ -133,6 +133,6 @@ TEST_F(ContextPacketTest, InvalidPacketType) {
     cif::write_u32_safe(buffer.data(), 0, header);
 
     ContextPacketView view(buffer.data(), 3 * 4);
-    EXPECT_EQ(view.validate(), validation_error::invalid_packet_type);
+    EXPECT_EQ(view.error(), validation_error::invalid_packet_type);
 }
 
