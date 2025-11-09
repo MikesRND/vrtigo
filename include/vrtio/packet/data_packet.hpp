@@ -2,8 +2,10 @@
 
 #include "../core/types.hpp"
 #include "../core/endian.hpp"
+#include "../core/header.hpp"
 #include "../core/concepts.hpp"
 #include "../core/trailer.hpp"
+#include "../core/trailer_view.hpp"
 #include "../core/timestamp.hpp"
 #include "../core/timestamp_traits.hpp"
 #include "../core/detail/header_decode.hpp"
@@ -15,16 +17,18 @@
 namespace vrtio {
 
 template<
-    packet_type Type,
+    PacketType Type,
     typename TimeStampType = NoTimeStamp,
-    bool HasTrailer = false,
+    Trailer HasTrailer = Trailer::None,
     size_t PayloadWords = 0
 >
-    requires (Type == packet_type::signal_data_no_stream ||
-              Type == packet_type::signal_data_with_stream) &&
+    requires (Type == PacketType::SignalDataNoId ||
+              Type == PacketType::SignalData ||
+              Type == PacketType::ExtensionDataNoId ||
+              Type == PacketType::ExtensionData) &&
              ValidPayloadWords<PayloadWords> &&
              ValidTimestampType<TimeStampType>
-class SignalPacket {
+class DataPacket {
 private:
     // Extract TSI and TSF from TimeStampType
     static constexpr tsi_type TSI = TimestampTraits<TimeStampType>::tsi;
@@ -35,14 +39,15 @@ public:
     using timestamp_type = TimeStampType;
 
     // Compile-time packet configuration
-    static constexpr packet_type packet_type_v = Type;
+    static constexpr PacketType packet_type_v = Type;
     static constexpr tsi_type tsi_type_v = TSI;
     static constexpr tsf_type tsf_type_v = TSF;
-    static constexpr bool has_trailer = HasTrailer;
+    static constexpr bool has_trailer = (HasTrailer == Trailer::Included);
     static constexpr size_t payload_words = PayloadWords;
 
     // Derived constants
-    static constexpr bool has_stream_id = (Type == packet_type::signal_data_with_stream);
+    static constexpr bool has_stream_id = (Type == PacketType::SignalData ||
+                                           Type == PacketType::ExtensionData);
     static constexpr bool has_timestamp = TimestampTraits<TimeStampType>::has_timestamp;
 
     // Size calculation (in 32-bit words)
@@ -50,7 +55,7 @@ public:
     static constexpr size_t stream_id_words = has_stream_id ? 1 : 0;
     static constexpr size_t tsi_words = (TSI != tsi_type::none) ? 1 : 0;
     static constexpr size_t tsf_words = (TSF != tsf_type::none) ? 2 : 0;
-    static constexpr size_t trailer_words = HasTrailer ? 1 : 0;
+    static constexpr size_t trailer_words = (HasTrailer == Trailer::Included) ? 1 : 0;
 
     static constexpr size_t total_words =
         header_words + stream_id_words + tsi_words +
@@ -72,25 +77,22 @@ public:
     static constexpr size_t payload_offset = tsf_offset + tsf_words;
     static constexpr size_t trailer_offset = payload_offset + PayloadWords;
 
-    // Constructor: creates view over user-provided buffer
-    // If init=true, initializes a new packet; otherwise just wraps existing data
+    // Constructor: creates view over user-provided buffer.
+    // If init=true, initializes a new packet; otherwise just wraps existing data.
     //
     // SAFETY WARNING: When init=false (parsing untrusted data), you MUST call
-    // validate() before accessing packet fields. Nothing prevents unsafe usage!
+    // validate() before accessing packet fields.
     //
     // Example of UNSAFE pattern (DO NOT DO THIS):
-    //   signal_packet packet(untrusted_buffer, false);
+    //   DataPacket packet(untrusted_buffer, false);
     //   auto id = packet.stream_id();  // DANGEROUS! No validation!
     //
     // Correct pattern:
-    //   signal_packet packet(untrusted_buffer, false);
+    //   DataPacket packet(untrusted_buffer, false);
     //   if (packet.validate(buffer_size) == validation_error::none) {
     //       auto id = packet.stream_id();  // Safe after validation
     //   }
-    //
-    // Phase 2 Enhancement: This API will be replaced with type-safe factory
-    // methods that enforce validation at compile time. See design/phase1_v1.4.md
-    explicit SignalPacket(uint8_t* buffer, bool init = true) noexcept
+    explicit DataPacket(uint8_t* buffer, bool init = true) noexcept
         : buffer_(buffer) {
         if (init) {
             init_header();
@@ -98,12 +100,12 @@ public:
     }
 
     // Prevent copying (packet is a view)
-    SignalPacket(const SignalPacket&) = delete;
-    SignalPacket& operator=(const SignalPacket&) = delete;
+    DataPacket(const DataPacket&) = delete;
+    DataPacket& operator=(const DataPacket&) = delete;
 
     // Allow moving
-    SignalPacket(SignalPacket&&) noexcept = default;
-    SignalPacket& operator=(SignalPacket&&) noexcept = default;
+    DataPacket(DataPacket&&) noexcept = default;
+    DataPacket& operator=(DataPacket&&) noexcept = default;
 
     // Header field accessors (always available)
 
@@ -193,218 +195,14 @@ public:
         set_timestamp_fractional(ts.fractional());
     }
 
-    // Trailer accessors (only if HasTrailer)
+    // Trailer view access
 
-    uint32_t trailer() const noexcept requires(HasTrailer) {
-        return read_u32(trailer_offset);
+    TrailerView trailer() noexcept requires(HasTrailer == Trailer::Included) {
+        return TrailerView(buffer_ + trailer_offset * vrt_word_size);
     }
 
-    void set_trailer(uint32_t t) noexcept requires(HasTrailer) {
-        write_u32(trailer_offset, t);
-    }
-
-    // Individual trailer field getters (only if HasTrailer)
-
-    /**
-     * Get the count of associated context packets (bits 0-6)
-     * @return Context packets count (0-127)
-     */
-    uint8_t trailer_context_packets() const noexcept requires(HasTrailer) {
-        return trailer::get_context_packets(trailer());
-    }
-
-    /**
-     * Check if reference is locked (bit 8)
-     * @return true if reference lock is indicated
-     */
-    bool trailer_reference_lock() const noexcept requires(HasTrailer) {
-        return trailer::get_bit<trailer::reference_lock_bit>(trailer());
-    }
-
-    /**
-     * Check AGC/MGC status (bit 9)
-     * @return true if AGC/MGC is active
-     */
-    bool trailer_agc_mgc() const noexcept requires(HasTrailer) {
-        return trailer::get_bit<trailer::agc_mgc_bit>(trailer());
-    }
-
-    /**
-     * Check if signal is detected (bit 10)
-     * @return true if signal is detected
-     */
-    bool trailer_detected_signal() const noexcept requires(HasTrailer) {
-        return trailer::get_bit<trailer::detected_signal_bit>(trailer());
-    }
-
-    /**
-     * Check if spectral inversion is indicated (bit 11)
-     * @return true if spectral inversion is present
-     */
-    bool trailer_spectral_inversion() const noexcept requires(HasTrailer) {
-        return trailer::get_bit<trailer::spectral_inversion_bit>(trailer());
-    }
-
-    /**
-     * Check if over-range condition is indicated (bit 12)
-     * @return true if over-range occurred
-     */
-    bool trailer_over_range() const noexcept requires(HasTrailer) {
-        return trailer::get_bit<trailer::over_range_bit>(trailer());
-    }
-
-    /**
-     * Check if sample loss is indicated (bit 13)
-     * @return true if sample loss occurred
-     */
-    bool trailer_sample_loss() const noexcept requires(HasTrailer) {
-        return trailer::get_bit<trailer::sample_loss_bit>(trailer());
-    }
-
-    /**
-     * Check if time is calibrated (bit 16)
-     * @return true if calibrated time indicator is set
-     */
-    bool trailer_calibrated_time() const noexcept requires(HasTrailer) {
-        return trailer::get_bit<trailer::calibrated_time_bit>(trailer());
-    }
-
-    /**
-     * Check if data is valid (bit 17)
-     * @return true if valid data indicator is set
-     */
-    bool trailer_valid_data() const noexcept requires(HasTrailer) {
-        return trailer::get_bit<trailer::valid_data_bit>(trailer());
-    }
-
-    /**
-     * Check if reference point is indicated (bit 18)
-     * @return true if reference point indicator is set
-     */
-    bool trailer_reference_point() const noexcept requires(HasTrailer) {
-        return trailer::get_bit<trailer::reference_point_bit>(trailer());
-    }
-
-    /**
-     * Check if signal is detected (bit 19)
-     * @return true if signal detected indicator is set
-     */
-    bool trailer_signal_detected() const noexcept requires(HasTrailer) {
-        return trailer::get_bit<trailer::signal_detected_bit>(trailer());
-    }
-
-    /**
-     * Check if any error conditions are present
-     * @return true if over-range or sample loss occurred
-     */
-    bool trailer_has_errors() const noexcept requires(HasTrailer) {
-        return trailer::has_errors(trailer());
-    }
-
-    // Individual trailer field setters (only if HasTrailer)
-
-    /**
-     * Set the count of associated context packets (bits 0-6)
-     * @param count Context packets count (0-127)
-     */
-    void set_trailer_context_packets(uint8_t count) noexcept requires(HasTrailer) {
-        uint32_t t = trailer::set_field<trailer::context_packets_shift,
-                                        trailer::context_packets_mask>(trailer(), count);
-        set_trailer(t);
-    }
-
-    /**
-     * Set reference lock status (bit 8)
-     * @param locked true to indicate reference lock
-     */
-    void set_trailer_reference_lock(bool locked) noexcept requires(HasTrailer) {
-        set_trailer(trailer::set_bit<trailer::reference_lock_bit>(trailer(), locked));
-    }
-
-    /**
-     * Set AGC/MGC status (bit 9)
-     * @param active true to indicate AGC/MGC is active
-     */
-    void set_trailer_agc_mgc(bool active) noexcept requires(HasTrailer) {
-        set_trailer(trailer::set_bit<trailer::agc_mgc_bit>(trailer(), active));
-    }
-
-    /**
-     * Set detected signal status (bit 10)
-     * @param detected true to indicate signal is detected
-     */
-    void set_trailer_detected_signal(bool detected) noexcept requires(HasTrailer) {
-        set_trailer(trailer::set_bit<trailer::detected_signal_bit>(trailer(), detected));
-    }
-
-    /**
-     * Set spectral inversion status (bit 11)
-     * @param inverted true to indicate spectral inversion
-     */
-    void set_trailer_spectral_inversion(bool inverted) noexcept requires(HasTrailer) {
-        set_trailer(trailer::set_bit<trailer::spectral_inversion_bit>(trailer(), inverted));
-    }
-
-    /**
-     * Set over-range condition (bit 12)
-     * @param over_range true to indicate over-range occurred
-     */
-    void set_trailer_over_range(bool over_range) noexcept requires(HasTrailer) {
-        set_trailer(trailer::set_bit<trailer::over_range_bit>(trailer(), over_range));
-    }
-
-    /**
-     * Set sample loss condition (bit 13)
-     * @param loss true to indicate sample loss occurred
-     */
-    void set_trailer_sample_loss(bool loss) noexcept requires(HasTrailer) {
-        set_trailer(trailer::set_bit<trailer::sample_loss_bit>(trailer(), loss));
-    }
-
-    /**
-     * Set calibrated time indicator (bit 16)
-     * @param calibrated true to indicate time is calibrated
-     */
-    void set_trailer_calibrated_time(bool calibrated) noexcept requires(HasTrailer) {
-        set_trailer(trailer::set_bit<trailer::calibrated_time_bit>(trailer(), calibrated));
-    }
-
-    /**
-     * Set valid data indicator (bit 17)
-     * @param valid true to indicate data is valid
-     */
-    void set_trailer_valid_data(bool valid) noexcept requires(HasTrailer) {
-        set_trailer(trailer::set_bit<trailer::valid_data_bit>(trailer(), valid));
-    }
-
-    /**
-     * Set reference point indicator (bit 18)
-     * @param ref_point true to indicate reference point
-     */
-    void set_trailer_reference_point(bool ref_point) noexcept requires(HasTrailer) {
-        set_trailer(trailer::set_bit<trailer::reference_point_bit>(trailer(), ref_point));
-    }
-
-    /**
-     * Set signal detected indicator (bit 19)
-     * @param detected true to indicate signal is detected
-     */
-    void set_trailer_signal_detected(bool detected) noexcept requires(HasTrailer) {
-        set_trailer(trailer::set_bit<trailer::signal_detected_bit>(trailer(), detected));
-    }
-
-    /**
-     * Set trailer to indicate good status (valid data and calibrated time)
-     */
-    void set_trailer_good_status() noexcept requires(HasTrailer) {
-        set_trailer(trailer::create_good_status());
-    }
-
-    /**
-     * Clear all trailer bits
-     */
-    void clear_trailer() noexcept requires(HasTrailer) {
-        set_trailer(0);
+    ConstTrailerView trailer() const noexcept requires(HasTrailer == Trailer::Included) {
+        return ConstTrailerView(buffer_ + trailer_offset * vrt_word_size);
     }
 
     // Payload access
@@ -475,8 +273,8 @@ public:
             return validation_error::packet_type_mismatch;
         }
 
-        // Check 3: Trailer bit (bit 26)
-        if (decoded.has_trailer != HasTrailer) {
+        // Check 3: Trailer bit (bit 26) - use type-aware field
+        if (decoded.trailer_included != (HasTrailer == Trailer::Included)) {
             return validation_error::trailer_bit_mismatch;
         }
 
@@ -511,35 +309,31 @@ private:
         uint32_t header = 0;
 
         // Packet type (bits 31-28)
-        header |= (static_cast<uint32_t>(Type) << 28);
+        header |= (static_cast<uint32_t>(Type) << header::PACKET_TYPE_SHIFT);
 
         // Class ID indicator (bit 27) - not used in Phase 1
-        header |= (0 << 27);
+        header |= (0U << header::CLASS_ID_SHIFT);
 
         // Trailer indicator (bit 26)
-        header |= (HasTrailer ? 1U : 0U) << 26;
+        header |= (HasTrailer == Trailer::Included ? 1U : 0U) << header::INDICATOR_BIT_26_SHIFT;
 
-        // Not a V49.0 Packet Indicator (bit 25, Nd0)
-        // Per VITA 49.2 Rule 5.1.1.1-2 and Permission 5.1.1.1-1:
-        // - Set to 0 for V49.0 compatibility (default)
-        // - Can be set to 1 to indicate V49.2-specific features
-        // Note: This is NOT the stream ID indicator - stream ID presence is indicated by packet type!
-        header |= (0 << 25);  // Default to V49.0 compatible mode
+        // Trailer indicator (bit 25)
+        header |= (0U << header::INDICATOR_BIT_25_SHIFT);  // Default to V49.0 compatible mode
 
-        // TSM (bit 24) - not used
-        header |= (0 << 24);
+        // TSM (bit 24) - not used for signal/extension data packets
+        header |= (0U << header::INDICATOR_BIT_24_SHIFT);
 
         // TSI (bits 23-22)
-        header |= (static_cast<uint32_t>(TSI) << 22);
+        header |= (static_cast<uint32_t>(TSI) << header::TSI_SHIFT);
 
         // TSF (bits 21-20)
-        header |= (static_cast<uint32_t>(TSF) << 20);
+        header |= (static_cast<uint32_t>(TSF) << header::TSF_SHIFT);
 
         // Packet count (bits 19-16) - initialized to 0
-        header |= (0 << 16);
+        header |= (0U << header::PACKET_COUNT_SHIFT);
 
         // Packet size in words (bits 15-0)
-        header |= (total_words & 0xFFFF);
+        header |= ((total_words & header::SIZE_MASK) << header::SIZE_SHIFT);
 
         write_u32(header_offset, header);
     }
@@ -569,4 +363,36 @@ private:
     }
 };
 
+// User-facing type aliases for convenient usage
+
+// Specific aliases that line up with PacketType enum names
+template<
+    typename TimeStampType = NoTimeStamp,
+    Trailer HasTrailer = Trailer::None,
+    size_t PayloadWords = 0
+>
+using SignalDataPacket = DataPacket<PacketType::SignalData, TimeStampType, HasTrailer, PayloadWords>;
+
+template<
+    typename TimeStampType = NoTimeStamp,
+    Trailer HasTrailer = Trailer::None,
+    size_t PayloadWords = 0
+>
+using SignalDataPacketNoId = DataPacket<PacketType::SignalDataNoId, TimeStampType, HasTrailer, PayloadWords>;
+
+template<
+    typename TimeStampType = NoTimeStamp,
+    Trailer HasTrailer = Trailer::None,
+    size_t PayloadWords = 0
+>
+using ExtensionDataPacket = DataPacket<PacketType::ExtensionData, TimeStampType, HasTrailer, PayloadWords>;
+
+template<
+    typename TimeStampType = NoTimeStamp,
+    Trailer HasTrailer = Trailer::None,
+    size_t PayloadWords = 0
+>
+using ExtensionDataPacketNoId = DataPacket<PacketType::ExtensionDataNoId, TimeStampType, HasTrailer, PayloadWords>;
+
+// Deprecated legacy alias retained for source compatibility. Will be removed in a future release.
 }  // namespace vrtio

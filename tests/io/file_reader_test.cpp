@@ -10,7 +10,7 @@
 using namespace vrtio::io;
 using namespace vrtio::detail;
 using vrtio::validation_error;
-using vrtio::packet_type;
+using vrtio::PacketType;
 using vrtio::ContextPacketView;
 
 // Test data file paths
@@ -146,8 +146,8 @@ TEST(FileReaderTest, ParseSignalPackets) {
         if (packet.empty()) break;
 
         auto& info = reader.last_error();
-        if (info.type == packet_type::signal_data_with_stream ||
-            info.type == packet_type::signal_data_no_stream) {
+        if (info.type == PacketType::SignalData ||
+            info.type == PacketType::SignalDataNoId) {
             found_signal = true;
 
             // Verify we can feed to SignalPacket (just check header)
@@ -171,7 +171,7 @@ TEST(FileReaderTest, ParseContextPackets) {
         if (packet.empty()) break;
 
         auto& info = reader.last_error();
-        if (info.type == packet_type::context || info.type == packet_type::ext_context) {
+        if (info.type == PacketType::Context || info.type == PacketType::ExtensionContext) {
             found_context = true;
 
             // Verify we can create a ContextPacketView (basic parsing check)
@@ -191,7 +191,7 @@ TEST(FileReaderTest, ParseContextPackets) {
 TEST(FileReaderTest, MixedPacketStream) {
     VRTFileReader<> reader(sample_data_file.c_str());
 
-    std::map<packet_type, size_t> type_counts;
+    std::map<PacketType, size_t> type_counts;
     size_t total = 0;
 
     while (total++ < 100) {
@@ -213,7 +213,7 @@ TEST(FileReaderTest, ContextThenSignal) {
     VRTFileReader<> reader(sample_data_file.c_str());
 
     // VRT streams typically start with context, then signal data
-    std::vector<packet_type> types;
+    std::vector<PacketType> types;
 
     for (int i = 0; i < 10; ++i) {
         auto packet = reader.read_next_span();
@@ -435,8 +435,8 @@ TEST(FileReaderTest, SineWaveDataFullParse) {
         auto& info = reader.last_error();
 
         // Look for signal packets
-        if (info.type == packet_type::signal_data_with_stream ||
-            info.type == packet_type::signal_data_no_stream) {
+        if (info.type == PacketType::SignalData ||
+            info.type == PacketType::SignalDataNoId) {
 
             // Extract payload (skip header + optional fields)
             // For simplicity, assume payload starts after reasonable header

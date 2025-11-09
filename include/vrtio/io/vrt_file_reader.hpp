@@ -53,7 +53,7 @@ public:
      */
     struct ReadResult {
         validation_error error;         ///< Error code (none = success)
-        packet_type type;               ///< Packet type from header
+        PacketType type;                ///< Packet type from header
         size_t packet_size_bytes;       ///< Actual packet size in bytes
         size_t buffer_size_required;    ///< Required buffer size (set when buffer too small)
         size_t file_offset;             ///< File offset where packet starts

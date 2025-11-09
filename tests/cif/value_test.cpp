@@ -22,8 +22,7 @@ protected:
 TEST_F(InterpretedValueTest, BandwidthInterpretedRead) {
     using TestContext = ContextPacket<
         true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH, 0, 0, 0, false
-    >;
+        cif0::BANDWIDTH, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -42,8 +41,7 @@ TEST_F(InterpretedValueTest, BandwidthInterpretedRead) {
 TEST_F(InterpretedValueTest, BandwidthInterpretedWrite) {
     using TestContext = ContextPacket<
         true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH, 0, 0, 0, false
-    >;
+        cif0::BANDWIDTH, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -58,8 +56,7 @@ TEST_F(InterpretedValueTest, BandwidthInterpretedWrite) {
 TEST_F(InterpretedValueTest, BandwidthRoundTrip) {
     using TestContext = ContextPacket<
         true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH, 0, 0, 0, false
-    >;
+        cif0::BANDWIDTH, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -83,8 +80,7 @@ TEST_F(InterpretedValueTest, BandwidthRoundTrip) {
 TEST_F(InterpretedValueTest, BandwidthOperatorDereference) {
     using TestContext = ContextPacket<
         true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH, 0, 0, 0, false
-    >;
+        cif0::BANDWIDTH, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -101,8 +97,7 @@ TEST_F(InterpretedValueTest, BandwidthOperatorDereference) {
 TEST_F(InterpretedValueTest, BandwidthConversionPrecision) {
     using TestContext = ContextPacket<
         true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH, 0, 0, 0, false
-    >;
+        cif0::BANDWIDTH, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -124,8 +119,7 @@ TEST_F(InterpretedValueTest, BandwidthConversionPrecision) {
 TEST_F(InterpretedValueTest, BandwidthEdgeCases) {
     using TestContext = ContextPacket<
         true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH, 0, 0, 0, false
-    >;
+        cif0::BANDWIDTH, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -149,8 +143,7 @@ TEST_F(InterpretedValueTest, BandwidthEdgeCases) {
 TEST_F(InterpretedValueTest, SampleRateInterpretedRead) {
     using TestContext = ContextPacket<
         true, NoTimeStamp, NoClassId,
-        cif0::SAMPLE_RATE, 0, 0, 0, false
-    >;
+        cif0::SAMPLE_RATE, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -169,8 +162,7 @@ TEST_F(InterpretedValueTest, SampleRateInterpretedRead) {
 TEST_F(InterpretedValueTest, SampleRateInterpretedWrite) {
     using TestContext = ContextPacket<
         true, NoTimeStamp, NoClassId,
-        cif0::SAMPLE_RATE, 0, 0, 0, false
-    >;
+        cif0::SAMPLE_RATE, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -185,8 +177,7 @@ TEST_F(InterpretedValueTest, SampleRateInterpretedWrite) {
 TEST_F(InterpretedValueTest, SampleRateRoundTrip) {
     using TestContext = ContextPacket<
         true, NoTimeStamp, NoClassId,
-        cif0::SAMPLE_RATE, 0, 0, 0, false
-    >;
+        cif0::SAMPLE_RATE, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -211,8 +202,7 @@ TEST_F(InterpretedValueTest, SampleRateRoundTrip) {
 TEST_F(InterpretedValueTest, SampleRateOperatorDereference) {
     using TestContext = ContextPacket<
         true, NoTimeStamp, NoClassId,
-        cif0::SAMPLE_RATE, 0, 0, 0, false
-    >;
+        cif0::SAMPLE_RATE, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -229,8 +219,7 @@ TEST_F(InterpretedValueTest, SampleRateOperatorDereference) {
 TEST_F(InterpretedValueTest, SampleRateConversionPrecision) {
     using TestContext = ContextPacket<
         true, NoTimeStamp, NoClassId,
-        cif0::SAMPLE_RATE, 0, 0, 0, false
-    >;
+        cif0::SAMPLE_RATE, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -252,8 +241,7 @@ TEST_F(InterpretedValueTest, SampleRateConversionPrecision) {
 TEST_F(InterpretedValueTest, SampleRateTypicalADCRates) {
     using TestContext = ContextPacket<
         true, NoTimeStamp, NoClassId,
-        cif0::SAMPLE_RATE, 0, 0, 0, false
-    >;
+        cif0::SAMPLE_RATE, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -280,8 +268,7 @@ TEST_F(InterpretedValueTest, SampleRateTypicalADCRates) {
 TEST_F(InterpretedValueTest, SampleRateEdgeCases) {
     using TestContext = ContextPacket<
         true, NoTimeStamp, NoClassId,
-        cif0::SAMPLE_RATE, 0, 0, 0, false
-    >;
+        cif0::SAMPLE_RATE, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -312,8 +299,7 @@ TEST_F(InterpretedValueTest, BandwidthAndSampleRateTogether) {
     using TestContext = ContextPacket<
         true, NoTimeStamp, NoClassId,
         cif0::BANDWIDTH | cif0::SAMPLE_RATE,
-        0, 0, 0, false
-    >;
+        0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -336,8 +322,7 @@ TEST_F(InterpretedValueTest, RuntimeParserIntegration) {
     // Build packet with compile-time type
     using TestContext = ContextPacket<
         true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH | cif0::SAMPLE_RATE, 0, 0, 0, false
-    >;
+        cif0::BANDWIDTH | cif0::SAMPLE_RATE, 0, 0, 0>;
 
     TestContext tx_packet(buffer.data());
 

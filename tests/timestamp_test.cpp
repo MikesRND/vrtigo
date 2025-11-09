@@ -258,10 +258,10 @@ TEST_F(TimeStampTest, MaxSafeTimestampDifference) {
 
 // Integration with SignalPacket tests
 TEST_F(TimeStampTest, PacketIntegration) {
-    using PacketType = SignalPacket<
-        packet_type::signal_data_with_stream,
+    using PacketType = SignalDataPacket<
         TimeStampUTC,
-        false, 256
+        vrtio::Trailer::None,
+        256
     >;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
@@ -282,10 +282,10 @@ TEST_F(TimeStampTest, PacketIntegration) {
 }
 
 TEST_F(TimeStampTest, BuilderIntegration) {
-    using PacketType = SignalPacket<
-        packet_type::signal_data_with_stream,
+    using PacketType = SignalDataPacket<
         TimeStampUTC,
-        false, 256
+        vrtio::Trailer::None,
+        256
     >;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
@@ -325,10 +325,10 @@ TEST_F(TimeStampTest, NonUTCTimestampsNotImplemented) {
 TEST_F(TimeStampTest, GPSTimestampPacketStructure) {
     // GPS timestamps can be used to configure packet structure
     // even though the timestamp type itself is not fully implemented
-    using GPSPacket = SignalPacket<
-        packet_type::signal_data_with_stream,
+    using GPSPacket = SignalDataPacket<
         TimeStamp<tsi_type::gps, tsf_type::real_time>,
-        false, 256
+        vrtio::Trailer::None,
+        256
     >;
 
     // This correctly sets TSI=2, TSF=2 in the packet header

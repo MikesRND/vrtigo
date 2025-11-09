@@ -33,9 +33,10 @@ public:
 
         // Decode header for more details
         auto decoded = detail::decode_header(info.header);
-        std::cout << "  Stream ID: " << (decoded.has_stream_id ? "Yes" : "No") << "\n";
+        std::cout << "  Stream ID: " << (detail::has_stream_id_field(decoded.type) ? "Yes" : "No") << "\n";
         std::cout << "  Class ID: " << (decoded.has_class_id ? "Yes" : "No") << "\n";
-        std::cout << "  Trailer: " << (decoded.has_trailer ? "Yes" : "No") << "\n";
+        // Trailer only applies to Signal/Extension Data packets
+        std::cout << "  Trailer: " << (decoded.trailer_included ? "Yes" : "No") << "\n";
         std::cout << "  TSI: " << static_cast<int>(decoded.tsi) << "\n";
         std::cout << "  TSF: " << static_cast<int>(decoded.tsf) << "\n";
         std::cout << "  Count: " << static_cast<int>(decoded.packet_count) << "\n";

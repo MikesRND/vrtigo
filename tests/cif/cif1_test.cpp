@@ -12,9 +12,7 @@ TEST_F(ContextPacketTest, CIF1Fields) {
         cif0_mask,      // CIF0
         cif1_mask,      // CIF1
         0,              // No CIF2
-        0,              // No CIF3
-        false           // No trailer
-    >;
+        0>;
 
     TestContext packet(buffer.data());
 
@@ -32,9 +30,7 @@ TEST_F(ContextPacketTest, NewCIF1Fields) {
         0,              // No CIF0 fields
         cif1_mask,      // CIF1 with new fields
         0,              // No CIF2
-        0,              // No CIF3
-        false
-    >;
+        0>;
 
     TestContext packet(buffer.data());
 
@@ -58,7 +54,7 @@ TEST_F(ContextPacketTest, NewCIF1Fields) {
 TEST_F(ContextPacketTest, RuntimeParseCIF1) {
     // Build a packet with CIF1 enabled and Aux Frequency field
     // Type 4 has stream ID: header(1) + stream_id(1) + CIF0(1) + CIF1(1) + Aux Frequency(2) = 6 words
-    uint32_t header = (static_cast<uint32_t>(packet_type::context) << header::PACKET_TYPE_SHIFT) | 6;
+    uint32_t header = (static_cast<uint32_t>(PacketType::Context) << header::PACKET_TYPE_SHIFT) | 6;
     cif::write_u32_safe(buffer.data(), 0, header);
 
     // Stream ID (type 4 has stream ID per VITA 49.2)
@@ -100,9 +96,7 @@ TEST_F(ContextPacketTest, CompileTimeCIF1RuntimeParse) {
         0,              // No CIF0 data fields (CIF1 enable bit auto-set)
         cif1_mask,      // CIF1
         0,              // No CIF2
-        0,              // No CIF3
-        false
-    >;
+        0>;
 
     // Compile-time assertion: verify CIF1 enable bit is auto-set
     static_assert((TestContext::cif0_value & (1U << cif::CIF1_ENABLE_BIT)) != 0,

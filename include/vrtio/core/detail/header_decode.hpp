@@ -1,51 +1,60 @@
 #pragma once
 
 #include "../types.hpp"
+#include "../header.hpp"
 #include <cstdint>
 
 namespace vrtio::detail {
 
 /**
- * @brief Decoded VRT packet header information
+ * @brief Decoded VRT packet header information with type-aware interpretation
  *
- * Contains all fields extracted from a VRT packet header word.
- * This struct is returned by decode_header() to provide raw bit extraction.
+ * Contains all fields extracted from a VRT packet header word, including both
+ * raw bits (for debugging) and type-aware interpreted fields (for use in code).
  *
- * IMPORTANT: Bits 24-26 have DIFFERENT meanings for different packet types!
- * Per VITA 49.2 Table 5.1.1.1-1:
- * - Signal Data: bit 26=Trailer, bit 25=Nd0, bit 24=Spectrum/Time
- * - Context:     bit 26=Reserved, bit 25=Nd0, bit 24=TSM
- * - Command:     bit 26=Ack, bit 25=Reserved, bit 24=CanceLation
- *
- * Use packet-type-specific helper functions to interpret these bits correctly.
+ * Usage: After calling decode_header(), check the packet type and use only the relevant fields:
+ * - Signal/ExtData packets (types 0-3): use trailer_included, signal_spectrum, nd0
+ * - Context packets (types 4-5): use context_tsm, nd0
+ * - Command packets (types 6-7): use command_ack, command_cancel
  */
 struct DecodedHeader {
-    packet_type type;           ///< Packet type (signal, context, command, etc.)
+    // ========== Universal Fields (valid for all packet types) ==========
+    PacketType type;            ///< Packet type (determines which interpreted fields are valid)
     uint16_t size_words;        ///< Packet size in 32-bit words
-
-    // Raw packet-specific indicator bits (bits 26-24)
-    // Interpretation depends on packet type - see Table 5.1.1.1-1
-    bool bit_26;                ///< Trailer(Signal) / Reserved(Context) / Ack(Command)
-    bool bit_25;                ///< Nd0(Signal/Context) / Reserved(Command)
-    bool bit_24;                ///< Spectrum/Time(Signal) / TSM(Context) / CanceLation(Command)
-
-    // Universal fields
     bool has_class_id;          ///< Class ID field present (bit 27)
     tsi_type tsi;               ///< Integer timestamp type (bits 23-22)
     tsf_type tsf;               ///< Fractional timestamp type (bits 21-20)
     uint8_t packet_count;       ///< Packet count (bits 19-16)
 
-    // DEPRECATED: Old field names for backward compatibility
-    // These are populated with packet-type-agnostic interpretations and may be WRONG!
-    // Use packet-specific helper functions instead.
-    bool has_stream_id;         ///< DEPRECATED - use is_signal_data_with_stream(type) or (type & 1)
-    bool has_trailer;           ///< DEPRECATED - only valid for Signal packets, use bit_26 with type check
+    // ========== Raw Indicator Bits (for debugging/advanced use) ==========
+    bool bit_26;                ///< Raw bit 26: Trailer(Signal/ExtData) / Reserved(Context) / Ack(Command)
+    bool bit_25;                ///< Raw bit 25: Nd0(Signal/ExtData/Context) / Reserved(Command)
+    bool bit_24;                ///< Raw bit 24: Spectrum(Signal/ExtData) / TSM(Context) / Cancel(Command)
+
+    // ========== Type-Aware Interpreted Fields ==========
+    // Only the fields relevant to the packet type are meaningful!
+    // Field names align with VITA 49.2 spec terminology
+
+    // Signal/Extension Data packets (types 0-3)
+    bool trailer_included;      ///< Trailer field present (bit 26) - ONLY valid for Signal/ExtData packets
+    bool signal_spectrum;       ///< Spectrum vs Time data (bit 24) - ONLY valid for Signal/ExtData packets
+
+    // Signal/Extension Data and Context packets (types 0-5)
+    bool nd0;                   ///< Not a V49.0 packet (bit 25) - ONLY valid for Signal/ExtData/Context packets
+
+    // Context packets (types 4-5)
+    bool context_tsm;           ///< Timestamp Mode (bit 24) - ONLY valid for Context packets
+
+    // Command packets (types 6-7)
+    bool command_ack;           ///< Acknowledge vs Control (bit 26) - ONLY valid for Command packets
+    bool command_cancel;        ///< CanceLation indicator (bit 24) - ONLY valid for Command packets
 };
 
 /**
- * @brief Decode a VRT packet header word
+ * @brief Decode a VRT packet header word with type-aware interpretation
  *
- * Extracts all fields from a VRT packet header according to VITA 49.2.
+ * Extracts all fields from a VRT packet header according to VITA 49.2 and interprets
+ * the packet-specific indicator bits based on the packet type.
  * This is the single source of truth for header parsing in VRTIO.
  *
  * Header format (32 bits):
@@ -58,44 +67,70 @@ struct DecodedHeader {
  * - Bits 18-16: Reserved
  * - Bits 15-0: Packet size in words
  *
- * IMPORTANT: Bits 26-24 have different meanings for Signal/Context/Command packets.
- * See DecodedHeader documentation and use packet-specific helper functions.
+ * Bit Interpretation by Packet Type (per VITA 49.2 Table 5.1.1.1-1):
+ * - Signal/ExtData (0-3): bit 26=Trailer, bit 25=Nd0, bit 24=Spectrum
+ * - Context (4-5):        bit 26=Reserved, bit 25=Nd0, bit 24=TSM
+ * - Command (6-7):        bit 26=Ack, bit 25=Reserved, bit 24=CanceLation
  *
- * @param header The 32-bit header word in network byte order
- * @return DecodedHeader struct with raw bits extracted
- *
- * @note This function does not validate or interpret packet-specific bits.
- *       Use helper functions like has_signal_trailer(), is_nd0_packet(), etc.
+ * @param header The 32-bit header word (in host byte order after network conversion)
+ * @return DecodedHeader struct with both raw bits and type-aware interpreted fields
  */
 inline DecodedHeader decode_header(uint32_t header) noexcept {
-    DecodedHeader result;
+    DecodedHeader result{};  // Zero-initialize all fields
 
-    // Extract packet type (bits 31-28)
-    result.type = static_cast<packet_type>((header >> 28) & 0xF);
+    // ========== Extract Universal Fields ==========
+    result.type = static_cast<PacketType>((header >> header::PACKET_TYPE_SHIFT) & header::PACKET_TYPE_MASK);
+    result.has_class_id = (header >> header::CLASS_ID_SHIFT) & header::CLASS_ID_MASK;
+    result.tsi = static_cast<tsi_type>((header >> header::TSI_SHIFT) & header::TSI_MASK);
+    result.tsf = static_cast<tsf_type>((header >> header::TSF_SHIFT) & header::TSF_MASK);
+    result.packet_count = (header >> header::PACKET_COUNT_SHIFT) & header::PACKET_COUNT_MASK;
+    result.size_words = (header >> header::SIZE_SHIFT) & header::SIZE_MASK;
 
-    // Extract universal indicator bit (bit 27)
-    result.has_class_id = (header >> 27) & 1;
+    // ========== Extract Raw Indicator Bits ==========
+    result.bit_26 = (header >> header::INDICATOR_BIT_26_SHIFT) & header::INDICATOR_BIT_MASK;
+    result.bit_25 = (header >> header::INDICATOR_BIT_25_SHIFT) & header::INDICATOR_BIT_MASK;
+    result.bit_24 = (header >> header::INDICATOR_BIT_24_SHIFT) & header::INDICATOR_BIT_MASK;
 
-    // Extract raw packet-specific indicator bits (bits 26-24)
-    // Interpretation depends on packet type!
-    result.bit_26 = (header >> 26) & 1;
-    result.bit_25 = (header >> 25) & 1;
-    result.bit_24 = (header >> 24) & 1;
+    // ========== Interpret Indicator Bits Based on Packet Type ==========
+    uint8_t type_value = static_cast<uint8_t>(result.type);
 
-    // Extract timestamp types (bits 22-21 and 20-19)
-    result.tsi = static_cast<tsi_type>((header >> 22) & 0x3);
-    result.tsf = static_cast<tsf_type>((header >> 20) & 0x3);
-
-    // Extract packet count (bits 19-16)
-    result.packet_count = (header >> 16) & 0xF;
-
-    // Extract packet size (bits 15-0)
-    result.size_words = header & 0xFFFF;
-
-    // DEPRECATED: Populate old fields for backward compatibility
-    // These interpretations may be WRONG for Context/Command packets!
-    result.has_trailer = result.bit_26;  // Only correct for Signal packets
-    result.has_stream_id = result.bit_25;  // WRONG - should be derived from type
+    if (type_value <= 3) {
+        // Signal Data (0-1) or Extension Data (2-3)
+        result.trailer_included = result.bit_26;
+        result.signal_spectrum = result.bit_24;
+        result.nd0 = result.bit_25;
+        result.context_tsm = false;
+        result.command_ack = false;
+        result.command_cancel = false;
+    }
+    else if (type_value == 4 || type_value == 5) {
+        // Context (4) or Extension Context (5)
+        result.context_tsm = result.bit_24;
+        result.nd0 = result.bit_25;
+        result.trailer_included = false;
+        result.signal_spectrum = false;
+        result.command_ack = false;
+        result.command_cancel = false;
+    }
+    else if (type_value == 6 || type_value == 7) {
+        // Command (6) or Extension Command (7)
+        result.command_ack = result.bit_26;
+        result.command_cancel = result.bit_24;
+        result.trailer_included = false;
+        result.signal_spectrum = false;
+        result.nd0 = false;
+        result.context_tsm = false;
+    }
+    else {
+        // Invalid/reserved packet type (8-15)
+        // Set all interpreted fields to false
+        result.trailer_included = false;
+        result.signal_spectrum = false;
+        result.nd0 = false;
+        result.context_tsm = false;
+        result.command_ack = false;
+        result.command_cancel = false;
+    }
 
     return result;
 }
@@ -103,36 +138,16 @@ inline DecodedHeader decode_header(uint32_t header) noexcept {
 /**
  * @brief Check if a packet type value is valid
  *
- * VITA 49.2 defines packet types 0-7:
- * - 0: UnidentifiedData / Signal Data (no stream ID)
- * - 1: Data / Signal Data (with stream ID)
- * - 2: UnidentifiedExtData / Extension Data (no stream ID)
- * - 3: ExtData / Extension Data (with stream ID)
- * - 4: Context (with stream ID)
- * - 5: ExtContext / Extension Context (with stream ID)
- * - 6: Command (with stream ID)
- * - 7: ExtCommand / Extension Command (with stream ID)
- *
- * Values 8-15 are reserved/invalid.
- *
- * NOTE: Only types 0 and 2 lack stream IDs. All other types (1,3,4,5,6,7) have stream IDs.
- *
  * @param type The packet type to validate
  * @return true if type is in range 0-7, false otherwise
  */
-inline bool is_valid_packet_type(packet_type type) noexcept {
+inline bool is_valid_packet_type(PacketType type) noexcept {
     uint8_t value = static_cast<uint8_t>(type);
     return value <= 7;
 }
 
 /**
  * @brief Check if a TSI type value is valid
- *
- * VITA 49.2 defines TSI types 0-3:
- * - 0: None
- * - 1: UTC
- * - 2: GPS
- * - 3: Other
  *
  * @param tsi The TSI type to validate
  * @return true if valid (all 2-bit values are valid)
@@ -144,12 +159,6 @@ inline constexpr bool is_valid_tsi_type(tsi_type tsi) noexcept {
 
 /**
  * @brief Check if a TSF type value is valid
- *
- * VITA 49.2 defines TSF types 0-3:
- * - 0: None
- * - 1: Sample count
- * - 2: Real time (picoseconds)
- * - 3: Free running count
  *
  * @param tsf The TSF type to validate
  * @return true if valid (all 2-bit values are valid)
@@ -171,12 +180,10 @@ inline constexpr bool is_valid_tsf_type(tsf_type tsf) noexcept {
  * - Types 1, 3, 4, 5, 6, 7: HAS stream ID (all others)
  * - Types 8-15: Reserved (no stream ID)
  *
- * Stream ID presence is determined by packet type, NOT by any indicator bit!
- *
  * @param type The packet type
  * @return true if packet has stream ID field
  */
-inline constexpr bool has_stream_id_field(packet_type type) noexcept {
+inline constexpr bool has_stream_id_field(PacketType type) noexcept {
     uint8_t t = static_cast<uint8_t>(type);
     // Only types 0 and 2 lack stream ID
     return (t != 0) && (t != 2) && (t <= 7);
@@ -185,7 +192,7 @@ inline constexpr bool has_stream_id_field(packet_type type) noexcept {
 /**
  * @brief Check if packet is a Signal Data packet (types 0-1)
  */
-inline constexpr bool is_signal_data_packet(packet_type type) noexcept {
+inline constexpr bool is_signal_data_packet(PacketType type) noexcept {
     uint8_t t = static_cast<uint8_t>(type);
     return t == 0 || t == 1;
 }
@@ -193,7 +200,7 @@ inline constexpr bool is_signal_data_packet(packet_type type) noexcept {
 /**
  * @brief Check if packet is an Extension Data packet (types 2-3)
  */
-inline constexpr bool is_ext_data_packet(packet_type type) noexcept {
+inline constexpr bool is_ext_data_packet(PacketType type) noexcept {
     uint8_t t = static_cast<uint8_t>(type);
     return t == 2 || t == 3;
 }
@@ -201,7 +208,7 @@ inline constexpr bool is_ext_data_packet(packet_type type) noexcept {
 /**
  * @brief Check if packet is a Context packet (types 4-5)
  */
-inline constexpr bool is_context_packet(packet_type type) noexcept {
+inline constexpr bool is_context_packet(PacketType type) noexcept {
     uint8_t t = static_cast<uint8_t>(type);
     return t == 4 || t == 5;
 }
@@ -209,113 +216,9 @@ inline constexpr bool is_context_packet(packet_type type) noexcept {
 /**
  * @brief Check if packet is a Command packet (types 6-7)
  */
-inline constexpr bool is_command_packet(packet_type type) noexcept {
+inline constexpr bool is_command_packet(PacketType type) noexcept {
     uint8_t t = static_cast<uint8_t>(type);
     return t == 6 || t == 7;
-}
-
-// ========================================================================
-// Signal Data Packet Bit Interpretation (types 0-1)
-// ========================================================================
-
-/**
- * @brief Check if Signal Data packet has trailer (bit 26)
- *
- * For Signal Data packets, bit 26 indicates trailer presence.
- * ONLY valid for Signal Data packets (types 0-1)!
- *
- * @param decoded Decoded header
- * @return true if trailer is present (only valid for Signal packets)
- */
-inline bool has_signal_trailer(const DecodedHeader& decoded) noexcept {
-    return is_signal_data_packet(decoded.type) && decoded.bit_26;
-}
-
-/**
- * @brief Check if packet is marked as "Not a V49.0 Packet" (Nd0 bit)
- *
- * For Signal Data and Context packets, bit 25 is the Nd0 indicator:
- * - 0: V49.0 compatible mode
- * - 1: Uses V49.2-specific features
- *
- * ONLY valid for Signal Data (0-1) and Context (4-5) packets!
- *
- * @param decoded Decoded header
- * @return true if Nd0 bit is set
- */
-inline bool is_nd0_packet(const DecodedHeader& decoded) noexcept {
-    return (is_signal_data_packet(decoded.type) || is_context_packet(decoded.type))
-           && decoded.bit_25;
-}
-
-/**
- * @brief Check if Signal Data packet is Spectrum Data (bit 24)
- *
- * For Signal Data packets, bit 24 indicates:
- * - 0: Signal Time Data Packet
- * - 1: Signal Spectrum Data Packet
- *
- * ONLY valid for Signal Data packets (types 0-1)!
- *
- * @param decoded Decoded header
- * @return true if spectrum data (only valid for Signal packets)
- */
-inline bool is_signal_spectrum(const DecodedHeader& decoded) noexcept {
-    return is_signal_data_packet(decoded.type) && decoded.bit_24;
-}
-
-// ========================================================================
-// Context Packet Bit Interpretation (types 4-5)
-// ========================================================================
-
-/**
- * @brief Get Timestamp Mode (TSM) for Context packet (bit 24)
- *
- * For Context packets, bit 24 is the Timestamp Mode indicator.
- * ONLY valid for Context packets (types 4-5)!
- *
- * NOTE: Bit 26 is Reserved for Context packets and should be 0.
- *
- * @param decoded Decoded header
- * @return true if TSM bit is set (only valid for Context packets)
- */
-inline bool get_context_tsm(const DecodedHeader& decoded) noexcept {
-    return is_context_packet(decoded.type) && decoded.bit_24;
-}
-
-// ========================================================================
-// Command Packet Bit Interpretation (types 6-7)
-// ========================================================================
-
-/**
- * @brief Check if Command packet is an Acknowledge packet (bit 26)
- *
- * For Command packets, bit 26 indicates:
- * - 0: Control packet
- * - 1: Acknowledge packet
- *
- * ONLY valid for Command packets (types 6-7)!
- *
- * @param decoded Decoded header
- * @return true if Acknowledge packet (only valid for Command packets)
- */
-inline bool is_command_acknowledge(const DecodedHeader& decoded) noexcept {
-    return is_command_packet(decoded.type) && decoded.bit_26;
-}
-
-/**
- * @brief Check if Command packet is a CanceLation packet (bit 24)
- *
- * For Command packets, bit 24 indicates CanceLation packet.
- * ONLY valid for Command packets (types 6-7)!
- *
- * NOTE: Bit 25 is Reserved for Command packets and should be 0.
- *
- * @param decoded Decoded header
- * @return true if CanceLation packet (only valid for Command packets)
- */
-inline bool is_command_cancelation(const DecodedHeader& decoded) noexcept {
-    return is_command_packet(decoded.type) && decoded.bit_24;
 }
 
 } // namespace vrtio::detail

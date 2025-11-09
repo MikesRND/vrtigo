@@ -57,10 +57,9 @@ int main() {
     std::cout << "---------------------------------\n";
 
     // Define packet type with UTC timestamps and real-time picoseconds
-    using PacketType = SignalPacket<
-        packet_type::signal_data_with_stream,
+    using PacketType = SignalDataPacket<
         TimeStampUTC,
-        false,  // no trailer
+        Trailer::None,  // No trailer
         256     // payload words
     >;
 
@@ -150,10 +149,10 @@ int main() {
 
     // Use TimeStamp<gps, real_time> to configure packet structure correctly
     // This sets TSI=2 (GPS) and TSF=2 (real_time) in the packet header
-    using GPSPacket = SignalPacket<
-        packet_type::signal_data_with_stream,
+    using GPSPacket = SignalDataPacket<
         TimeStamp<tsi_type::gps, tsf_type::real_time>,  // GPS timestamp configuration
-        false, 256
+        Trailer::None,  // No trailer
+        256
     >;
 
     std::cout << "GPS Packet Configuration:\n";
@@ -225,10 +224,10 @@ int main() {
 
     // TAI and other non-standard timestamps use tsi_type::other
     // The specific time reference is application-defined
-    using TAIPacket = SignalPacket<
-        packet_type::signal_data_with_stream,
+    using TAIPacket = SignalDataPacket<
         TimeStamp<tsi_type::other, tsf_type::real_time>,  // "Other" TSI for TAI
-        false, 128
+        Trailer::None,  // No trailer
+        128
     >;
 
     std::cout << "TAI Packet Configuration:\n";

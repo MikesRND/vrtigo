@@ -6,15 +6,21 @@
 namespace vrtio {
 
 // VRT packet types (VITA 49.2 standard)
-enum class packet_type : uint8_t {
-    signal_data_no_stream = 0,    // Signal data without stream identifier
-    signal_data_with_stream = 1,   // Signal data with stream identifier
-    ext_data_no_stream = 2,        // Extension data without stream identifier
-    ext_data_with_stream = 3,      // Extension data with stream identifier
-    context = 4,                   // Context packet
-    ext_context = 5,               // Extension context packet
-    command = 6,                   // Command packet (VITA 49.2)
-    ext_command = 7                // Extension command packet (VITA 49.2)
+enum class PacketType : uint8_t {
+    SignalDataNoId        = 0,  // Signal data without stream identifier
+    SignalData            = 1,  // Signal data with stream identifier
+    ExtensionDataNoId     = 2,  // Extension data without stream identifier
+    ExtensionData         = 3,  // Extension data with stream identifier
+    Context               = 4,  // Context packet
+    ExtensionContext      = 5,  // Extension context packet
+    Command               = 6,  // Command packet (VITA 49.2)
+    ExtensionCommand      = 7   // Extension command packet (VITA 49.2)
+};
+
+// Trailer field indicator
+enum class Trailer : uint8_t {
+    None = 0,       // No trailer field
+    Included = 1    // Trailer field present
 };
 
 // Integer timestamp types (TSI field)
@@ -48,47 +54,16 @@ inline constexpr size_t vrt_word_bits = 32;
 inline constexpr size_t max_packet_words = 65535;
 inline constexpr size_t max_packet_bytes = max_packet_words * vrt_word_size;
 
-// Header bit positions and masks
-namespace header {
-    // Packet type field (bits 28-31)
-    inline constexpr uint8_t PACKET_TYPE_SHIFT = 28;
-    inline constexpr uint32_t PACKET_TYPE_MASK = 0xF0000000;
-
-    // Indicator bits
-    inline constexpr uint32_t CLASS_ID_INDICATOR = (1U << 27);
-
-    // DEPRECATED: Bit 26 only indicates trailer for Signal Data packets
-    // For Context packets, bit 26 is Reserved. For Command packets, it's Ack/Control.
-    // Use packet-type-specific helpers in detail/header_decode.hpp instead
-    inline constexpr uint32_t TRAILER_INDICATOR = (1U << 26);
-
-    // REMOVED: STREAM_ID_INDICATOR was incorrect
-    // Stream ID presence is determined by packet TYPE (bits 31-28), NOT by bit 25!
-    // Bit 25 is "Nd0" (Not a V49.0 Packet Indicator) for Signal/Context packets
-    // Use detail::has_stream_id_field(packet_type) instead
-
-    // TSI field (bits 22-23)
-    inline constexpr uint8_t TSI_SHIFT = 22;
-    inline constexpr uint32_t TSI_MASK = 0x00C00000;
-
-    // TSF field (bits 20-21)
-    inline constexpr uint8_t TSF_SHIFT = 20;
-    inline constexpr uint32_t TSF_MASK = 0x00300000;
-
-    // Packet size field (bits 0-15)
-    inline constexpr uint32_t SIZE_MASK = 0x0000FFFF;
-}  // namespace header
-
 // Helper: Check if packet type is signal data
-constexpr bool is_signal_data(packet_type type) noexcept {
-    return type == packet_type::signal_data_no_stream ||
-           type == packet_type::signal_data_with_stream;
+constexpr bool is_signal_data(PacketType type) noexcept {
+    return type == PacketType::SignalDataNoId ||
+           type == PacketType::SignalData;
 }
 
 // Helper: Check if packet type includes stream ID
 // Per VITA 49.2 and RedhawkSDR reference: types 1, 3, 4, 5, 6, 7 have stream ID
 // Only types 0 and 2 (UnidentifiedData, UnidentifiedExtData) lack stream ID
-constexpr bool has_stream_identifier(packet_type type) noexcept {
+constexpr bool has_stream_identifier(PacketType type) noexcept {
     uint8_t t = static_cast<uint8_t>(type);
     return (t != 0) && (t != 2) && (t <= 7);
 }

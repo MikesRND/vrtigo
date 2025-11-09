@@ -14,10 +14,9 @@ int main() {
     {
         std::cout << "Example 1: Signal packet without stream ID\n";
 
-        using SimplePacket = vrtio::SignalPacket<
-            vrtio::packet_type::signal_data_no_stream,
+        using SimplePacket = vrtio::SignalDataPacketNoId<
             vrtio::TimeStampUTC,  // Using UTC timestamps
-            false,  // No trailer
+            vrtio::Trailer::None,  // No trailer
             256     // 1024 bytes payload
         >;
 
@@ -47,10 +46,9 @@ int main() {
     {
         std::cout << "Example 2: Signal packet with stream ID (builder pattern)\n";
 
-        using StreamPacket = vrtio::SignalPacket<
-            vrtio::packet_type::signal_data_with_stream,
+        using StreamPacket = vrtio::SignalDataPacket<
             vrtio::TimeStampUTC,  // Using UTC timestamps
-            true,   // Has trailer
+            vrtio::Trailer::Included,  // Trailer included
             512     // 2048 bytes payload
         >;
 
@@ -63,12 +61,16 @@ int main() {
         // Use builder pattern
         std::array<uint8_t, 2048> sensor_data{};
 
+        auto trailer_cfg = vrtio::TrailerBuilder{}
+            .clear()
+            .context_packets(1);
+
         auto builder = vrtio::PacketBuilder<StreamPacket>(tx_buffer.data());
         auto packet = builder
             .stream_id(0x12345678)
             .timestamp_integer(1699000000)
             .timestamp_fractional(500000)  // 500ns in picoseconds
-            .trailer(0x00000001)
+            .trailer(trailer_cfg)
             .packet_count(10)  // 4-bit field: valid range 0-15
             .payload(sensor_data.data(), sensor_data.size())
             .build();
@@ -76,7 +78,7 @@ int main() {
         std::cout << "  Stream ID: 0x" << std::hex << packet.stream_id() << std::dec << "\n";
         std::cout << "  Timestamp (integer): " << packet.timestamp_integer() << "\n";
         std::cout << "  Timestamp (fractional): " << packet.timestamp_fractional() << " ps\n";
-        std::cout << "  Trailer: 0x" << std::hex << packet.trailer() << std::dec << "\n";
+        std::cout << "  Trailer: 0x" << std::hex << packet.trailer().raw() << std::dec << "\n";
         std::cout << "  Packet count: " << static_cast<int>(packet.packet_count()) << "\n";
         std::cout << "\n";
     }
@@ -85,10 +87,9 @@ int main() {
     {
         std::cout << "Example 3: Parsing untrusted packet data\n";
 
-        using RxPacket = vrtio::SignalPacket<
-            vrtio::packet_type::signal_data_with_stream,
+        using RxPacket = vrtio::SignalDataPacket<
             vrtio::NoTimeStamp,  // No timestamp for this example
-            false,
+            vrtio::Trailer::None,  // No trailer
             256
         >;
 
@@ -124,10 +125,9 @@ int main() {
     {
         std::cout << "Example 4: Compile-time type safety\n";
 
-        using NoStreamPacket = vrtio::SignalPacket<
-            vrtio::packet_type::signal_data_no_stream,
+        using NoStreamPacket = vrtio::SignalDataPacketNoId<
             vrtio::NoTimeStamp,
-            false,
+            vrtio::Trailer::None,  // No trailer
             128
         >;
 
@@ -141,7 +141,7 @@ int main() {
         // These would cause compile errors (uncomment to test):
         // packet.set_stream_id(0x123);       // Error: no stream ID for type 0
         // packet.set_timestamp_integer(123); // Error: TSI is none
-        // packet.set_trailer(0);             // Error: no trailer
+        // packet.trailer();                  // Error: no trailer view
 
         std::cout << "  Type safety verified at compile time!\n";
         std::cout << "\n";

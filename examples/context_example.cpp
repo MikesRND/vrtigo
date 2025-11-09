@@ -102,7 +102,7 @@ void example_runtime_parsing() {
     // Header: type=4 (context), size=8 words
     // Note: Type 4 (context) always has stream ID per VITA 49.2, no indicator bit needed
     uint32_t header =
-        (static_cast<uint32_t>(packet_type::context) << header::PACKET_TYPE_SHIFT) |
+        (static_cast<uint32_t>(PacketType::Context) << header::PACKET_TYPE_SHIFT) |
         8;
     cif::write_u32_safe(rx_buffer.data(), 0, header);
 
@@ -169,7 +169,7 @@ void example_variable_fields() {
     // Header
     uint32_t total_words = 1 + 1 + nmea_words;  // header + cif0 + gps_ascii
     uint32_t header =
-        (static_cast<uint32_t>(packet_type::context) << header::PACKET_TYPE_SHIFT) |
+        (static_cast<uint32_t>(PacketType::Context) << header::PACKET_TYPE_SHIFT) |
         total_words;
     cif::write_u32_safe(buffer.data(), 0, header);
 
@@ -217,7 +217,7 @@ void example_unsupported_rejection() {
 
     // Header
     uint32_t header =
-        (static_cast<uint32_t>(packet_type::context) << header::PACKET_TYPE_SHIFT) |
+        (static_cast<uint32_t>(PacketType::Context) << header::PACKET_TYPE_SHIFT) |
         3;
     cif::write_u32_safe(buffer.data(), 0, header);
 

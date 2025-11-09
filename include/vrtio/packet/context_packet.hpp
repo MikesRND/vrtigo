@@ -21,8 +21,7 @@ template<
     uint32_t CIF0 = 0,
     uint32_t CIF1 = 0,
     uint32_t CIF2 = 0,
-    uint32_t CIF3 = 0,
-    bool HasTrailer = false
+    uint32_t CIF3 = 0
 >
     requires ValidTimestampType<TimeStampType> &&
              ValidClassIdType<ClassIdType>
@@ -103,11 +102,9 @@ private:
     static constexpr size_t context_fields_words =
         cif::calculate_context_size_ct<CIF0, CIF1, CIF2, CIF3>();
 
-    static constexpr size_t trailer_words = HasTrailer ? 1 : 0;
-
     static constexpr size_t total_words = header_words + stream_id_words +
         class_id_words + tsi_words + tsf_words + cif_words +
-        context_fields_words + trailer_words;
+        context_fields_words;
 
     // Complete offset calculation for CIF words
     static constexpr size_t calculate_cif_offset() {
@@ -167,7 +164,6 @@ public:
             init_class_id();
             init_timestamps();
             write_cif_words();
-            init_trailer();
         }
     }
 
@@ -193,11 +189,6 @@ private:
         // Class ID bit
         if constexpr (has_class_id) {
             header |= (1U << 27);
-        }
-
-        // Trailer bit
-        if constexpr (HasTrailer) {
-            header |= (1U << 26);
         }
 
         // Stream ID bit (bit 25 for context packets!)
@@ -287,13 +278,6 @@ private:
         }
     }
 
-    void init_trailer() noexcept {
-        if constexpr (HasTrailer) {
-            size_t offset = (total_words - 1) * 4;
-            cif::write_u32_safe(buffer_, offset, 0);  // Initialize to 0
-        }
-    }
-
 public:
     // Stream ID accessor
     uint32_t stream_id() const noexcept requires(HasStreamId) {
@@ -349,17 +333,6 @@ public:
     void setTimeStamp(const TimeStampType& ts) noexcept requires(has_timestamp) {
         set_timestamp_integer(ts.seconds());
         set_timestamp_fractional(ts.fractional());
-    }
-
-    // Trailer accessors
-    uint32_t trailer() const noexcept requires(HasTrailer) {
-        size_t offset = (total_words - 1) * 4;
-        return cif::read_u32_safe(buffer_, offset);
-    }
-
-    void set_trailer(uint32_t value) noexcept requires(HasTrailer) {
-        size_t offset = (total_words - 1) * 4;
-        cif::write_u32_safe(buffer_, offset, value);
     }
 
     // Packet size queries
@@ -424,7 +397,7 @@ public:
         auto decoded = detail::decode_header(header);
 
         // Check packet type (must be context: 4 or 5)
-        if (decoded.type != packet_type::context && decoded.type != packet_type::ext_context) {
+        if (decoded.type != PacketType::Context && decoded.type != PacketType::ExtensionContext) {
             return validation_error::packet_type_mismatch;
         }
 

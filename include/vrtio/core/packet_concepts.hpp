@@ -4,6 +4,7 @@
 #include <concepts>
 #include <span>
 #include <cstddef>
+#include <cstdint>
 #include <utility>
 
 namespace vrtio {
@@ -215,13 +216,24 @@ concept HasTimestampFractional = requires(T& pkt) {
     { std::as_const(pkt).timestamp_fractional() } -> std::same_as<uint64_t>;
 };
 
+template<typename T>
+concept MutableTrailerProxy = requires(T proxy) {
+    { proxy.raw() } -> std::same_as<uint32_t>;
+    { proxy.set_raw(uint32_t{}) } -> std::same_as<void>;
+};
+
+template<typename T>
+concept ConstTrailerProxy = requires(T proxy) {
+    { proxy.raw() } -> std::same_as<uint32_t>;
+};
+
 /**
  * Packet has trailer field
  */
 template<typename T>
 concept HasTrailer = requires(T& pkt) {
-    { pkt.set_trailer(uint32_t{}) } -> std::same_as<void>;
-    { std::as_const(pkt).trailer() } -> std::same_as<uint32_t>;
+    { pkt.trailer() } -> MutableTrailerProxy;
+    { std::as_const(pkt).trailer() } -> ConstTrailerProxy;
 };
 
 /**

@@ -18,11 +18,11 @@ TEST(HeaderDecodeTest, DecodeSignalPacketType0) {
 
     auto decoded = decode_header(header);
 
-    EXPECT_EQ(decoded.type, packet_type::signal_data_no_stream);
+    EXPECT_EQ(decoded.type, PacketType::SignalDataNoId);
     EXPECT_EQ(decoded.size_words, 10);
-    EXPECT_FALSE(decoded.has_stream_id);
+    EXPECT_FALSE(has_stream_id_field(decoded.type));  // Type 0 has no stream ID
     EXPECT_FALSE(decoded.has_class_id);
-    EXPECT_FALSE(decoded.has_trailer);
+    EXPECT_FALSE(decoded.trailer_included);  // Use type-aware field
     EXPECT_EQ(decoded.tsi, tsi_type::none);
     EXPECT_EQ(decoded.tsf, tsf_type::none);
     EXPECT_EQ(decoded.packet_count, 5);
@@ -42,11 +42,11 @@ TEST(HeaderDecodeTest, DecodeSignalPacketType1) {
 
     auto decoded = decode_header(header);
 
-    EXPECT_EQ(decoded.type, packet_type::signal_data_with_stream);
+    EXPECT_EQ(decoded.type, PacketType::SignalData);
     EXPECT_EQ(decoded.size_words, 512);
-    EXPECT_TRUE(decoded.has_stream_id);
+    EXPECT_TRUE(has_stream_id_field(decoded.type));  // Type 1 has stream ID
     EXPECT_FALSE(decoded.has_class_id);
-    EXPECT_FALSE(decoded.has_trailer);
+    EXPECT_FALSE(decoded.trailer_included);  // Use type-aware field
     EXPECT_EQ(decoded.tsi, tsi_type::gps);
     EXPECT_EQ(decoded.tsf, tsf_type::real_time);
     EXPECT_EQ(decoded.packet_count, 12);
@@ -66,11 +66,12 @@ TEST(HeaderDecodeTest, DecodeContextPacket) {
 
     auto decoded = decode_header(header);
 
-    EXPECT_EQ(decoded.type, packet_type::ext_context);
+    EXPECT_EQ(decoded.type, PacketType::ExtensionContext);
     EXPECT_EQ(decoded.size_words, 20);
-    EXPECT_TRUE(decoded.has_stream_id);
+    EXPECT_TRUE(has_stream_id_field(decoded.type));  // Type 5 has stream ID
     EXPECT_TRUE(decoded.has_class_id);
-    EXPECT_FALSE(decoded.has_trailer);
+    // Context packets don't have trailer field - bit 26 is reserved
+    EXPECT_FALSE(decoded.trailer_included);  // Not applicable to context packets
     EXPECT_EQ(decoded.tsi, tsi_type::utc);
     EXPECT_EQ(decoded.tsf, tsf_type::sample_count);
     EXPECT_EQ(decoded.packet_count, 0);
@@ -90,9 +91,9 @@ TEST(HeaderDecodeTest, DecodeWithClassID) {
 
     auto decoded = decode_header(header);
 
-    EXPECT_EQ(decoded.type, packet_type::signal_data_with_stream);
+    EXPECT_EQ(decoded.type, PacketType::SignalData);
     EXPECT_TRUE(decoded.has_class_id);
-    EXPECT_FALSE(decoded.has_trailer);
+    EXPECT_FALSE(decoded.trailer_included);  // Use type-aware field
     EXPECT_EQ(decoded.size_words, 100);
     EXPECT_EQ(decoded.packet_count, 3);
 }
@@ -111,9 +112,9 @@ TEST(HeaderDecodeTest, DecodeWithTrailer) {
 
     auto decoded = decode_header(header);
 
-    EXPECT_EQ(decoded.type, packet_type::signal_data_with_stream);
+    EXPECT_EQ(decoded.type, PacketType::SignalData);
     EXPECT_FALSE(decoded.has_class_id);
-    EXPECT_TRUE(decoded.has_trailer);
+    EXPECT_TRUE(decoded.trailer_included);  // Use type-aware field for signal packets
     EXPECT_EQ(decoded.tsi, tsi_type::other);
     EXPECT_EQ(decoded.tsf, tsf_type::free_running);
     EXPECT_EQ(decoded.size_words, 256);
@@ -165,19 +166,19 @@ TEST(HeaderDecodeTest, DecodePacketCount) {
 // Test 8: Validate packet types
 TEST(HeaderDecodeTest, ValidatePacketType) {
     // Valid packet types (0-7)
-    EXPECT_TRUE(is_valid_packet_type(packet_type::signal_data_no_stream));
-    EXPECT_TRUE(is_valid_packet_type(packet_type::signal_data_with_stream));
-    EXPECT_TRUE(is_valid_packet_type(packet_type::ext_data_no_stream));
-    EXPECT_TRUE(is_valid_packet_type(packet_type::ext_data_with_stream));
-    EXPECT_TRUE(is_valid_packet_type(packet_type::context));
-    EXPECT_TRUE(is_valid_packet_type(packet_type::ext_context));
-    EXPECT_TRUE(is_valid_packet_type(packet_type::command));
-    EXPECT_TRUE(is_valid_packet_type(packet_type::ext_command));
+    EXPECT_TRUE(is_valid_packet_type(PacketType::SignalDataNoId));
+    EXPECT_TRUE(is_valid_packet_type(PacketType::SignalData));
+    EXPECT_TRUE(is_valid_packet_type(PacketType::ExtensionDataNoId));
+    EXPECT_TRUE(is_valid_packet_type(PacketType::ExtensionData));
+    EXPECT_TRUE(is_valid_packet_type(PacketType::Context));
+    EXPECT_TRUE(is_valid_packet_type(PacketType::ExtensionContext));
+    EXPECT_TRUE(is_valid_packet_type(PacketType::Command));
+    EXPECT_TRUE(is_valid_packet_type(PacketType::ExtensionCommand));
 
     // Invalid packet types (8-15)
-    EXPECT_FALSE(is_valid_packet_type(static_cast<packet_type>(8)));
-    EXPECT_FALSE(is_valid_packet_type(static_cast<packet_type>(9)));
-    EXPECT_FALSE(is_valid_packet_type(static_cast<packet_type>(15)));
+    EXPECT_FALSE(is_valid_packet_type(static_cast<PacketType>(8)));
+    EXPECT_FALSE(is_valid_packet_type(static_cast<PacketType>(9)));
+    EXPECT_FALSE(is_valid_packet_type(static_cast<PacketType>(15)));
 
     // Test TSI/TSF validators (all 2-bit values are valid)
     EXPECT_TRUE(is_valid_tsi_type(tsi_type::none));

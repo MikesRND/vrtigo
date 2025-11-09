@@ -30,10 +30,9 @@ protected:
 
 // Test 1: Minimal packet (no stream, no timestamps, no trailer)
 TEST_F(RoundTripTest, MinimalPacket) {
-    using PacketType = vrtio::SignalPacket<
-        vrtio::packet_type::signal_data_no_stream,
+    using PacketType = vrtio::SignalDataPacketNoId<
         vrtio::NoTimeStamp,  // No timestamps
-        false,  // No trailer
+        vrtio::Trailer::None,  // No trailer
         128     // 512 bytes payload
     >;
 
@@ -60,10 +59,9 @@ TEST_F(RoundTripTest, MinimalPacket) {
 
 // Test 2: Packet with stream ID (type 1)
 TEST_F(RoundTripTest, PacketWithStreamId) {
-    using PacketType = vrtio::SignalPacket<
-        vrtio::packet_type::signal_data_with_stream,
+    using PacketType = vrtio::SignalDataPacket<
         vrtio::NoTimeStamp,
-        false,
+        vrtio::Trailer::None,
         256
     >;
 
@@ -86,10 +84,9 @@ TEST_F(RoundTripTest, PacketWithStreamId) {
 
 // Test 3: Packet with integer timestamp (TSI)
 TEST_F(RoundTripTest, PacketWithIntegerTimestamp) {
-    using PacketType = vrtio::SignalPacket<
-        vrtio::packet_type::signal_data_with_stream,
+    using PacketType = vrtio::SignalDataPacket<
         vrtio::TimeStampUTC,  // Using UTC timestamps
-        false,
+        vrtio::Trailer::None,
         128
     >;
 
@@ -114,10 +111,9 @@ TEST_F(RoundTripTest, PacketWithIntegerTimestamp) {
 
 // Test 4: Packet with fractional timestamp (TSF)
 TEST_F(RoundTripTest, PacketWithFractionalTimestamp) {
-    using PacketType = vrtio::SignalPacket<
-        vrtio::packet_type::signal_data_with_stream,
+    using PacketType = vrtio::SignalDataPacket<
         vrtio::TimeStampUTC,  // Using UTC timestamps (with picoseconds)
-        false,
+        vrtio::Trailer::None,
         256
     >;
 
@@ -144,10 +140,9 @@ TEST_F(RoundTripTest, PacketWithFractionalTimestamp) {
 
 // Test 5: Packet with trailer
 TEST_F(RoundTripTest, PacketWithTrailer) {
-    using PacketType = vrtio::SignalPacket<
-        vrtio::packet_type::signal_data_with_stream,
+    using PacketType = vrtio::SignalDataPacket<
         vrtio::TimeStampUTC,  // Using UTC timestamps
-        true,  // Has trailer
+        vrtio::Trailer::Included,  // Has trailer
         128
     >;
 
@@ -157,7 +152,7 @@ TEST_F(RoundTripTest, PacketWithTrailer) {
     PacketType packet(buffer.data());
     packet.set_stream_id(0xDEADBEEF);
     packet.set_timestamp_integer(1500000000);
-    packet.set_trailer(0x80000001);  // Some status bits
+    vrtio::TrailerBuilder{0x80000001}.apply(packet.trailer());  // Some status bits
     packet.set_packet_count(3);
     fill_test_payload(packet.payload());
 
@@ -167,17 +162,16 @@ TEST_F(RoundTripTest, PacketWithTrailer) {
     // Verify fields
     EXPECT_EQ(received.stream_id(), 0xDEADBEEF);
     EXPECT_EQ(received.timestamp_integer(), 1500000000);
-    EXPECT_EQ(received.trailer(), 0x80000001);
+    EXPECT_EQ(received.trailer().raw(), 0x80000001);
     EXPECT_EQ(received.packet_count(), 3);
     verify_test_payload(received.payload());
 }
 
 // Test 6: Full-featured packet (all optional fields)
 TEST_F(RoundTripTest, FullFeaturedPacket) {
-    using PacketType = vrtio::SignalPacket<
-        vrtio::packet_type::signal_data_with_stream,
+    using PacketType = vrtio::SignalDataPacket<
         vrtio::TimeStampUTC,  // UTC with picoseconds
-        true,  // Has trailer
+        vrtio::Trailer::Included,  // Has trailer
         512    // 2048 bytes payload
     >;
 
@@ -188,7 +182,7 @@ TEST_F(RoundTripTest, FullFeaturedPacket) {
     packet.set_stream_id(0x01234567);
     packet.set_timestamp_integer(1699123456);
     packet.set_timestamp_fractional(123456789012ULL);
-    packet.set_trailer(0xF0F0F0F0);
+    vrtio::TrailerBuilder{0xF0F0F0F0}.apply(packet.trailer());
     packet.set_packet_count(13);
     fill_test_payload(packet.payload());
 
@@ -199,7 +193,7 @@ TEST_F(RoundTripTest, FullFeaturedPacket) {
     EXPECT_EQ(received.stream_id(), 0x01234567);
     EXPECT_EQ(received.timestamp_integer(), 1699123456);
     EXPECT_EQ(received.timestamp_fractional(), 123456789012ULL);
-    EXPECT_EQ(received.trailer(), 0xF0F0F0F0);
+    EXPECT_EQ(received.trailer().raw(), 0xF0F0F0F0);
     EXPECT_EQ(received.packet_count(), 13);
     EXPECT_EQ(received.packet_size_words(), PacketType::total_words);
     verify_test_payload(received.payload());
@@ -207,10 +201,9 @@ TEST_F(RoundTripTest, FullFeaturedPacket) {
 
 // Test 7: Builder round-trip
 TEST_F(RoundTripTest, BuilderRoundTrip) {
-    using PacketType = vrtio::SignalPacket<
-        vrtio::packet_type::signal_data_with_stream,
+    using PacketType = vrtio::SignalDataPacket<
         vrtio::TimeStampUTC,  // UTC with picoseconds
-        true,
+        vrtio::Trailer::Included,  // Trailer included
         256
     >;
 
@@ -223,11 +216,15 @@ TEST_F(RoundTripTest, BuilderRoundTrip) {
     }
 
     // Build packet using fluent API
+    auto trailer_cfg = vrtio::TrailerBuilder{}
+        .clear()
+        .context_packets(1);
+
     vrtio::PacketBuilder<PacketType>(tx_buffer.data())
         .stream_id(0xFEEDFACE)
         .timestamp_integer(1700000000)
         .timestamp_fractional(500000000000ULL)
-        .trailer(0x00000001)
+        .trailer(trailer_cfg)
         .packet_count(9)
         .payload(payload_data.data(), payload_data.size())
         .build();
@@ -243,7 +240,7 @@ TEST_F(RoundTripTest, BuilderRoundTrip) {
     EXPECT_EQ(received.stream_id(), 0xFEEDFACE);
     EXPECT_EQ(received.timestamp_integer(), 1700000000);
     EXPECT_EQ(received.timestamp_fractional(), 500000000000ULL);
-    EXPECT_EQ(received.trailer(), 0x00000001);
+    EXPECT_EQ(received.trailer().raw(), 0x00000001);
     EXPECT_EQ(received.packet_count(), 9);
 
     // Verify payload
@@ -256,10 +253,9 @@ TEST_F(RoundTripTest, BuilderRoundTrip) {
 
 // Test 8: Multiple sequential packets
 TEST_F(RoundTripTest, MultiplePackets) {
-    using PacketType = vrtio::SignalPacket<
-        vrtio::packet_type::signal_data_with_stream,
+    using PacketType = vrtio::SignalDataPacket<
         vrtio::TimeStampUTC,
-        false,
+        vrtio::Trailer::None,
         128
     >;
 
@@ -302,10 +298,9 @@ TEST_F(RoundTripTest, MultiplePackets) {
 
 // Test 9: Verify header bits are set correctly
 TEST_F(RoundTripTest, HeaderBitsCorrect) {
-    using PacketType = vrtio::SignalPacket<
-        vrtio::packet_type::signal_data_with_stream,  // Type = 1
+    using PacketType = vrtio::SignalDataPacket<
         vrtio::TimeStampUTC,                          // UTC with picoseconds
-        true,                                         // Has trailer
+        vrtio::Trailer::Included,  // Has trailer
         256
     >;
 
@@ -335,10 +330,9 @@ TEST_F(RoundTripTest, HeaderBitsCorrect) {
 
 // Test 10: Type 0 packet (no stream ID)
 TEST_F(RoundTripTest, Type0PacketNoStreamId) {
-    using PacketType = vrtio::SignalPacket<
-        vrtio::packet_type::signal_data_no_stream,  // Type 0
+    using PacketType = vrtio::SignalDataPacketNoId<
         vrtio::TimeStampUTC,  // Using UTC timestamps
-        false,
+        vrtio::Trailer::None,
         256
     >;
 

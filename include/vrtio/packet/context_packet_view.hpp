@@ -93,7 +93,7 @@ private:
         structure_.packet_size_words = decoded.size_words;
 
         // 3. Validate packet type (must be context: 4 or 5)
-        if (decoded.type != packet_type::context && decoded.type != packet_type::ext_context) {
+        if (decoded.type != PacketType::Context && decoded.type != PacketType::ExtensionContext) {
             return validation_error::invalid_packet_type;
         }
 

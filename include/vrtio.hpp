@@ -22,13 +22,14 @@
 
 // Core types and utilities
 #include "vrtio/core/types.hpp"
+#include "vrtio/core/header.hpp"
 #include "vrtio/core/endian.hpp"
 #include "vrtio/core/concepts.hpp"
 #include "vrtio/core/class_id.hpp"
 #include "vrtio/core/cif.hpp"
 
 // Packet implementation
-#include "vrtio/packet/signal_packet.hpp"
+#include "vrtio/packet/data_packet.hpp"
 #include "vrtio/packet/builder.hpp"
 #include "vrtio/packet/context_packet_view.hpp"
 #include "vrtio/packet/context_packet.hpp"

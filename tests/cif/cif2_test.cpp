@@ -24,7 +24,7 @@ TEST_F(ContextPacketTest, CIF2Fields) {
 TEST_F(ContextPacketTest, RuntimeParseCIF2) {
     // Build a packet with CIF2 enabled and Controller UUID field
     // Type 4 has stream ID: header(1) + stream_id(1) + CIF0(1) + CIF2(1) + Controller UUID(4) = 8 words
-    uint32_t header = (static_cast<uint32_t>(packet_type::context) << header::PACKET_TYPE_SHIFT) | 8;
+    uint32_t header = (static_cast<uint32_t>(PacketType::Context) << header::PACKET_TYPE_SHIFT) | 8;
     cif::write_u32_safe(buffer.data(), 0, header);
 
     // Stream ID (type 4 has stream ID per VITA 49.2)

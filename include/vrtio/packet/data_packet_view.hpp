@@ -10,10 +10,10 @@
 namespace vrtio {
 
 /**
- * Runtime parser for signal data packets
+ * Runtime parser for data packets (signal and extension data)
  *
- * Provides safe, type-erased parsing of signal data packets with automatic
- * validation. Unlike SignalPacket<...>, this class doesn't require compile-time
+ * Provides safe, type-erased parsing of data packets with automatic
+ * validation. Unlike DataPacket<...>, this class doesn't require compile-time
  * knowledge of the packet structure and automatically validates on construction.
  *
  * Safety:
@@ -23,7 +23,7 @@ namespace vrtio {
  * - Makes unsafe parsing patterns impossible
  *
  * Usage:
- *   SignalPacketView view(rx_buffer, buffer_size);
+ *   DataPacketView view(rx_buffer, buffer_size);
  *   if (view.is_valid()) {
  *       if (auto id = view.stream_id()) {
  *           std::cout << "Stream ID: " << *id << "\n";
@@ -32,7 +32,7 @@ namespace vrtio {
  *       // Process payload...
  *   }
  */
-class SignalPacketView {
+class DataPacketView {
 private:
     const uint8_t* buffer_;
     size_t buffer_size_;
@@ -40,7 +40,7 @@ private:
 
     struct ParsedStructure {
         // Header fields
-        packet_type type = packet_type::signal_data_no_stream;
+        PacketType type = PacketType::SignalDataNoId;
         bool has_stream_id = false;
         bool has_trailer = false;
         tsi_type tsi = tsi_type::none;
@@ -65,7 +65,7 @@ public:
      * @param buffer Pointer to packet buffer
      * @param buffer_size Size of buffer in bytes
      */
-    explicit SignalPacketView(const uint8_t* buffer, size_t buffer_size) noexcept
+    explicit DataPacketView(const uint8_t* buffer, size_t buffer_size) noexcept
         : buffer_(buffer), buffer_size_(buffer_size), error_(validation_error::none) {
         error_ = validate_internal();
     }
@@ -88,9 +88,9 @@ public:
 
     /**
      * Get packet type
-     * @return packet_type if valid, otherwise signal_data_no_stream
+     * @return PacketType if valid, otherwise SignalDataNoId
      */
-    packet_type type() const noexcept {
+    PacketType type() const noexcept {
         return structure_.type;
     }
 
@@ -286,14 +286,16 @@ private:
         uint32_t header = read_u32(0);
         auto decoded = detail::decode_header(header);
 
-        // 3. Validate packet type (must be signal data)
-        if (decoded.type != packet_type::signal_data_no_stream &&
-            decoded.type != packet_type::signal_data_with_stream) {
+        // 3. Validate packet type (must be signal or extension data)
+        if (decoded.type != PacketType::SignalDataNoId &&
+            decoded.type != PacketType::SignalData &&
+            decoded.type != PacketType::ExtensionDataNoId &&
+            decoded.type != PacketType::ExtensionData) {
             return validation_error::packet_type_mismatch;
         }
 
         // 4. Reject packets with class ID bit set
-        // Signal packets don't support class IDs (signal_packet.hpp:509 "not used in Phase 1")
+        // Signal packets don't support class IDs (data_packet.hpp:509 "not used in Phase 1")
         // If we allowed this, the two class ID words would shift all field offsets by 8 bytes,
         // causing stream_id/timestamp/payload/trailer to be misinterpreted
         if (decoded.has_class_id) {
@@ -308,11 +310,12 @@ private:
         bool has_stream_id = detail::has_stream_id_field(decoded.type);
 
         // 6. Interpret packet-specific bits correctly
-        // For Signal Data packets:
+        // For Signal/Extension Data packets:
         // - Bit 26 = Trailer indicator
         // - Bit 25 = Nd0 (Not a V49.0 Packet Indicator)
         // - Bit 24 = Spectrum/Time indicator
-        bool has_trailer = detail::has_signal_trailer(decoded);
+        // Use the type-aware field from decoded header
+        bool has_trailer = decoded.trailer_included;
 
         // 7. Store header fields
         structure_.type = decoded.type;
@@ -384,5 +387,8 @@ private:
         return detail::network_to_host64(value);
     }
 };
+
+// User-facing type alias for convenient usage
+using SignalPacketView = DataPacketView;
 
 }  // namespace vrtio

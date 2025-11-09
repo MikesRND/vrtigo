@@ -33,11 +33,14 @@ concept AnyBuffer = MutableBuffer<T> || ConstBuffer<T>;
 template<size_t N>
 concept ValidPayloadWords = (N <= 65529);  // 65535 - 6
 
-// Concept for valid packet type in Phase 1 (Signal Data only)
+// Concept for valid data packet types (Signal Data and Extension Data)
+// Accepts packet types 0-3 (both Signal and Extension variants, with and without stream ID)
 template<auto Type>
-concept SignalDataPacket =
-    std::same_as<decltype(Type), const packet_type> &&
-    (Type == packet_type::signal_data_no_stream ||
-     Type == packet_type::signal_data_with_stream);
+concept DataPacketType =
+    std::same_as<decltype(Type), const PacketType> &&
+    (Type == PacketType::SignalDataNoId ||
+     Type == PacketType::SignalData ||
+     Type == PacketType::ExtensionDataNoId ||
+     Type == PacketType::ExtensionData);
 
 }  // namespace vrtio

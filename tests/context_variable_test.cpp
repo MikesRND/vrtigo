@@ -3,7 +3,7 @@
 TEST_F(ContextPacketTest, GPSASCIIVariableField) {
     // Manually create packet with GPS ASCII field
     // Type 4 has stream ID: header (1) + stream_id (1) + CIF0 (1) + GPS ASCII (4) = 7 words
-    uint32_t header = (static_cast<uint32_t>(packet_type::context) << header::PACKET_TYPE_SHIFT) | 7;  // type=4, size=7 words
+    uint32_t header = (static_cast<uint32_t>(PacketType::Context) << header::PACKET_TYPE_SHIFT) | 7;  // type=4, size=7 words
     cif::write_u32_safe(buffer.data(), 0, header);
 
     // Stream ID (type 4 has stream ID per VITA 49.2)
@@ -42,7 +42,7 @@ TEST_F(ContextPacketTest, GPSASCIIVariableField) {
 
 TEST_F(ContextPacketTest, ContextAssociationLists) {
     // Type 4 has stream ID: header (1) + stream_id (1) + CIF0 (1) + context_assoc (4) = 7 words
-    uint32_t header = (static_cast<uint32_t>(packet_type::context) << header::PACKET_TYPE_SHIFT) | 7;  // type=4, size=7 words
+    uint32_t header = (static_cast<uint32_t>(PacketType::Context) << header::PACKET_TYPE_SHIFT) | 7;  // type=4, size=7 words
     cif::write_u32_safe(buffer.data(), 0, header);
 
     // Stream ID (type 4 has stream ID per VITA 49.2)
@@ -79,9 +79,8 @@ TEST_F(ContextPacketTest, CompileTimeForbidsVariable) {
     // This should not compile (static_assert failure):
     // constexpr uint32_t bad_cif0 = (1U << 10);  // GPS ASCII
     // using BadContext = ContextPacket<true, NoTimeStamp, NoClassId,
-    //                                   bad_cif0, 0, 0, false>;
+    //                                   bad_cif0, 0, 0, 0>;
 
     // Test passes by not having the above code compile
     EXPECT_TRUE(true);
 }
-

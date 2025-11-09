@@ -7,8 +7,7 @@ TEST_F(ContextPacketTest, RoundTrip) {
         true,           // Has stream ID
         NoTimeStamp,
         NoClassId,
-        cif0_mask, 0, 0, 0,
-        false
+        cif0_mask, 0, 0, 0
     >;
 
     TestContext tx_packet(buffer.data());
@@ -38,8 +37,7 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2CompileTime) {
         cif0_mask,      // CIF0 has bandwidth
         cif1_mask,      // CIF1 has aux frequency
         cif2_mask,      // CIF2 has controller UUID
-        0,              // No CIF3
-        false
+        0               // No CIF3
     >;
 
     // Compile-time assertions: verify both enable bits are auto-set
@@ -75,7 +73,7 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2Runtime) {
     // Manually build a packet with both CIF1 and CIF2
     // Structure: header(1) + stream_id(1) + CIF0(1) + CIF1(1) + CIF2(1) + bandwidth(2) + aux_freq(2) + uuid(4) = 13 words
     // Use ext_context (type 5) for packets with stream ID
-    uint32_t header = (static_cast<uint32_t>(packet_type::ext_context) << header::PACKET_TYPE_SHIFT) | 13;
+    uint32_t header = (static_cast<uint32_t>(PacketType::ExtensionContext) << header::PACKET_TYPE_SHIFT) | 13;
     cif::write_u32_safe(buffer.data(), 0, header);
 
     // Stream ID
@@ -133,8 +131,7 @@ TEST_F(ContextPacketTest, MultiWordFieldWrite) {
         NoTimeStamp,
         NoClassId,
         cif0_mask,
-        0, 0, 0,
-        false
+        0, 0, 0
     >;
 
     TestContext packet(buffer.data());
@@ -165,4 +162,3 @@ TEST_F(ContextPacketTest, MultiWordFieldWrite) {
     EXPECT_EQ(runtime_value.raw_value().word(0), 0xAABBCCDD);
     EXPECT_EQ(runtime_value.raw_value().word(1), 0x11223344);
 }
-

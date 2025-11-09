@@ -1,8 +1,8 @@
 #pragma once
 
-#include "signal_packet.hpp"
-#include "../core/trailer.hpp"
+#include "data_packet.hpp"
 #include "../core/packet_concepts.hpp"
+#include "../core/trailer_view.hpp"
 #include <utility>
 
 namespace vrtio {
@@ -15,7 +15,7 @@ class PacketBuilder;
 /**
  * Builder for fluent packet construction on user-provided buffer
  *
- * Supports fixed-structure compile-time packet types (SignalPacket, ExtDataPacket).
+ * Supports fixed-structure compile-time packet types (DataPacket and its aliases).
  * Methods are enabled/disabled based on packet capabilities using C++20 concepts.
  *
  * Usage:
@@ -77,8 +77,13 @@ public:
     auto& trailer(uint32_t t) noexcept
         requires HasTrailer<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
-        packet.set_trailer(t);
+        packet.trailer().set_raw(t);
         return *this;
+    }
+
+    auto& trailer(const TrailerBuilder& builder) noexcept
+        requires HasTrailer<PacketType> {
+        return trailer(builder.value());
     }
 
     // Individual trailer field setters (only available if packet has trailer)
@@ -88,9 +93,9 @@ public:
      * @param valid true if data is valid
      */
     auto& trailer_valid_data(bool valid) noexcept
-        requires requires(PacketType& p) { p.set_trailer_valid_data(valid); } {
+        requires HasTrailer<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
-        packet.set_trailer_valid_data(valid);
+        packet.trailer().set_valid_data(valid);
         return *this;
     }
 
@@ -99,9 +104,9 @@ public:
      * @param calibrated true if time is calibrated
      */
     auto& trailer_calibrated_time(bool calibrated) noexcept
-        requires requires(PacketType& p) { p.set_trailer_calibrated_time(calibrated); } {
+        requires HasTrailer<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
-        packet.set_trailer_calibrated_time(calibrated);
+        packet.trailer().set_calibrated_time(calibrated);
         return *this;
     }
 
@@ -110,9 +115,9 @@ public:
      * @param over_range true if over-range occurred
      */
     auto& trailer_over_range(bool over_range) noexcept
-        requires requires(PacketType& p) { p.set_trailer_over_range(over_range); } {
+        requires HasTrailer<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
-        packet.set_trailer_over_range(over_range);
+        packet.trailer().set_over_range(over_range);
         return *this;
     }
 
@@ -121,9 +126,9 @@ public:
      * @param loss true if sample loss occurred
      */
     auto& trailer_sample_loss(bool loss) noexcept
-        requires requires(PacketType& p) { p.set_trailer_sample_loss(loss); } {
+        requires HasTrailer<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
-        packet.set_trailer_sample_loss(loss);
+        packet.trailer().set_sample_loss(loss);
         return *this;
     }
 
@@ -132,9 +137,9 @@ public:
      * @param locked true if reference is locked
      */
     auto& trailer_reference_lock(bool locked) noexcept
-        requires requires(PacketType& p) { p.set_trailer_reference_lock(locked); } {
+        requires HasTrailer<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
-        packet.set_trailer_reference_lock(locked);
+        packet.trailer().set_reference_lock(locked);
         return *this;
     }
 
@@ -143,19 +148,9 @@ public:
      * @param count Number of context packets (0-127)
      */
     auto& trailer_context_packets(uint8_t count) noexcept
-        requires requires(PacketType& p) { p.set_trailer_context_packets(count); } {
+        requires HasTrailer<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
-        packet.set_trailer_context_packets(count);
-        return *this;
-    }
-
-    /**
-     * Set trailer to indicate good status (valid data and calibrated time)
-     */
-    auto& trailer_good_status() noexcept
-        requires requires(PacketType& p) { p.set_trailer_good_status(); } {
-        PacketType packet(buffer_, false);  // Don't reinitialize
-        packet.set_trailer_good_status();
+        packet.trailer().set_context_packets(count);
         return *this;
     }
 
@@ -164,9 +159,9 @@ public:
      * @param active true if AGC/MGC is active
      */
     auto& trailer_agc_mgc(bool active) noexcept
-        requires requires(PacketType& p) { p.set_trailer_agc_mgc(active); } {
+        requires HasTrailer<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
-        packet.set_trailer_agc_mgc(active);
+        packet.trailer().set_agc_mgc(active);
         return *this;
     }
 
@@ -175,9 +170,9 @@ public:
      * @param detected true if signal is detected
      */
     auto& trailer_detected_signal(bool detected) noexcept
-        requires requires(PacketType& p) { p.set_trailer_detected_signal(detected); } {
+        requires HasTrailer<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
-        packet.set_trailer_detected_signal(detected);
+        packet.trailer().set_detected_signal(detected);
         return *this;
     }
 
@@ -186,9 +181,9 @@ public:
      * @param inverted true if spectral inversion is present
      */
     auto& trailer_spectral_inversion(bool inverted) noexcept
-        requires requires(PacketType& p) { p.set_trailer_spectral_inversion(inverted); } {
+        requires HasTrailer<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
-        packet.set_trailer_spectral_inversion(inverted);
+        packet.trailer().set_spectral_inversion(inverted);
         return *this;
     }
 
@@ -197,9 +192,9 @@ public:
      * @param ref_point true if reference point is indicated
      */
     auto& trailer_reference_point(bool ref_point) noexcept
-        requires requires(PacketType& p) { p.set_trailer_reference_point(ref_point); } {
+        requires HasTrailer<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
-        packet.set_trailer_reference_point(ref_point);
+        packet.trailer().set_reference_point(ref_point);
         return *this;
     }
 
@@ -208,29 +203,9 @@ public:
      * @param detected true if signal is detected
      */
     auto& trailer_signal_detected(bool detected) noexcept
-        requires requires(PacketType& p) { p.set_trailer_signal_detected(detected); } {
-        PacketType packet(buffer_, false);  // Don't reinitialize
-        packet.set_trailer_signal_detected(detected);
-        return *this;
-    }
-
-    /**
-     * Set multiple trailer status flags at once
-     * @param valid_data true if data is valid
-     * @param calibrated_time true if time is calibrated
-     * @param over_range true if over-range occurred
-     * @param sample_loss true if sample loss occurred
-     */
-    auto& trailer_status(bool valid_data, bool calibrated_time,
-                        bool over_range = false, bool sample_loss = false) noexcept
         requires HasTrailer<PacketType> {
         PacketType packet(buffer_, false);  // Don't reinitialize
-        uint32_t t = 0;
-        if (valid_data) t |= trailer::valid_data_mask;
-        if (calibrated_time) t |= trailer::calibrated_time_mask;
-        if (over_range) t |= trailer::over_range_mask;
-        if (sample_loss) t |= trailer::sample_loss_mask;
-        packet.set_trailer(t);
+        packet.trailer().set_signal_detected(detected);
         return *this;
     }
 

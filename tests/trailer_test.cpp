@@ -1,17 +1,18 @@
-#include <vrtio/packet/signal_packet.hpp>
+#include <vrtio/packet/data_packet.hpp>
 #include <vrtio/packet/builder.hpp>
 #include <vrtio/core/trailer.hpp>
+#include <vrtio/core/trailer_view.hpp>
 #include <gtest/gtest.h>
 #include <vector>
+#include <array>
 #include <cstring>
 
 // Test fixture for trailer field manipulation
 class TrailerFieldTest : public ::testing::Test {
 protected:
-    using PacketType = vrtio::SignalPacket<
-        vrtio::packet_type::signal_data_with_stream,
+    using PacketType = vrtio::SignalDataPacket<
         vrtio::TimeStampUTC,
-        true,   // HasTrailer
+        vrtio::Trailer::Included,  // Trailer included
         128
     >;
 
@@ -28,198 +29,199 @@ TEST_F(TrailerFieldTest, ValidDataBit) {
     PacketType packet(buffer.data());
 
     // Initially should be false (trailer is zero-initialized)
-    EXPECT_FALSE(packet.trailer_valid_data());
+    EXPECT_FALSE(packet.trailer().valid_data());
 
     // Set to true
-    packet.set_trailer_valid_data(true);
-    EXPECT_TRUE(packet.trailer_valid_data());
-    EXPECT_EQ(packet.trailer(), 1U << 17);
+    packet.trailer().set_valid_data(true);
+    EXPECT_TRUE(packet.trailer().valid_data());
+    EXPECT_EQ(packet.trailer().raw(), 1U << 17);
 
     // Set to false
-    packet.set_trailer_valid_data(false);
-    EXPECT_FALSE(packet.trailer_valid_data());
-    EXPECT_EQ(packet.trailer(), 0U);
+    packet.trailer().set_valid_data(false);
+    EXPECT_FALSE(packet.trailer().valid_data());
+    EXPECT_EQ(packet.trailer().raw(), 0U);
 }
 
 TEST_F(TrailerFieldTest, CalibratedTimeBit) {
     PacketType packet(buffer.data());
 
-    EXPECT_FALSE(packet.trailer_calibrated_time());
+    EXPECT_FALSE(packet.trailer().calibrated_time());
 
-    packet.set_trailer_calibrated_time(true);
-    EXPECT_TRUE(packet.trailer_calibrated_time());
-    EXPECT_EQ(packet.trailer(), 1U << 16);
+    packet.trailer().set_calibrated_time(true);
+    EXPECT_TRUE(packet.trailer().calibrated_time());
+    EXPECT_EQ(packet.trailer().raw(), 1U << 16);
 
-    packet.set_trailer_calibrated_time(false);
-    EXPECT_FALSE(packet.trailer_calibrated_time());
+    packet.trailer().set_calibrated_time(false);
+    EXPECT_FALSE(packet.trailer().calibrated_time());
 }
 
 TEST_F(TrailerFieldTest, OverRangeBit) {
     PacketType packet(buffer.data());
 
-    EXPECT_FALSE(packet.trailer_over_range());
+    EXPECT_FALSE(packet.trailer().over_range());
 
-    packet.set_trailer_over_range(true);
-    EXPECT_TRUE(packet.trailer_over_range());
-    EXPECT_EQ(packet.trailer(), 1U << 12);
+    packet.trailer().set_over_range(true);
+    EXPECT_TRUE(packet.trailer().over_range());
+    EXPECT_EQ(packet.trailer().raw(), 1U << 12);
 
-    packet.set_trailer_over_range(false);
-    EXPECT_FALSE(packet.trailer_over_range());
+    packet.trailer().set_over_range(false);
+    EXPECT_FALSE(packet.trailer().over_range());
 }
 
 TEST_F(TrailerFieldTest, SampleLossBit) {
     PacketType packet(buffer.data());
 
-    EXPECT_FALSE(packet.trailer_sample_loss());
+    EXPECT_FALSE(packet.trailer().sample_loss());
 
-    packet.set_trailer_sample_loss(true);
-    EXPECT_TRUE(packet.trailer_sample_loss());
-    EXPECT_EQ(packet.trailer(), 1U << 13);
+    packet.trailer().set_sample_loss(true);
+    EXPECT_TRUE(packet.trailer().sample_loss());
+    EXPECT_EQ(packet.trailer().raw(), 1U << 13);
 }
 
 TEST_F(TrailerFieldTest, ReferenceLockBit) {
     PacketType packet(buffer.data());
 
-    EXPECT_FALSE(packet.trailer_reference_lock());
+    EXPECT_FALSE(packet.trailer().reference_lock());
 
-    packet.set_trailer_reference_lock(true);
-    EXPECT_TRUE(packet.trailer_reference_lock());
-    EXPECT_EQ(packet.trailer(), 1U << 8);
+    packet.trailer().set_reference_lock(true);
+    EXPECT_TRUE(packet.trailer().reference_lock());
+    EXPECT_EQ(packet.trailer().raw(), 1U << 8);
 }
 
 TEST_F(TrailerFieldTest, AgcMgcBit) {
     PacketType packet(buffer.data());
 
-    EXPECT_FALSE(packet.trailer_agc_mgc());
+    EXPECT_FALSE(packet.trailer().agc_mgc());
 
-    packet.set_trailer_agc_mgc(true);
-    EXPECT_TRUE(packet.trailer_agc_mgc());
-    EXPECT_EQ(packet.trailer(), 1U << 9);
+    packet.trailer().set_agc_mgc(true);
+    EXPECT_TRUE(packet.trailer().agc_mgc());
+    EXPECT_EQ(packet.trailer().raw(), 1U << 9);
 }
 
 TEST_F(TrailerFieldTest, DetectedSignalBit) {
     PacketType packet(buffer.data());
 
-    EXPECT_FALSE(packet.trailer_detected_signal());
+    EXPECT_FALSE(packet.trailer().detected_signal());
 
-    packet.set_trailer_detected_signal(true);
-    EXPECT_TRUE(packet.trailer_detected_signal());
-    EXPECT_EQ(packet.trailer(), 1U << 10);
+    packet.trailer().set_detected_signal(true);
+    EXPECT_TRUE(packet.trailer().detected_signal());
+    EXPECT_EQ(packet.trailer().raw(), 1U << 10);
 }
 
 TEST_F(TrailerFieldTest, SpectralInversionBit) {
     PacketType packet(buffer.data());
 
-    EXPECT_FALSE(packet.trailer_spectral_inversion());
+    EXPECT_FALSE(packet.trailer().spectral_inversion());
 
-    packet.set_trailer_spectral_inversion(true);
-    EXPECT_TRUE(packet.trailer_spectral_inversion());
-    EXPECT_EQ(packet.trailer(), 1U << 11);
+    packet.trailer().set_spectral_inversion(true);
+    EXPECT_TRUE(packet.trailer().spectral_inversion());
+    EXPECT_EQ(packet.trailer().raw(), 1U << 11);
 }
 
 TEST_F(TrailerFieldTest, ReferencePointBit) {
     PacketType packet(buffer.data());
 
-    EXPECT_FALSE(packet.trailer_reference_point());
+    EXPECT_FALSE(packet.trailer().reference_point());
 
-    packet.set_trailer_reference_point(true);
-    EXPECT_TRUE(packet.trailer_reference_point());
-    EXPECT_EQ(packet.trailer(), 1U << 18);
+    packet.trailer().set_reference_point(true);
+    EXPECT_TRUE(packet.trailer().reference_point());
+    EXPECT_EQ(packet.trailer().raw(), 1U << 18);
 }
 
 TEST_F(TrailerFieldTest, SignalDetectedBit) {
     PacketType packet(buffer.data());
 
-    EXPECT_FALSE(packet.trailer_signal_detected());
+    EXPECT_FALSE(packet.trailer().signal_detected());
 
-    packet.set_trailer_signal_detected(true);
-    EXPECT_TRUE(packet.trailer_signal_detected());
-    EXPECT_EQ(packet.trailer(), 1U << 19);
+    packet.trailer().set_signal_detected(true);
+    EXPECT_TRUE(packet.trailer().signal_detected());
+    EXPECT_EQ(packet.trailer().raw(), 1U << 19);
 }
 
 TEST_F(TrailerFieldTest, ContextPacketsField) {
     PacketType packet(buffer.data());
 
-    EXPECT_EQ(packet.trailer_context_packets(), 0);
+    EXPECT_EQ(packet.trailer().context_packets(), 0);
 
     // Set to various values
-    packet.set_trailer_context_packets(5);
-    EXPECT_EQ(packet.trailer_context_packets(), 5);
-    EXPECT_EQ(packet.trailer(), 5U);
+    packet.trailer().set_context_packets(5);
+    EXPECT_EQ(packet.trailer().context_packets(), 5);
+    EXPECT_EQ(packet.trailer().raw(), 5U);
 
-    packet.set_trailer_context_packets(127);
-    EXPECT_EQ(packet.trailer_context_packets(), 127);
-    EXPECT_EQ(packet.trailer(), 127U);
+    packet.trailer().set_context_packets(127);
+    EXPECT_EQ(packet.trailer().context_packets(), 127);
+    EXPECT_EQ(packet.trailer().raw(), 127U);
 
-    packet.set_trailer_context_packets(0);
-    EXPECT_EQ(packet.trailer_context_packets(), 0);
+    packet.trailer().set_context_packets(0);
+    EXPECT_EQ(packet.trailer().context_packets(), 0);
 }
 
 // Test multiple bits set simultaneously
 TEST_F(TrailerFieldTest, MultipleBitsSet) {
     PacketType packet(buffer.data());
 
-    packet.set_trailer_valid_data(true);
-    packet.set_trailer_calibrated_time(true);
+    packet.trailer().set_valid_data(true);
+    packet.trailer().set_calibrated_time(true);
 
-    EXPECT_TRUE(packet.trailer_valid_data());
-    EXPECT_TRUE(packet.trailer_calibrated_time());
+    EXPECT_TRUE(packet.trailer().valid_data());
+    EXPECT_TRUE(packet.trailer().calibrated_time());
 
     uint32_t expected = (1U << 17) | (1U << 16);
-    EXPECT_EQ(packet.trailer(), expected);
+    EXPECT_EQ(packet.trailer().raw(), expected);
 }
 
 TEST_F(TrailerFieldTest, ErrorFlags) {
     PacketType packet(buffer.data());
 
     // No errors initially
-    EXPECT_FALSE(packet.trailer_has_errors());
+    EXPECT_FALSE(packet.trailer().has_errors());
 
     // Set over-range
-    packet.set_trailer_over_range(true);
-    EXPECT_TRUE(packet.trailer_has_errors());
+    packet.trailer().set_over_range(true);
+    EXPECT_TRUE(packet.trailer().has_errors());
 
     // Clear over-range, set sample loss
-    packet.set_trailer_over_range(false);
-    packet.set_trailer_sample_loss(true);
-    EXPECT_TRUE(packet.trailer_has_errors());
+    packet.trailer().set_over_range(false);
+    packet.trailer().set_sample_loss(true);
+    EXPECT_TRUE(packet.trailer().has_errors());
 
     // Both errors
-    packet.set_trailer_over_range(true);
-    EXPECT_TRUE(packet.trailer_has_errors());
+    packet.trailer().set_over_range(true);
+    EXPECT_TRUE(packet.trailer().has_errors());
 
     // Clear all errors
-    packet.set_trailer_over_range(false);
-    packet.set_trailer_sample_loss(false);
-    EXPECT_FALSE(packet.trailer_has_errors());
+    packet.trailer().set_over_range(false);
+    packet.trailer().set_sample_loss(false);
+    EXPECT_FALSE(packet.trailer().has_errors());
 }
 
 TEST_F(TrailerFieldTest, GoodStatus) {
     PacketType packet(buffer.data());
 
-    packet.set_trailer_good_status();
+    packet.trailer().set_valid_data(true);
+    packet.trailer().set_calibrated_time(true);
 
-    EXPECT_TRUE(packet.trailer_valid_data());
-    EXPECT_TRUE(packet.trailer_calibrated_time());
-    EXPECT_EQ(packet.trailer(), vrtio::trailer::status_all_good);
+    EXPECT_TRUE(packet.trailer().valid_data());
+    EXPECT_TRUE(packet.trailer().calibrated_time());
+    EXPECT_EQ(packet.trailer().raw(), vrtio::trailer::status_all_good);
 }
 
 TEST_F(TrailerFieldTest, ClearTrailer) {
     PacketType packet(buffer.data());
 
     // Set multiple bits
-    packet.set_trailer_valid_data(true);
-    packet.set_trailer_calibrated_time(true);
-    packet.set_trailer_over_range(true);
+    packet.trailer().set_valid_data(true);
+    packet.trailer().set_calibrated_time(true);
+    packet.trailer().set_over_range(true);
 
-    EXPECT_NE(packet.trailer(), 0U);
+    EXPECT_NE(packet.trailer().raw(), 0U);
 
     // Clear
-    packet.clear_trailer();
-    EXPECT_EQ(packet.trailer(), 0U);
-    EXPECT_FALSE(packet.trailer_valid_data());
-    EXPECT_FALSE(packet.trailer_calibrated_time());
-    EXPECT_FALSE(packet.trailer_over_range());
+    packet.trailer().clear();
+    EXPECT_EQ(packet.trailer().raw(), 0U);
+    EXPECT_FALSE(packet.trailer().valid_data());
+    EXPECT_FALSE(packet.trailer().calibrated_time());
+    EXPECT_FALSE(packet.trailer().over_range());
 }
 
 // Test that setting one bit doesn't affect others
@@ -227,32 +229,32 @@ TEST_F(TrailerFieldTest, BitIndependence) {
     PacketType packet(buffer.data());
 
     // Set multiple bits
-    packet.set_trailer_valid_data(true);
-    packet.set_trailer_context_packets(42);
-    packet.set_trailer_over_range(true);
+    packet.trailer().set_valid_data(true);
+    packet.trailer().set_context_packets(42);
+    packet.trailer().set_over_range(true);
 
     // Verify initial state
-    EXPECT_TRUE(packet.trailer_valid_data());
-    EXPECT_EQ(packet.trailer_context_packets(), 42);
-    EXPECT_TRUE(packet.trailer_over_range());
+    EXPECT_TRUE(packet.trailer().valid_data());
+    EXPECT_EQ(packet.trailer().context_packets(), 42);
+    EXPECT_TRUE(packet.trailer().over_range());
 
     // Toggle one bit
-    packet.set_trailer_calibrated_time(true);
+    packet.trailer().set_calibrated_time(true);
 
     // Verify others unchanged
-    EXPECT_TRUE(packet.trailer_valid_data());
-    EXPECT_EQ(packet.trailer_context_packets(), 42);
-    EXPECT_TRUE(packet.trailer_over_range());
-    EXPECT_TRUE(packet.trailer_calibrated_time());
+    EXPECT_TRUE(packet.trailer().valid_data());
+    EXPECT_EQ(packet.trailer().context_packets(), 42);
+    EXPECT_TRUE(packet.trailer().over_range());
+    EXPECT_TRUE(packet.trailer().calibrated_time());
 
     // Clear one bit
-    packet.set_trailer_over_range(false);
+    packet.trailer().set_over_range(false);
 
     // Verify others unchanged
-    EXPECT_TRUE(packet.trailer_valid_data());
-    EXPECT_EQ(packet.trailer_context_packets(), 42);
-    EXPECT_FALSE(packet.trailer_over_range());
-    EXPECT_TRUE(packet.trailer_calibrated_time());
+    EXPECT_TRUE(packet.trailer().valid_data());
+    EXPECT_EQ(packet.trailer().context_packets(), 42);
+    EXPECT_FALSE(packet.trailer().over_range());
+    EXPECT_TRUE(packet.trailer().calibrated_time());
 }
 
 // Test builder pattern with individual fields
@@ -267,45 +269,37 @@ TEST_F(TrailerFieldTest, BuilderIndividualFields) {
 
     EXPECT_EQ(packet.stream_id(), 0x12345678U);
     EXPECT_EQ(packet.timestamp_integer(), 1000000U);
-    EXPECT_TRUE(packet.trailer_valid_data());
-    EXPECT_TRUE(packet.trailer_calibrated_time());
+    EXPECT_TRUE(packet.trailer().valid_data());
+    EXPECT_TRUE(packet.trailer().calibrated_time());
     EXPECT_EQ(packet.packet_count(), 12);
 }
 
 TEST_F(TrailerFieldTest, BuilderGoodStatus) {
     auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
         .stream_id(0x11111111)
-        .trailer_good_status()
+        .trailer_valid_data(true)
+        .trailer_calibrated_time(true)
         .build();
 
-    EXPECT_TRUE(packet.trailer_valid_data());
-    EXPECT_TRUE(packet.trailer_calibrated_time());
-    EXPECT_EQ(packet.trailer(), vrtio::trailer::status_all_good);
-}
-
-TEST_F(TrailerFieldTest, BuilderStatusMethod) {
-    auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
-        .stream_id(0x22222222)
-        .trailer_status(true, true, false, false)
-        .build();
-
-    EXPECT_TRUE(packet.trailer_valid_data());
-    EXPECT_TRUE(packet.trailer_calibrated_time());
-    EXPECT_FALSE(packet.trailer_over_range());
-    EXPECT_FALSE(packet.trailer_sample_loss());
+    EXPECT_TRUE(packet.trailer().valid_data());
+    EXPECT_TRUE(packet.trailer().calibrated_time());
+    EXPECT_EQ(packet.trailer().raw(), vrtio::trailer::status_all_good);
 }
 
 TEST_F(TrailerFieldTest, BuilderWithErrors) {
     auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
         .stream_id(0x33333333)
-        .trailer_status(true, true, true, true)
+        .trailer_valid_data(true)
+        .trailer_calibrated_time(true)
+        .trailer_over_range(true)
+        .trailer_sample_loss(true)
         .build();
 
-    EXPECT_TRUE(packet.trailer_valid_data());
-    EXPECT_TRUE(packet.trailer_calibrated_time());
-    EXPECT_TRUE(packet.trailer_over_range());
-    EXPECT_TRUE(packet.trailer_sample_loss());
-    EXPECT_TRUE(packet.trailer_has_errors());
+    EXPECT_TRUE(packet.trailer().valid_data());
+    EXPECT_TRUE(packet.trailer().calibrated_time());
+    EXPECT_TRUE(packet.trailer().over_range());
+    EXPECT_TRUE(packet.trailer().sample_loss());
+    EXPECT_TRUE(packet.trailer().has_errors());
 }
 
 TEST_F(TrailerFieldTest, BuilderContextPackets) {
@@ -315,8 +309,8 @@ TEST_F(TrailerFieldTest, BuilderContextPackets) {
         .trailer_valid_data(true)
         .build();
 
-    EXPECT_EQ(packet.trailer_context_packets(), 10);
-    EXPECT_TRUE(packet.trailer_valid_data());
+    EXPECT_EQ(packet.trailer().context_packets(), 10);
+    EXPECT_TRUE(packet.trailer().valid_data());
 }
 
 TEST_F(TrailerFieldTest, BuilderReferenceLock) {
@@ -326,8 +320,8 @@ TEST_F(TrailerFieldTest, BuilderReferenceLock) {
         .trailer_valid_data(true)
         .build();
 
-    EXPECT_TRUE(packet.trailer_reference_lock());
-    EXPECT_TRUE(packet.trailer_valid_data());
+    EXPECT_TRUE(packet.trailer().reference_lock());
+    EXPECT_TRUE(packet.trailer().valid_data());
 }
 
 // Test network byte order preservation
@@ -336,16 +330,16 @@ TEST_F(TrailerFieldTest, NetworkByteOrder) {
 
     // Set a specific trailer pattern
     uint32_t test_value = 0x12345678;
-    packet.set_trailer(test_value);
+    packet.trailer().set_raw(test_value);
 
     // Read it back
-    EXPECT_EQ(packet.trailer(), test_value);
+    EXPECT_EQ(packet.trailer().raw(), test_value);
 
     // Verify individual bits work correctly with this value
     // Bit 16 should be set (0x00010000 is part of 0x12345678)
     // Actually 0x12345678 has bits: 28,24,22,20,18,14,12,11,10,6,5,4,3
     bool bit16 = (test_value >> 16) & 0x01;
-    EXPECT_EQ(packet.trailer_calibrated_time(), bit16);
+    EXPECT_EQ(packet.trailer().calibrated_time(), bit16);
 }
 
 // Test constexpr helper functions directly
@@ -438,41 +432,92 @@ TEST(TrailerHelperTest, CreateGoodStatus) {
     EXPECT_FALSE(vrtio::trailer::has_errors(status));
 }
 
+TEST(TrailerViewTest, MutableViewUpdatesBuffer) {
+    alignas(4) std::array<uint8_t, 4> buffer{};
+    vrtio::TrailerView view(buffer.data());
+    EXPECT_EQ(view.raw(), 0U);
+    view.set_valid_data(true);
+    view.set_calibrated_time(true);
+    EXPECT_TRUE(view.valid_data());
+    EXPECT_TRUE(view.calibrated_time());
+
+    vrtio::ConstTrailerView const_view(buffer.data());
+    EXPECT_TRUE(const_view.valid_data());
+    EXPECT_TRUE(const_view.calibrated_time());
+}
+
+TEST(TrailerViewTest, StatusHelpers) {
+    alignas(4) std::array<uint8_t, 4> buffer{};
+    vrtio::TrailerView view(buffer.data());
+    view.set_valid_data(true);
+    view.set_calibrated_time(true);
+    view.set_over_range(true);
+    view.set_sample_loss(false);
+    EXPECT_TRUE(view.valid_data());
+    EXPECT_TRUE(view.calibrated_time());
+    EXPECT_TRUE(view.over_range());
+    EXPECT_FALSE(view.sample_loss());
+
+    view.clear();
+    EXPECT_EQ(view.raw(), 0U);
+    view.set_valid_data(true);
+    view.set_calibrated_time(true);
+    EXPECT_EQ(view.raw(), vrtio::trailer::status_all_good);
+}
+
+TEST(TrailerBuilderTest, FluentValue) {
+    auto builder = vrtio::TrailerBuilder{}
+        .valid_data(true)
+        .calibrated_time(true)
+        .context_packets(12)
+        .over_range(true);
+
+    alignas(4) std::array<uint8_t, 4> buffer{};
+    builder.apply(vrtio::TrailerView(buffer.data()));
+
+    vrtio::ConstTrailerView view(buffer.data());
+    EXPECT_TRUE(view.valid_data());
+    EXPECT_TRUE(view.calibrated_time());
+    EXPECT_EQ(view.context_packets(), 12);
+    EXPECT_TRUE(view.over_range());
+    EXPECT_TRUE(view.has_errors());
+}
+
 // Test edge cases
 TEST_F(TrailerFieldTest, ContextPacketsBoundary) {
     PacketType packet(buffer.data());
 
     // Test maximum value (7 bits = 127)
-    packet.set_trailer_context_packets(127);
-    EXPECT_EQ(packet.trailer_context_packets(), 127);
+    packet.trailer().set_context_packets(127);
+    EXPECT_EQ(packet.trailer().context_packets(), 127);
 
     // Test that values > 127 are masked (truncated to 7 bits)
-    packet.set_trailer_context_packets(128);
-    EXPECT_EQ(packet.trailer_context_packets(), 0);  // 128 & 0x7F = 0
+    packet.trailer().set_context_packets(128);
+    EXPECT_EQ(packet.trailer().context_packets(), 0);  // 128 & 0x7F = 0
 
-    packet.set_trailer_context_packets(255);
-    EXPECT_EQ(packet.trailer_context_packets(), 127);  // 255 & 0x7F = 127
+    packet.trailer().set_context_packets(255);
+    EXPECT_EQ(packet.trailer().context_packets(), 127);  // 255 & 0x7F = 127
 }
 
 TEST_F(TrailerFieldTest, AllBitsSet) {
     PacketType packet(buffer.data());
 
     // Set all defined bits
-    packet.set_trailer(0xFFFFFFFF);
+    packet.trailer().set_raw(0xFFFFFFFF);
 
     // Verify all getters return true/max value
-    EXPECT_EQ(packet.trailer_context_packets(), 127);
-    EXPECT_TRUE(packet.trailer_reference_lock());
-    EXPECT_TRUE(packet.trailer_agc_mgc());
-    EXPECT_TRUE(packet.trailer_detected_signal());
-    EXPECT_TRUE(packet.trailer_spectral_inversion());
-    EXPECT_TRUE(packet.trailer_over_range());
-    EXPECT_TRUE(packet.trailer_sample_loss());
-    EXPECT_TRUE(packet.trailer_calibrated_time());
-    EXPECT_TRUE(packet.trailer_valid_data());
-    EXPECT_TRUE(packet.trailer_reference_point());
-    EXPECT_TRUE(packet.trailer_signal_detected());
-    EXPECT_TRUE(packet.trailer_has_errors());
+    EXPECT_EQ(packet.trailer().context_packets(), 127);
+    EXPECT_TRUE(packet.trailer().reference_lock());
+    EXPECT_TRUE(packet.trailer().agc_mgc());
+    EXPECT_TRUE(packet.trailer().detected_signal());
+    EXPECT_TRUE(packet.trailer().spectral_inversion());
+    EXPECT_TRUE(packet.trailer().over_range());
+    EXPECT_TRUE(packet.trailer().sample_loss());
+    EXPECT_TRUE(packet.trailer().calibrated_time());
+    EXPECT_TRUE(packet.trailer().valid_data());
+    EXPECT_TRUE(packet.trailer().reference_point());
+    EXPECT_TRUE(packet.trailer().signal_detected());
+    EXPECT_TRUE(packet.trailer().has_errors());
 }
 
 // Test roundtrip through serialization
@@ -495,9 +540,9 @@ TEST_F(TrailerFieldTest, SerializationRoundtrip) {
     // Verify all fields match
     EXPECT_EQ(packet2.stream_id(), 0xABCDEF00U);
     EXPECT_EQ(packet2.timestamp_integer(), 999999U);
-    EXPECT_TRUE(packet2.trailer_valid_data());
-    EXPECT_TRUE(packet2.trailer_calibrated_time());
-    EXPECT_EQ(packet2.trailer_context_packets(), 25);
-    EXPECT_TRUE(packet2.trailer_reference_lock());
+    EXPECT_TRUE(packet2.trailer().valid_data());
+    EXPECT_TRUE(packet2.trailer().calibrated_time());
+    EXPECT_EQ(packet2.trailer().context_packets(), 25);
+    EXPECT_TRUE(packet2.trailer().reference_lock());
     EXPECT_EQ(packet2.packet_count(), 10);
 }
