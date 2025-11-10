@@ -5,6 +5,7 @@
 #include <vrtio.hpp>
 
 using namespace vrtio;
+using namespace vrtio::field;
 
 // =============================================================================
 // Interpreted Value Tests - Q52.12 Fixed-Point ↔ Hz Conversion
@@ -21,37 +22,37 @@ protected:
 // =============================================================================
 
 TEST_F(InterpretedValueTest, BandwidthInterpretedRead) {
-    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
+    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
     // Set bandwidth to Q52.12 encoding for 100 MHz
     // 100 MHz = 100'000'000 Hz
     // Q52.12: 100'000'000 * 4096 = 409'600'000'000
-    get(packet, field::bandwidth).set_raw_value(409'600'000'000ULL);
+    get(packet, bandwidth).set_raw_value(409'600'000'000ULL);
 
     // Read interpreted value
-    double hz = get(packet, field::bandwidth).value();
+    double hz = get(packet, bandwidth).value();
 
     // Should be within 1 Hz of 100 MHz
     EXPECT_NEAR(hz, 100'000'000.0, 1.0);
 }
 
 TEST_F(InterpretedValueTest, BandwidthInterpretedWrite) {
-    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
+    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
     // Write interpreted value (50 MHz)
-    get(packet, field::bandwidth).set_value(50'000'000.0);
+    get(packet, bandwidth).set_value(50'000'000.0);
 
     // Verify raw value is correct Q52.12 encoding
     // 50 MHz * 4096 = 204'800'000'000
-    EXPECT_EQ(get(packet, field::bandwidth).raw_value(), 204'800'000'000ULL);
+    EXPECT_EQ(get(packet, bandwidth).raw_value(), 204'800'000'000ULL);
 }
 
 TEST_F(InterpretedValueTest, BandwidthRoundTrip) {
-    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
+    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
@@ -66,29 +67,29 @@ TEST_F(InterpretedValueTest, BandwidthRoundTrip) {
     };
 
     for (double freq : test_frequencies) {
-        get(packet, field::bandwidth).set_value(freq);
-        double retrieved = get(packet, field::bandwidth).value();
+        get(packet, bandwidth).set_value(freq);
+        double retrieved = get(packet, bandwidth).value();
         EXPECT_NEAR(retrieved, freq, 1.0) << "Failed for frequency: " << freq;
     }
 }
 
 TEST_F(InterpretedValueTest, BandwidthOperatorDereference) {
-    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
+    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
     // Set to 200 MHz
-    get(packet, field::bandwidth).set_value(200'000'000.0);
+    get(packet, bandwidth).set_value(200'000'000.0);
 
     // operator* should return interpreted value
-    auto bw_proxy = get(packet, field::bandwidth);
+    auto bw_proxy = get(packet, bandwidth);
     double hz = *bw_proxy;
 
     EXPECT_NEAR(hz, 200'000'000.0, 1.0);
 }
 
 TEST_F(InterpretedValueTest, BandwidthConversionPrecision) {
-    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
+    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
@@ -96,33 +97,33 @@ TEST_F(InterpretedValueTest, BandwidthConversionPrecision) {
 
     // Test 1: Exact value (divisible by 4096)
     double exact_hz = 4096.0 * 1000.0; // 4'096'000 Hz
-    get(packet, field::bandwidth).set_value(exact_hz);
-    EXPECT_DOUBLE_EQ(get(packet, field::bandwidth).value(), exact_hz);
+    get(packet, bandwidth).set_value(exact_hz);
+    EXPECT_DOUBLE_EQ(get(packet, bandwidth).value(), exact_hz);
 
     // Test 2: Non-exact value (rounding)
     double inexact_hz = 1'234'567.89;
-    get(packet, field::bandwidth).set_value(inexact_hz);
-    double retrieved = get(packet, field::bandwidth).value();
+    get(packet, bandwidth).set_value(inexact_hz);
+    double retrieved = get(packet, bandwidth).value();
     // Should be within Q52.12 resolution (~0.244 Hz)
     EXPECT_NEAR(retrieved, inexact_hz, 0.25);
 }
 
 TEST_F(InterpretedValueTest, BandwidthEdgeCases) {
-    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
+    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
     // Zero value
-    get(packet, field::bandwidth).set_value(0.0);
-    EXPECT_EQ(get(packet, field::bandwidth).raw_value(), 0ULL);
-    EXPECT_DOUBLE_EQ(get(packet, field::bandwidth).value(), 0.0);
+    get(packet, bandwidth).set_value(0.0);
+    EXPECT_EQ(get(packet, bandwidth).raw_value(), 0ULL);
+    EXPECT_DOUBLE_EQ(get(packet, bandwidth).value(), 0.0);
 
     // Maximum Q52.12 value
     uint64_t max_q52_12 = 0xFFFFFFFFFFFFFFFFULL;
-    get(packet, field::bandwidth).set_raw_value(max_q52_12);
-    EXPECT_EQ(get(packet, field::bandwidth).raw_value(), max_q52_12);
+    get(packet, bandwidth).set_raw_value(max_q52_12);
+    EXPECT_EQ(get(packet, bandwidth).raw_value(), max_q52_12);
     double expected_hz = static_cast<double>(max_q52_12) / 4096.0;
-    EXPECT_NEAR(get(packet, field::bandwidth).value(), expected_hz, 1.0);
+    EXPECT_NEAR(get(packet, bandwidth).value(), expected_hz, 1.0);
 }
 
 // =============================================================================
@@ -130,37 +131,37 @@ TEST_F(InterpretedValueTest, BandwidthEdgeCases) {
 // =============================================================================
 
 TEST_F(InterpretedValueTest, SampleRateInterpretedRead) {
-    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::SAMPLE_RATE, 0, 0, 0>;
+    using TestContext = ContextPacket<NoTimeStamp, NoClassId, sample_rate>;
 
     TestContext packet(buffer.data());
 
     // Set sample rate to Q52.12 encoding for 50 MHz (50 MSPS)
     // 50 MHz = 50'000'000 Hz
     // Q52.12: 50'000'000 * 4096 = 204'800'000'000
-    get(packet, field::sample_rate).set_raw_value(204'800'000'000ULL);
+    get(packet, sample_rate).set_raw_value(204'800'000'000ULL);
 
     // Read interpreted value
-    double hz = get(packet, field::sample_rate).value();
+    double hz = get(packet, sample_rate).value();
 
     // Should be within 1 Hz of 50 MHz
     EXPECT_NEAR(hz, 50'000'000.0, 1.0);
 }
 
 TEST_F(InterpretedValueTest, SampleRateInterpretedWrite) {
-    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::SAMPLE_RATE, 0, 0, 0>;
+    using TestContext = ContextPacket<NoTimeStamp, NoClassId, sample_rate>;
 
     TestContext packet(buffer.data());
 
     // Write interpreted value (25 MSPS)
-    get(packet, field::sample_rate).set_value(25'000'000.0);
+    get(packet, sample_rate).set_value(25'000'000.0);
 
     // Verify raw value is correct Q52.12 encoding
     // 25 MHz * 4096 = 102'400'000'000
-    EXPECT_EQ(get(packet, field::sample_rate).raw_value(), 102'400'000'000ULL);
+    EXPECT_EQ(get(packet, sample_rate).raw_value(), 102'400'000'000ULL);
 }
 
 TEST_F(InterpretedValueTest, SampleRateRoundTrip) {
-    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::SAMPLE_RATE, 0, 0, 0>;
+    using TestContext = ContextPacket<NoTimeStamp, NoClassId, sample_rate>;
 
     TestContext packet(buffer.data());
 
@@ -176,29 +177,29 @@ TEST_F(InterpretedValueTest, SampleRateRoundTrip) {
     };
 
     for (double rate : test_rates) {
-        get(packet, field::sample_rate).set_value(rate);
-        double retrieved = get(packet, field::sample_rate).value();
+        get(packet, sample_rate).set_value(rate);
+        double retrieved = get(packet, sample_rate).value();
         EXPECT_NEAR(retrieved, rate, 1.0) << "Failed for sample rate: " << rate;
     }
 }
 
 TEST_F(InterpretedValueTest, SampleRateOperatorDereference) {
-    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::SAMPLE_RATE, 0, 0, 0>;
+    using TestContext = ContextPacket<NoTimeStamp, NoClassId, sample_rate>;
 
     TestContext packet(buffer.data());
 
     // Set to 125 MSPS
-    get(packet, field::sample_rate).set_value(125'000'000.0);
+    get(packet, sample_rate).set_value(125'000'000.0);
 
     // operator* should return interpreted value
-    auto sr_proxy = get(packet, field::sample_rate);
+    auto sr_proxy = get(packet, sample_rate);
     double hz = *sr_proxy;
 
     EXPECT_NEAR(hz, 125'000'000.0, 1.0);
 }
 
 TEST_F(InterpretedValueTest, SampleRateConversionPrecision) {
-    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::SAMPLE_RATE, 0, 0, 0>;
+    using TestContext = ContextPacket<NoTimeStamp, NoClassId, sample_rate>;
 
     TestContext packet(buffer.data());
 
@@ -206,19 +207,19 @@ TEST_F(InterpretedValueTest, SampleRateConversionPrecision) {
 
     // Test 1: Exact value (divisible by 4096)
     double exact_hz = 4096.0 * 1000.0; // 4'096'000 Hz
-    get(packet, field::sample_rate).set_value(exact_hz);
-    EXPECT_DOUBLE_EQ(get(packet, field::sample_rate).value(), exact_hz);
+    get(packet, sample_rate).set_value(exact_hz);
+    EXPECT_DOUBLE_EQ(get(packet, sample_rate).value(), exact_hz);
 
     // Test 2: Non-exact value (rounding)
     double inexact_hz = 12'345'678.9;
-    get(packet, field::sample_rate).set_value(inexact_hz);
-    double retrieved = get(packet, field::sample_rate).value();
+    get(packet, sample_rate).set_value(inexact_hz);
+    double retrieved = get(packet, sample_rate).value();
     // Should be within Q52.12 resolution (~0.244 Hz)
     EXPECT_NEAR(retrieved, inexact_hz, 0.25);
 }
 
 TEST_F(InterpretedValueTest, SampleRateTypicalADCRates) {
-    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::SAMPLE_RATE, 0, 0, 0>;
+    using TestContext = ContextPacket<NoTimeStamp, NoClassId, sample_rate>;
 
     TestContext packet(buffer.data());
 
@@ -236,32 +237,32 @@ TEST_F(InterpretedValueTest, SampleRateTypicalADCRates) {
     };
 
     for (double rate : adc_rates) {
-        get(packet, field::sample_rate).set_value(rate);
-        double retrieved = get(packet, field::sample_rate).value();
+        get(packet, sample_rate).set_value(rate);
+        double retrieved = get(packet, sample_rate).value();
         EXPECT_NEAR(retrieved, rate, 1.0) << "Failed for ADC rate: " << rate;
     }
 }
 
 TEST_F(InterpretedValueTest, SampleRateEdgeCases) {
-    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::SAMPLE_RATE, 0, 0, 0>;
+    using TestContext = ContextPacket<NoTimeStamp, NoClassId, sample_rate>;
 
     TestContext packet(buffer.data());
 
     // Zero value (stopped ADC)
-    get(packet, field::sample_rate).set_value(0.0);
-    EXPECT_EQ(get(packet, field::sample_rate).raw_value(), 0ULL);
-    EXPECT_DOUBLE_EQ(get(packet, field::sample_rate).value(), 0.0);
+    get(packet, sample_rate).set_value(0.0);
+    EXPECT_EQ(get(packet, sample_rate).raw_value(), 0ULL);
+    EXPECT_DOUBLE_EQ(get(packet, sample_rate).value(), 0.0);
 
     // Maximum Q52.12 value
     uint64_t max_q52_12 = 0xFFFFFFFFFFFFFFFFULL;
-    get(packet, field::sample_rate).set_raw_value(max_q52_12);
-    EXPECT_EQ(get(packet, field::sample_rate).raw_value(), max_q52_12);
+    get(packet, sample_rate).set_raw_value(max_q52_12);
+    EXPECT_EQ(get(packet, sample_rate).raw_value(), max_q52_12);
     double expected_hz = static_cast<double>(max_q52_12) / 4096.0;
-    EXPECT_NEAR(get(packet, field::sample_rate).value(), expected_hz, 1.0);
+    EXPECT_NEAR(get(packet, sample_rate).value(), expected_hz, 1.0);
 
     // Very low sample rate (1 Hz - theoretical minimum)
-    get(packet, field::sample_rate).set_value(1.0);
-    double retrieved = get(packet, field::sample_rate).value();
+    get(packet, sample_rate).set_value(1.0);
+    double retrieved = get(packet, sample_rate).value();
     EXPECT_NEAR(retrieved, 1.0, 0.25); // Within Q52.12 resolution
 }
 
@@ -271,47 +272,45 @@ TEST_F(InterpretedValueTest, SampleRateEdgeCases) {
 
 TEST_F(InterpretedValueTest, BandwidthAndSampleRateTogether) {
     // Typical use case: both bandwidth and sample rate in same packet
-    using TestContext =
-        ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH | cif0::SAMPLE_RATE, 0, 0, 0>;
+    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth, sample_rate>;
 
     TestContext packet(buffer.data());
 
     // Set bandwidth and sample rate
     // Typical: sample rate >= bandwidth (Nyquist)
-    get(packet, field::bandwidth).set_value(20'000'000.0);   // 20 MHz bandwidth
-    get(packet, field::sample_rate).set_value(25'000'000.0); // 25 MSPS (1.25x oversampling)
+    get(packet, bandwidth).set_value(20'000'000.0);   // 20 MHz bandwidth
+    get(packet, sample_rate).set_value(25'000'000.0); // 25 MSPS (1.25x oversampling)
 
     // Verify both fields
-    EXPECT_NEAR(get(packet, field::bandwidth).value(), 20'000'000.0, 1.0);
-    EXPECT_NEAR(get(packet, field::sample_rate).value(), 25'000'000.0, 1.0);
+    EXPECT_NEAR(get(packet, bandwidth).value(), 20'000'000.0, 1.0);
+    EXPECT_NEAR(get(packet, sample_rate).value(), 25'000'000.0, 1.0);
 
     // Verify sample rate >= bandwidth (typical constraint)
-    double bw = get(packet, field::bandwidth).value();
-    double sr = get(packet, field::sample_rate).value();
+    double bw = get(packet, bandwidth).value();
+    double sr = get(packet, sample_rate).value();
     EXPECT_GE(sr, bw) << "Sample rate should be >= bandwidth";
 }
 
 TEST_F(InterpretedValueTest, RuntimeParserIntegration) {
     // Build packet with compile-time type
-    using TestContext =
-        ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH | cif0::SAMPLE_RATE, 0, 0, 0>;
+    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth, sample_rate>;
 
     TestContext tx_packet(buffer.data());
 
     tx_packet.set_stream_id(0xDEADBEEF);
-    get(tx_packet, field::bandwidth).set_value(75'000'000.0);   // 75 MHz
-    get(tx_packet, field::sample_rate).set_value(80'000'000.0); // 80 MSPS
+    get(tx_packet, bandwidth).set_value(75'000'000.0);   // 75 MHz
+    get(tx_packet, sample_rate).set_value(80'000'000.0); // 80 MSPS
 
     // Parse with runtime view
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
     EXPECT_EQ(view.error(), ValidationError::none);
 
     // Verify values accessible from runtime parser
-    auto bw = get(view, field::bandwidth);
+    auto bw = get(view, bandwidth);
     ASSERT_TRUE(bw.has_value());
     EXPECT_NEAR(bw.value(), 75'000'000.0, 1.0);
 
-    auto sr = get(view, field::sample_rate);
+    auto sr = get(view, sample_rate);
     ASSERT_TRUE(sr.has_value());
     EXPECT_NEAR(sr.value(), 80'000'000.0, 1.0);
 

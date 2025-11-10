@@ -1,23 +1,18 @@
 #include "../context_test_fixture.hpp"
 
 TEST_F(ContextPacketTest, CIF2Fields) {
-    // Create packet with CIF2 controller UUID
-    constexpr uint32_t cif0_mask = 0; // No CIF0 fields (CIF2 enable bit set automatically)
-    constexpr uint32_t cif2_mask = cif2::CONTROLLER_UUID;
-
-    using TestContext = ContextPacket<false,       // No stream ID
-                                      NoTimeStamp, // No timestamp
-                                      NoClassId,   // No class ID
-                                      cif0_mask,   // CIF0
-                                      0,           // No CIF1
-                                      cif2_mask,   // CIF2
-                                      false        // No trailer
-                                      >;
+    // Create packet with CIF2 controller UUID using field-based API
+    // Note: Context packets always have Stream ID per VITA 49.2 spec
+    using namespace vrtio::field;
+    using TestContext = ContextPacket<NoTimeStamp,      // No timestamp
+                                      NoClassId,        // No class ID
+                                      controller_uuid>; // CIF2 field
 
     TestContext packet(buffer.data());
 
     // Check size includes CIF2 field
-    EXPECT_EQ(TestContext::size_words, 1 + 1 + 1 + 4); // header + cif0 + cif2 + uuid
+    EXPECT_EQ(TestContext::size_words,
+              1 + 1 + 1 + 1 + 4); // header + stream_id + cif0 + cif2 + uuid
 }
 
 TEST_F(ContextPacketTest, RuntimeParseCIF2) {
@@ -35,7 +30,8 @@ TEST_F(ContextPacketTest, RuntimeParseCIF2) {
     cif::write_u32_safe(buffer.data(), 8, cif0_mask);
 
     // CIF2 with Controller UUID enabled
-    uint32_t cif2_mask = cif2::CONTROLLER_UUID;
+    using namespace vrtio::field;
+    uint32_t cif2_mask = vrtio::detail::field_bitmask<controller_uuid>();
     cif::write_u32_safe(buffer.data(), 12, cif2_mask);
 
     // Controller UUID: 4 words (128 bits)
@@ -53,8 +49,8 @@ TEST_F(ContextPacketTest, RuntimeParseCIF2) {
     EXPECT_EQ(view.cif0(), cif0_mask);
     EXPECT_EQ(view.cif2(), cif2_mask);
 
-    // Verify we can read back the Controller UUID field using get() API
-    auto uuid_proxy = get(view, field::controller_uuid);
+    // Verify we can read back the Controller UUID field using operator[] API
+    auto uuid_proxy = view[field::controller_uuid];
     ASSERT_TRUE(uuid_proxy.has_value());
     auto uuid = uuid_proxy.raw_bytes();
     ASSERT_EQ(uuid.size(), 16); // 128 bits = 16 bytes
@@ -67,14 +63,10 @@ TEST_F(ContextPacketTest, RuntimeParseCIF2) {
 }
 
 TEST_F(ContextPacketTest, CompileTimeCIF2RuntimeParse) {
-    // Create packet with CIF2 field at compile time
-    constexpr uint32_t cif2_mask = cif2::CONTROLLER_UUID;
-    using TestContext = ContextPacket<true, // Has stream ID (context packets require stream ID)
-                                      NoTimeStamp, NoClassId,
-                                      0,         // No CIF0 data fields (CIF2 enable bit auto-set)
-                                      0,         // No CIF1
-                                      cif2_mask, // CIF2
-                                      false>;
+    // Create packet with CIF2 field at compile time using field-based API
+    using namespace vrtio::field;
+    using TestContext = ContextPacket<NoTimeStamp, NoClassId,
+                                      controller_uuid>; // CIF2 field
 
     // Compile-time assertion: verify CIF2 enable bit is auto-set
     static_assert((TestContext::cif0_value & 0x04) != 0,
@@ -92,5 +84,5 @@ TEST_F(ContextPacketTest, CompileTimeCIF2RuntimeParse) {
     EXPECT_EQ(view.stream_id().value(), 0xAABBCCDD);
     // CIF0 should have bit 2 set (CIF2 enable)
     EXPECT_EQ(view.cif0() & 0x04, 0x04);
-    EXPECT_EQ(view.cif2(), cif2_mask);
+    EXPECT_EQ(view.cif2(), vrtio::detail::field_bitmask<controller_uuid>());
 }

@@ -9,6 +9,7 @@
 #include "../core/detail/header_decode.hpp"
 #include "../core/detail/variable_field_dispatch.hpp"
 #include "../core/endian.hpp"
+#include "../core/field_access.hpp"
 #include "../core/types.hpp"
 
 namespace vrtio {
@@ -383,6 +384,13 @@ public:
     size_t context_base_offset() const noexcept { return structure_.context_base_bytes; }
 
     size_t buffer_size() const noexcept { return buffer_size_; }
+
+    // Field access via subscript operator
+    template <uint8_t CifWord, uint8_t Bit>
+    auto operator[](field::field_tag_t<CifWord, Bit> tag) const noexcept
+        -> FieldProxy<field::field_tag_t<CifWord, Bit>, const ContextPacketView> {
+        return detail::get_impl(*this, tag);
+    }
 };
 
 } // namespace vrtio

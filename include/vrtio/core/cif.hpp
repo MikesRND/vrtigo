@@ -48,44 +48,44 @@ inline void write_u64_safe(uint8_t* buffer, size_t offset, uint64_t value) noexc
 // COMPLETE CIF0 field table - all 32 bits with verified sizes from VITA 49.2
 constexpr FieldInfo CIF0_FIELDS[32] = {
     //  size, var,  supp, name
-    {0, false, false, "Reserved"},                       // bit 0
-    {0, false, true, "CIF1 Enable"},                     // bit 1 - control bit, supported
-    {0, false, true, "CIF2 Enable"},                     // bit 2 - control bit, supported
-    {0, false, true, "CIF3 Enable"},                     // bit 3 - control bit, supported
-    {0, false, false, "Reserved"},                       // bit 4
-    {0, false, false, "Reserved"},                       // bit 5
-    {0, false, false, "Reserved"},                       // bit 6
-    {0, false, false, "Field Attributes (UNSUPPORTED)"}, // bit 7
-    {0, false, false, "Reserved"},                       // bit 8
-    {0, true, true, "context_association_lists"},        // bit 9 - VARIABLE, SUPPORTED
-    {0, true, true, "gps_ascii"},                        // bit 10 - VARIABLE, SUPPORTED
-    {1, false, true, "ephemeris_ref_id"},                // bit 11
-    {13, false, true, "relative_ephemeris"},             // bit 12
-    {13, false, true, "ecef_ephemeris"},                 // bit 13
-    {11, false, true, "formatted_gps_ins"},              // bit 14
-    {2, false, true, "data_payload_format"},             // bit 15
-    {1, false, true, "state_event_indicators"},          // bit 16
-    {2, false, true, "device_id"},                       // bit 17
-    {1, false, true, "temperature"},                     // bit 18
-    {1, false, true, "timestamp_calibration_time"},      // bit 19
-    {2, false, true, "timestamp_adjustment"},            // bit 20
-    {2, false, true, "sample_rate"},                     // bit 21
-    {1, false, true, "over_range_count"},                // bit 22
-    {1, false, true, "gain"},                            // bit 23
-    {1, false, true, "reference_level"},                 // bit 24
-    {2, false, true, "if_band_offset"},                  // bit 25
-    {2, false, true, "rf_frequency_offset"},             // bit 26
-    {2, false, true, "rf_reference_frequency"},          // bit 27
-    {2, false, true, "if_reference_frequency"},          // bit 28
-    {2, false, true, "bandwidth"},                       // bit 29
-    {1, false, true, "reference_point_id"},              // bit 30
-    {0, false, true, "change_indicator"}                 // bit 31 - flag only
+    {0, false, false, "reserved"},                  // bit 0
+    {0, false, true, "cif1_enable"},                // bit 1 - control bit, supported
+    {0, false, true, "cif2_enable"},                // bit 2 - control bit, supported
+    {0, false, true, "cif3_enable"},                // bit 3 - control bit, supported
+    {0, false, false, "reserved"},                  // bit 4
+    {0, false, false, "reserved"},                  // bit 5
+    {0, false, false, "reserved"},                  // bit 6
+    {0, false, false, "field_attributes"},          // bit 7 - unsupported
+    {0, false, false, "reserved"},                  // bit 8
+    {0, true, true, "context_association_lists"},   // bit 9 - VARIABLE, SUPPORTED
+    {0, true, true, "gps_ascii"},                   // bit 10 - VARIABLE, SUPPORTED
+    {1, false, true, "ephemeris_ref_id"},           // bit 11
+    {13, false, true, "relative_ephemeris"},        // bit 12
+    {13, false, true, "ecef_ephemeris"},            // bit 13
+    {11, false, true, "formatted_gps_ins"},         // bit 14
+    {2, false, true, "data_payload_format"},        // bit 15
+    {1, false, true, "state_event_indicators"},     // bit 16
+    {2, false, true, "device_id"},                  // bit 17
+    {1, false, true, "temperature"},                // bit 18
+    {1, false, true, "timestamp_calibration_time"}, // bit 19
+    {2, false, true, "timestamp_adjustment"},       // bit 20
+    {2, false, true, "sample_rate"},                // bit 21
+    {1, false, true, "over_range_count"},           // bit 22
+    {1, false, true, "gain"},                       // bit 23
+    {1, false, true, "reference_level"},            // bit 24
+    {2, false, true, "if_band_offset"},             // bit 25
+    {2, false, true, "rf_frequency_offset"},        // bit 26
+    {2, false, true, "rf_reference_frequency"},     // bit 27
+    {2, false, true, "if_reference_frequency"},     // bit 28
+    {2, false, true, "bandwidth"},                  // bit 29
+    {1, false, true, "reference_point_id"},         // bit 30
+    {0, false, true, "change_indicator"}            // bit 31 - flag only
 };
 
 // COMPLETE CIF1 field table with verified sizes
 constexpr FieldInfo CIF1_FIELDS[32] = {
     //  size, var,  supp, name
-    {0, false, false, "Reserved"},                                // bit 0
+    {0, false, false, "reserved"},                                // bit 0
     {1, false, true, "buffer_size"},                              // bit 1
     {1, false, true, "version_build_code"},                       // bit 2
     {1, false, true, "v49_spec_compliance"},                      // bit 3
@@ -93,11 +93,11 @@ constexpr FieldInfo CIF1_FIELDS[32] = {
     {2, false, true, "discrete_io_64"},                           // bit 5
     {1, false, true, "discrete_io_32"},                           // bit 6
     {0, true, false, "index_list_unsupported"},                   // bit 7 - VARIABLE
-    {0, false, false, "Reserved"},                                // bit 8
+    {0, false, false, "reserved"},                                // bit 8
     {0, true, false, "sector_scan_unsupported"},                  // bit 9 - VARIABLE
     {13, false, true, "spectrum"},                                // bit 10
     {0, true, false, "array_of_cifs_unsupported"},                // bit 11 - VARIABLE
-    {0, false, false, "Reserved"},                                // bit 12
+    {0, false, false, "reserved"},                                // bit 12
     {2, false, true, "aux_bandwidth"},                            // bit 13
     {1, false, true, "aux_gain"},                                 // bit 14
     {2, false, true, "aux_frequency"},                            // bit 15
@@ -106,9 +106,9 @@ constexpr FieldInfo CIF1_FIELDS[32] = {
     {1, false, true, "compression_point"},                        // bit 18
     {1, false, true, "threshold"},                                // bit 19
     {1, false, true, "eb_no"},                                    // bit 20
-    {0, false, false, "Reserved"},                                // bit 21
-    {0, false, false, "Reserved"},                                // bit 22
-    {0, false, false, "Reserved"},                                // bit 23
+    {0, false, false, "reserved"},                                // bit 21
+    {0, false, false, "reserved"},                                // bit 22
+    {0, false, false, "reserved"},                                // bit 23
     {1, false, true, "range"},                                    // bit 24
     {1, false, true, "beam_width"},                               // bit 25
     {1, false, true, "spatial_reference_type"},                   // bit 26
@@ -122,9 +122,9 @@ constexpr FieldInfo CIF1_FIELDS[32] = {
 // COMPLETE CIF2 field table (all supported where not reserved)
 constexpr FieldInfo CIF2_FIELDS[32] = {
     //  size, var,  supp, name
-    {0, false, false, "Reserved"},              // bit 0
-    {0, false, false, "Reserved"},              // bit 1
-    {0, false, false, "Reserved"},              // bit 2
+    {0, false, false, "reserved"},              // bit 0
+    {0, false, false, "reserved"},              // bit 1
+    {0, false, false, "reserved"},              // bit 2
     {1, false, true, "rf_footprint_range"},     // bit 3
     {1, false, true, "rf_footprint"},           // bit 4
     {1, false, true, "communication_priority"}, // bit 5
@@ -159,38 +159,38 @@ constexpr FieldInfo CIF2_FIELDS[32] = {
 // COMPLETE CIF3 field table - Temporal and Environmental Fields
 constexpr FieldInfo CIF3_FIELDS[32] = {
     //  size, var,  supp, name
-    {0, false, false, "Reserved"},                 // bit 0
-    {1, false, true, "network_id"},                // bit 1
-    {1, false, true, "tropospheric_state"},        // bit 2
-    {1, false, true, "sea_swell_state"},           // bit 3
-    {1, false, true, "barometric_pressure"},       // bit 4
-    {1, false, true, "humidity"},                  // bit 5
-    {1, false, true, "sea_ground_temperature"},    // bit 6
-    {1, false, true, "air_temperature"},           // bit 7
-    {0, false, false, "Reserved"},                 // bit 8
-    {0, false, false, "Reserved"},                 // bit 9
-    {0, false, false, "Reserved"},                 // bit 10
-    {0, false, false, "Reserved"},                 // bit 11
-    {0, false, false, "Reserved"},                 // bit 12
-    {0, false, false, "Reserved"},                 // bit 13
-    {0, false, false, "Reserved"},                 // bit 14
-    {0, false, false, "Reserved"},                 // bit 15
-    {0, false, false, "Shelf Life (TSI/TSF DEP)"}, // bit 16 - DEFERRED
-    {0, false, false, "Age (TSI/TSF DEP)"},        // bit 17 - DEFERRED
-    {0, false, false, "Reserved"},                 // bit 18
-    {0, false, false, "Reserved"},                 // bit 19
-    {2, false, true, "jitter"},                    // bit 20
-    {2, false, true, "dwell"},                     // bit 21
-    {2, false, true, "duration"},                  // bit 22
-    {2, false, true, "period"},                    // bit 23
-    {2, false, true, "pulse_width"},               // bit 24
-    {2, false, true, "offset_time"},               // bit 25
-    {2, false, true, "fall_time"},                 // bit 26
-    {2, false, true, "rise_time"},                 // bit 27
-    {0, false, false, "Reserved"},                 // bit 28
-    {0, false, false, "Reserved"},                 // bit 29
-    {2, false, true, "timestamp_skew"},            // bit 30
-    {2, false, true, "timestamp_details"}          // bit 31
+    {0, false, false, "reserved"},              // bit 0
+    {1, false, true, "network_id"},             // bit 1
+    {1, false, true, "tropospheric_state"},     // bit 2
+    {1, false, true, "sea_swell_state"},        // bit 3
+    {1, false, true, "barometric_pressure"},    // bit 4
+    {1, false, true, "humidity"},               // bit 5
+    {1, false, true, "sea_ground_temperature"}, // bit 6
+    {1, false, true, "air_temperature"},        // bit 7
+    {0, false, false, "reserved"},              // bit 8
+    {0, false, false, "reserved"},              // bit 9
+    {0, false, false, "reserved"},              // bit 10
+    {0, false, false, "reserved"},              // bit 11
+    {0, false, false, "reserved"},              // bit 12
+    {0, false, false, "reserved"},              // bit 13
+    {0, false, false, "reserved"},              // bit 14
+    {0, false, false, "reserved"},              // bit 15
+    {0, false, false, "shelf_life"},            // bit 16 - deferred (TSI/TSF dependent)
+    {0, false, false, "age"},                   // bit 17 - deferred (TSI/TSF dependent)
+    {0, false, false, "reserved"},              // bit 18
+    {0, false, false, "reserved"},              // bit 19
+    {2, false, true, "jitter"},                 // bit 20
+    {2, false, true, "dwell"},                  // bit 21
+    {2, false, true, "duration"},               // bit 22
+    {2, false, true, "period"},                 // bit 23
+    {2, false, true, "pulse_width"},            // bit 24
+    {2, false, true, "offset_time"},            // bit 25
+    {2, false, true, "fall_time"},              // bit 26
+    {2, false, true, "rise_time"},              // bit 27
+    {0, false, false, "reserved"},              // bit 28
+    {0, false, false, "reserved"},              // bit 29
+    {2, false, true, "timestamp_skew"},         // bit 30
+    {2, false, true, "timestamp_details"}       // bit 31
 };
 
 // Build SUPPORTED masks from the tables
@@ -577,119 +577,5 @@ constexpr size_t calculate_context_size_ct() {
 }
 
 } // namespace cif
-
-// ============================================================================
-// Named constants for user-friendly API (in vrtio namespace)
-// ============================================================================
-
-// CIF0 field constants - organized by category
-namespace cif0 {
-// Variable-length fields (runtime only - NOT for compile-time ContextPacket)
-constexpr uint32_t CONTEXT_ASSOCIATION_LISTS = (1U << 9);
-constexpr uint32_t GPS_ASCII = (1U << 10);
-
-// Fixed-size context fields (safe for compile-time)
-constexpr uint32_t EPHEMERIS_REF_ID = (1U << 11);
-constexpr uint32_t RELATIVE_EPHEMERIS = (1U << 12);
-constexpr uint32_t ECEF_EPHEMERIS = (1U << 13);
-constexpr uint32_t FORMATTED_GPS_INS = (1U << 14);
-constexpr uint32_t DATA_PAYLOAD_FORMAT = (1U << 15);
-constexpr uint32_t STATE_EVENT_INDICATORS = (1U << 16);
-constexpr uint32_t DEVICE_ID = (1U << 17);
-constexpr uint32_t TEMPERATURE = (1U << 18);
-constexpr uint32_t TIMESTAMP_CAL_TIME = (1U << 19);
-constexpr uint32_t TIMESTAMP_ADJUSTMENT = (1U << 20);
-constexpr uint32_t SAMPLE_RATE = (1U << 21);
-constexpr uint32_t OVER_RANGE_COUNT = (1U << 22);
-constexpr uint32_t GAIN = (1U << 23);
-constexpr uint32_t REFERENCE_LEVEL = (1U << 24);
-constexpr uint32_t IF_BAND_OFFSET = (1U << 25);
-constexpr uint32_t RF_FREQUENCY_OFFSET = (1U << 26);
-constexpr uint32_t RF_REFERENCE_FREQ = (1U << 27);
-constexpr uint32_t IF_REFERENCE_FREQ = (1U << 28);
-constexpr uint32_t BANDWIDTH = (1U << 29);
-constexpr uint32_t REFERENCE_POINT_ID = (1U << 30);
-constexpr uint32_t CHANGE_INDICATOR = (1U << 31);
-} // namespace cif0
-
-// CIF1 field constants (only supported fields, matching CIF1_FIELDS table)
-namespace cif1 {
-constexpr uint32_t BUFFER_SIZE = (1U << 1);
-constexpr uint32_t VERSION_BUILD_CODE = (1U << 2);
-constexpr uint32_t V49_SPEC_COMPLIANCE = (1U << 3);
-constexpr uint32_t HEALTH_STATUS = (1U << 4);
-constexpr uint32_t DISCRETE_IO_64 = (1U << 5);
-constexpr uint32_t DISCRETE_IO_32 = (1U << 6);
-constexpr uint32_t SPECTRUM = (1U << 10);
-constexpr uint32_t AUX_BANDWIDTH = (1U << 13);
-constexpr uint32_t AUX_GAIN = (1U << 14);
-constexpr uint32_t AUX_FREQUENCY = (1U << 15);
-constexpr uint32_t SNR_NOISE_FIGURE = (1U << 16);
-constexpr uint32_t INTERCEPT_POINTS = (1U << 17);
-constexpr uint32_t COMPRESSION_POINT = (1U << 18);
-constexpr uint32_t THRESHOLD = (1U << 19);
-constexpr uint32_t EBNO_BER = (1U << 20);
-constexpr uint32_t RANGE = (1U << 24);
-constexpr uint32_t BEAM_WIDTH = (1U << 25);
-constexpr uint32_t SPATIAL_REF_TYPE = (1U << 26);
-constexpr uint32_t SPATIAL_SCAN_TYPE = (1U << 27);
-constexpr uint32_t POINTING_VECTOR_3D_SINGLE = (1U << 29);
-constexpr uint32_t POLARIZATION = (1U << 30);
-constexpr uint32_t PHASE_OFFSET = (1U << 31);
-} // namespace cif1
-
-// CIF2 field constants (only supported fields, matching CIF2_FIELDS table)
-namespace cif2 {
-constexpr uint32_t RF_FOOTPRINT_RANGE = (1U << 3);
-constexpr uint32_t RF_FOOTPRINT = (1U << 4);
-constexpr uint32_t COMM_PRIORITY_ID = (1U << 5);
-constexpr uint32_t FUNCTION_PRIORITY_ID = (1U << 6);
-constexpr uint32_t EVENT_ID = (1U << 7);
-constexpr uint32_t MODE_ID = (1U << 8);
-constexpr uint32_t FUNCTION_ID = (1U << 9);
-constexpr uint32_t MODULATION_TYPE = (1U << 10);
-constexpr uint32_t MODULATION_CLASS = (1U << 11);
-constexpr uint32_t EMS_DEVICE_INSTANCE = (1U << 12);
-constexpr uint32_t EMS_DEVICE_TYPE = (1U << 13);
-constexpr uint32_t EMS_DEVICE_CLASS = (1U << 14);
-constexpr uint32_t PLATFORM_DISPLAY = (1U << 15);
-constexpr uint32_t PLATFORM_INSTANCE = (1U << 16);
-constexpr uint32_t PLATFORM_CLASS = (1U << 17);
-constexpr uint32_t OPERATOR = (1U << 18);
-constexpr uint32_t COUNTRY_CODE = (1U << 19);
-constexpr uint32_t TRACK_ID = (1U << 20);
-constexpr uint32_t INFORMATION_SOURCE = (1U << 21);
-constexpr uint32_t CONTROLLER_UUID = (1U << 22);
-constexpr uint32_t CONTROLLER_ID = (1U << 23);
-constexpr uint32_t CONTROLLEE_UUID = (1U << 24);
-constexpr uint32_t CONTROLLEE_ID = (1U << 25);
-constexpr uint32_t CITED_MESSAGE_ID = (1U << 26);
-constexpr uint32_t CHILD_SID = (1U << 27);
-constexpr uint32_t PARENT_SID = (1U << 28);
-constexpr uint32_t SIBLING_SID = (1U << 29);
-constexpr uint32_t CITED_SID = (1U << 30);
-constexpr uint32_t BIND = (1U << 31);
-} // namespace cif2
-
-// CIF3 field constants (only supported static-sized fields)
-namespace cif3 {
-constexpr uint32_t NETWORK_ID = (1U << 1);
-constexpr uint32_t TROPOSPHERIC_STATE = (1U << 2);
-constexpr uint32_t SEA_SWELL_STATE = (1U << 3);
-constexpr uint32_t BAROMETRIC_PRESSURE = (1U << 4);
-constexpr uint32_t HUMIDITY = (1U << 5);
-constexpr uint32_t SEA_GROUND_TEMPERATURE = (1U << 6);
-constexpr uint32_t AIR_TEMPERATURE = (1U << 7);
-constexpr uint32_t JITTER = (1U << 20);
-constexpr uint32_t DWELL = (1U << 21);
-constexpr uint32_t DURATION = (1U << 22);
-constexpr uint32_t PERIOD = (1U << 23);
-constexpr uint32_t PULSE_WIDTH = (1U << 24);
-constexpr uint32_t OFFSET_TIME = (1U << 25);
-constexpr uint32_t FALL_TIME = (1U << 26);
-constexpr uint32_t RISE_TIME = (1U << 27);
-constexpr uint32_t TIMESTAMP_SKEW = (1U << 30);
-constexpr uint32_t TIMESTAMP_DETAILS = (1U << 31);
-} // namespace cif3
 
 } // namespace vrtio

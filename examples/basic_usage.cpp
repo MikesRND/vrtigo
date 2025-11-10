@@ -1,7 +1,6 @@
 // Basic usage example for VRTIO
 
 #include <array>
-#include <iomanip>
 #include <iostream>
 
 #include <ctime>
@@ -11,146 +10,57 @@ int main() {
     std::cout << "VRTIO - Basic Usage Example\n";
     std::cout << "===================================\n\n";
 
-    // Example 1: Simple packet without stream ID
+    // Example 1: Creating a signal packet with builder
     {
-        std::cout << "Example 1: Signal packet without stream ID\n";
+        std::cout << "Example 1: Creating a signal packet\n";
 
-        using SimplePacket =
-            vrtio::SignalDataPacketNoId<vrtio::TimeStampUTC,  // Using UTC timestamps
-                                        vrtio::Trailer::None, // No trailer
-                                        256                   // 1024 bytes payload
-                                        >;
+        using Packet = vrtio::SignalDataPacket<vrtio::TimeStampUTC, vrtio::Trailer::None, 128>;
+        alignas(4) std::array<uint8_t, Packet::size_bytes> buffer;
 
-        std::cout << "  Packet size: " << SimplePacket::size_bytes << " bytes\n";
-        std::cout << "  Payload size: " << SimplePacket::payload_size_bytes << " bytes\n";
-
-        // User provides buffer
-        alignas(4) std::array<uint8_t, SimplePacket::size_bytes> buffer;
-
-        // Create packet view
-        SimplePacket packet(buffer.data());
-
-        // Set timestamp using unified API
-        auto ts = vrtio::TimeStampUTC::fromComponents(static_cast<uint32_t>(std::time(nullptr)), 0);
-        packet.setTimeStamp(ts);
-        packet.set_packet_count(1);
-
-        // Fill payload with test data
-        auto payload = packet.payload();
-        for (size_t i = 0; i < payload.size(); ++i) {
-            payload[i] = static_cast<uint8_t>(i & 0xFF);
+        // Prepare payload data
+        std::array<uint8_t, 512> payload_data{};
+        for (size_t i = 0; i < payload_data.size(); ++i) {
+            payload_data[i] = static_cast<uint8_t>(i);
         }
 
-        // Read timestamp back
-        auto read_ts = packet.getTimeStamp();
-        std::cout << "  Timestamp: " << read_ts.seconds() << "\n";
-        std::cout << "  Packet count: " << static_cast<int>(packet.packet_count()) << "\n";
-        std::cout << "\n";
-    }
-
-    // Example 2: Packet with stream ID using builder
-    {
-        std::cout << "Example 2: Signal packet with stream ID (builder pattern)\n";
-
-        using StreamPacket = vrtio::SignalDataPacket<vrtio::TimeStampUTC, // Using UTC timestamps
-                                                     vrtio::Trailer::Included, // Trailer included
-                                                     512                       // 2048 bytes payload
-                                                     >;
-
-        std::cout << "  Packet size: " << StreamPacket::size_bytes << " bytes\n";
-        std::cout << "  Has stream ID: " << (StreamPacket::has_stream_id ? "yes" : "no") << "\n";
-
-        // User provides buffer
-        alignas(4) std::array<uint8_t, StreamPacket::size_bytes> tx_buffer;
-
-        // Use builder pattern
-        std::array<uint8_t, 2048> sensor_data{};
-
-        auto trailer_cfg = vrtio::TrailerBuilder{}.clear().context_packets(1);
-
-        // Create timestamp
-        auto ts = vrtio::TimeStampUTC::fromComponents(1699000000, 500000);
-
-        auto builder = vrtio::PacketBuilder<StreamPacket>(tx_buffer.data());
-        auto packet = builder.stream_id(0x12345678)
+        // Use builder pattern for convenient construction
+        auto ts = vrtio::TimeStampUTC::fromComponents(static_cast<uint32_t>(std::time(nullptr)), 0);
+        auto packet = vrtio::PacketBuilder<Packet>(buffer.data())
+                          .stream_id(0x12345678)
                           .timestamp(ts)
-                          .trailer(trailer_cfg)
-                          .packet_count(10) // 4-bit field: valid range 0-15
-                          .payload(sensor_data.data(), sensor_data.size())
+                          .packet_count(1)
+                          .payload(payload_data.data(), payload_data.size())
                           .build();
 
-        auto read_ts = packet.getTimeStamp();
         std::cout << "  Stream ID: 0x" << std::hex << packet.stream_id() << std::dec << "\n";
-        std::cout << "  Timestamp (integer): " << read_ts.seconds() << "\n";
-        std::cout << "  Timestamp (fractional): " << read_ts.fractional() << " ps\n";
-        std::cout << "  Trailer: 0x" << std::hex << packet.trailer().raw() << std::dec << "\n";
-        std::cout << "  Packet count: " << static_cast<int>(packet.packet_count()) << "\n";
-        std::cout << "\n";
+        std::cout << "  Timestamp: " << packet.getTimeStamp().seconds() << "s\n";
+        std::cout << "  Payload: " << packet.payload().size() << " bytes\n\n";
     }
 
-    // Example 3: Parsing untrusted data (CRITICAL: requires validation!)
+    // Example 2: Parsing data (requires validation)
     {
-        std::cout << "Example 3: Parsing untrusted packet data\n";
+        std::cout << "Example 2: Parsing data\n";
 
-        using RxPacket =
-            vrtio::SignalDataPacket<vrtio::NoTimeStamp,   // No timestamp for this example
-                                    vrtio::Trailer::None, // No trailer
-                                    256>;
+        using Packet = vrtio::SignalDataPacket<vrtio::NoTimeStamp, vrtio::Trailer::None, 64>;
+        alignas(4) std::array<uint8_t, Packet::size_bytes> buffer;
 
-        // Simulate received data from network/file/etc.
-        alignas(4) std::array<uint8_t, RxPacket::size_bytes> rx_buffer;
+        // Create test data
+        Packet(buffer.data()).set_stream_id(0xABCDEF00);
 
-        // Build a packet to simulate received data
-        vrtio::PacketBuilder<RxPacket>(rx_buffer.data())
-            .stream_id(0xABCDEF00)
-            .packet_count(3) // 4-bit field: valid range 0-15
-            .build();
+        // Parse without initialization
+        Packet received(buffer.data(), false);
 
-        // SAFE parsing pattern: Parse WITHOUT init, then validate
-        RxPacket received(rx_buffer.data(), false); // init=false for parsing
-
-        // CRITICAL: MUST validate before accessing any fields!
-        auto validation_result = received.validate(rx_buffer.size());
-        if (validation_result != vrtio::ValidationError::none) {
-            std::cerr << "  ERROR: Packet validation failed: "
-                      << vrtio::validation_error_string(validation_result) << "\n";
+        // MUST validate before accessing fields
+        auto result = received.validate(buffer.size());
+        if (result != vrtio::ValidationError::none) {
+            std::cerr << "  Validation failed: " << vrtio::validation_error_string(result) << "\n";
             return 1;
         }
 
-        // Now safe to access fields after successful validation
         std::cout << "  Validation: PASSED\n";
-        std::cout << "  Received stream ID: 0x" << std::hex << received.stream_id() << std::dec
-                  << "\n";
-        std::cout << "  Received count: " << static_cast<int>(received.packet_count()) << "\n";
-        std::cout << "  Packet size: " << received.packet_size_words() << " words\n";
-        std::cout << "\n";
+        std::cout << "  Stream ID: 0x" << std::hex << received.stream_id() << std::dec << "\n\n";
     }
 
-    // Example 4: Compile-time validation
-    {
-        std::cout << "Example 4: Compile-time type safety\n";
-
-        using NoStreamPacket = vrtio::SignalDataPacketNoId<vrtio::NoTimeStamp,
-                                                           vrtio::Trailer::None, // No trailer
-                                                           128>;
-
-        alignas(4) std::array<uint8_t, NoStreamPacket::size_bytes> buffer;
-        NoStreamPacket packet(buffer.data());
-
-        // This works:
-        auto payload = packet.payload();
-        std::cout << "  Payload size: " << payload.size() << " bytes\n";
-
-        // These would cause compile errors (uncomment to test):
-        // packet.set_stream_id(0x123);  // Error: no stream ID for type 0
-        // auto ts = vrtio::TimeStampUTC::fromComponents(123, 0);
-        // packet.setTimeStamp(ts);      // Error: timestamp type is NoTimeStamp
-        // packet.trailer();              // Error: no trailer view
-
-        std::cout << "  Type safety verified at compile time!\n";
-        std::cout << "\n";
-    }
-
-    std::cout << "All examples completed successfully!\n";
+    std::cout << "All examples completed!\n";
     return 0;
 }

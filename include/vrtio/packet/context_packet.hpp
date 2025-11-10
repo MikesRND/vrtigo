@@ -6,24 +6,36 @@
 
 #include "../core/cif.hpp"
 #include "../core/class_id.hpp"
+#include "../core/detail/field_mask.hpp"
 #include "../core/detail/header_decode.hpp"
 #include "../core/detail/header_init.hpp"
 #include "../core/endian.hpp"
+#include "../core/field_access.hpp"
+#include "../core/fields.hpp"
 #include "../core/timestamp_traits.hpp"
 #include "../core/types.hpp"
 
 namespace vrtio {
 
-// Compile-time context packet template
-// Creates packets with known structure at compile time
+// Base compile-time context packet template (low-level API)
+// Creates packets with known structure at compile time using CIF bitmasks
 // Variable-length fields are NOT supported in this template
-template <bool HasStreamId = true, typename TimeStampType = NoTimeStamp,
-          typename ClassIdType = NoClassId, uint32_t CIF0 = 0, uint32_t CIF1 = 0, uint32_t CIF2 = 0,
-          uint32_t CIF3 = 0>
+//
+// IMPORTANT: Per VITA 49.2 spec:
+//   - Context packets ALWAYS have a Stream ID (no HasStreamId parameter)
+//   - Context packets NEVER have a Trailer (bit 26 is reserved, must be 0)
+//
+// NOTE: Most users should use the field-based ContextPacket template instead,
+// which automatically computes CIF bitmasks from field tags.
+template <typename TimeStampType = NoTimeStamp, typename ClassIdType = NoClassId, uint32_t CIF0 = 0,
+          uint32_t CIF1 = 0, uint32_t CIF2 = 0, uint32_t CIF3 = 0>
     requires ValidTimestampType<TimeStampType> && ValidClassIdType<ClassIdType>
-class ContextPacket {
+class ContextPacketBase {
 private:
     uint8_t* buffer_;
+
+    // Per spec: Context packets ALWAYS have stream ID
+    static constexpr bool has_stream_id = true;
 
     // Extract timestamp information
     static constexpr bool has_timestamp = TimestampTraits<TimeStampType>::has_timestamp;
@@ -84,7 +96,7 @@ private:
 
     // Calculate packet structure sizes
     static constexpr size_t header_words = 1;
-    static constexpr size_t stream_id_words = HasStreamId ? 1 : 0;
+    static constexpr size_t stream_id_words = 1; // Always present per spec
     static constexpr size_t tsi_words = (tsi != TsiType::none) ? 1 : 0;
     static constexpr size_t tsf_words = (tsf != TsfType::none) ? 2 : 0;
 
@@ -103,10 +115,7 @@ private:
     // Complete offset calculation for CIF words
     static constexpr size_t calculate_cif_offset() {
         size_t offset_words = 1; // Header
-
-        if constexpr (HasStreamId) {
-            offset_words++; // Stream ID
-        }
+        offset_words++;          // Stream ID (always present)
 
         if constexpr (has_class_id) {
             offset_words += 2; // 64-bit Class ID
@@ -150,7 +159,7 @@ public:
     static constexpr uint32_t cif2_value = CIF2;
     static constexpr uint32_t cif3_value = CIF3;
 
-    explicit ContextPacket(uint8_t* buffer, bool init = true) noexcept : buffer_(buffer) {
+    explicit ContextPacketBase(uint8_t* buffer, bool init = true) noexcept : buffer_(buffer) {
         if (init) {
             init_header();
             init_stream_id();
@@ -170,11 +179,12 @@ public:
 private:
     void init_header() noexcept {
         // Build header using shared helper
+        // Per VITA 49.2: Context packets always have Stream ID (bit 25 not used for indicator)
         uint32_t header =
             detail::build_header(4,            // Packet type: context
                                  has_class_id, // Class ID indicator
-                                 false,        // Bit 26: reserved for context packets
-                                 HasStreamId,  // Bit 25: Stream ID indicator (for context packets)
+                                 false,        // Bit 26: reserved for context packets (no trailer)
+                                 false,        // Bit 25: reserved for context packets
                                  false,        // Bit 24: reserved for context packets
                                  tsi,          // TSI field
                                  tsf,          // TSF field
@@ -186,18 +196,13 @@ private:
     }
 
     void init_stream_id() noexcept {
-        if constexpr (HasStreamId) {
-            // Initialize to 0, user can set later
-            cif::write_u32_safe(buffer_, 4, 0);
-        }
+        // Always initialize stream ID to 0 (always present per spec)
+        cif::write_u32_safe(buffer_, 4, 0);
     }
 
     void init_class_id() noexcept {
         if constexpr (has_class_id) {
-            size_t offset = 4; // After header
-            if constexpr (HasStreamId) {
-                offset += 4;
-            }
+            size_t offset = 8; // After header + stream ID (always present)
 
             // Proper VITA-49 encoding
             uint32_t word0 = ClassIdType::word0(0); // ICC = 0
@@ -210,11 +215,7 @@ private:
 
     void init_timestamps() noexcept {
         // Calculate offset to timestamp fields
-        size_t offset = 4; // After header
-
-        if constexpr (HasStreamId) {
-            offset += 4;
-        }
+        size_t offset = 8; // After header + stream ID (always present)
 
         if constexpr (has_class_id) {
             offset += 8; // 64-bit class ID
@@ -258,27 +259,17 @@ private:
     }
 
 public:
-    // Stream ID accessor
-    uint32_t stream_id() const noexcept
-        requires(HasStreamId)
-    {
-        return cif::read_u32_safe(buffer_, 4);
-    }
+    // Stream ID accessor (always present per VITA 49.2 spec)
+    uint32_t stream_id() const noexcept { return cif::read_u32_safe(buffer_, 4); }
 
-    void set_stream_id(uint32_t id) noexcept
-        requires(HasStreamId)
-    {
-        cif::write_u32_safe(buffer_, 4, id);
-    }
+    void set_stream_id(uint32_t id) noexcept { cif::write_u32_safe(buffer_, 4, id); }
 
     // Timestamp accessors
 
     TimeStampType getTimeStamp() const noexcept
         requires(has_timestamp)
     {
-        size_t tsi_offset = 4;
-        if constexpr (HasStreamId)
-            tsi_offset += 4;
+        size_t tsi_offset = 8; // After header + stream ID (always present)
         if constexpr (has_class_id)
             tsi_offset += 8;
 
@@ -295,9 +286,7 @@ public:
     void setTimeStamp(const TimeStampType& ts) noexcept
         requires(has_timestamp)
     {
-        size_t tsi_offset = 4;
-        if constexpr (HasStreamId)
-            tsi_offset += 4;
+        size_t tsi_offset = 8; // After header + stream ID (always present)
         if constexpr (has_class_id)
             tsi_offset += 8;
 
@@ -330,6 +319,19 @@ public:
 
     static constexpr size_t buffer_size() noexcept { return size_bytes; }
 
+    // Field access via subscript operator
+    template <uint8_t CifWord, uint8_t Bit>
+    auto operator[](field::field_tag_t<CifWord, Bit> tag) noexcept
+        -> FieldProxy<field::field_tag_t<CifWord, Bit>, ContextPacketBase> {
+        return detail::get_impl(*this, tag);
+    }
+
+    template <uint8_t CifWord, uint8_t Bit>
+    auto operator[](field::field_tag_t<CifWord, Bit> tag) const noexcept
+        -> FieldProxy<field::field_tag_t<CifWord, Bit>, const ContextPacketBase> {
+        return detail::get_impl(*this, tag);
+    }
+
     // Validation (primarily for testing)
     ValidationError validate(size_t buffer_size) const noexcept {
         if (buffer_size < size_bytes) {
@@ -352,6 +354,32 @@ public:
 
         return ValidationError::none;
     }
+};
+
+// Field-based ContextPacket template (user-friendly API)
+// Automatically computes CIF bitmasks from field tags
+//
+// Example usage:
+//     using namespace vrtio::field;
+//     using MyPacket = ContextPacket<NoTimeStamp, NoClassId,
+//                                     bandwidth, sample_rate, gain>;
+//
+// This is the recommended API for most users.
+template <typename TimeStampType = NoTimeStamp, typename ClassIdType = NoClassId, auto... Fields>
+    requires ValidTimestampType<TimeStampType> && ValidClassIdType<ClassIdType>
+class ContextPacket
+    : public ContextPacketBase<TimeStampType, ClassIdType, detail::FieldMask<Fields...>::cif0,
+                               detail::FieldMask<Fields...>::cif1,
+                               detail::FieldMask<Fields...>::cif2,
+                               detail::FieldMask<Fields...>::cif3> {
+public:
+    using Base =
+        ContextPacketBase<TimeStampType, ClassIdType, detail::FieldMask<Fields...>::cif0,
+                          detail::FieldMask<Fields...>::cif1, detail::FieldMask<Fields...>::cif2,
+                          detail::FieldMask<Fields...>::cif3>;
+
+    // Inherit constructors
+    using Base::Base;
 };
 
 } // namespace vrtio

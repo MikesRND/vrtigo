@@ -59,28 +59,17 @@ constexpr bool is_field_present(uint32_t cif0, uint32_t cif1, uint32_t cif2,
     return false;
 }
 
-} // namespace detail
-
-// ============================================================================
-// Public API: get() - Get field proxy for field access
-// ============================================================================
-
-/// Get a FieldProxy for accessing a CIF field in a context packet
-/// The proxy provides .raw_bytes() for raw bytes and (future) .value() for interpreted access
-/// @tparam Tag Field tag type (e.g., field_tag_t<0, 29>)
-/// @param packet Context packet (ContextPacket or ContextPacketView)
-/// @param tag Field tag (e.g., field::bandwidth)
-/// @return FieldProxy object (check .has_value() before using)
+/// Internal implementation of field access (used by both free functions and operator[])
 template <typename Packet, uint8_t CifWord, uint8_t Bit>
-    requires detail::CifPacketBase<Packet>
-auto get(Packet& packet, field::field_tag_t<CifWord, Bit>) noexcept
+    requires CifPacketBase<Packet>
+auto get_impl(Packet& packet, field::field_tag_t<CifWord, Bit>) noexcept
     -> FieldProxy<field::field_tag_t<CifWord, Bit>, Packet> {
-    using Trait = detail::FieldTraits<CifWord, Bit>;
+    using Trait = FieldTraits<CifWord, Bit>;
     using Tag = field::field_tag_t<CifWord, Bit>;
 
     // Check if field is present
-    bool present = detail::is_field_present<CifWord, Bit>(packet.cif0(), packet.cif1(),
-                                                          packet.cif2(), packet.cif3());
+    bool present =
+        is_field_present<CifWord, Bit>(packet.cif0(), packet.cif1(), packet.cif2(), packet.cif3());
 
     if (!present) {
         // Return proxy with present=false
@@ -89,7 +78,7 @@ auto get(Packet& packet, field::field_tag_t<CifWord, Bit>) noexcept
 
     // Calculate field offset (compile-time or runtime)
     size_t field_offset;
-    if constexpr (detail::CifPacketLike<Packet>) {
+    if constexpr (CifPacketLike<Packet>) {
         // Compile-time packet: fold offset to constant at compile time
         constexpr size_t ct_offset =
             cif::calculate_field_offset_ct<Packet::cif0_value, Packet::cif1_value,
@@ -97,7 +86,7 @@ auto get(Packet& packet, field::field_tag_t<CifWord, Bit>) noexcept
         field_offset = packet.context_base_offset() + ct_offset;
     } else {
         // Runtime packet: calculate offset dynamically
-        field_offset = detail::calculate_field_offset_runtime(
+        field_offset = calculate_field_offset_runtime(
             packet.cif0(), packet.cif1(), packet.cif2(), packet.cif3(), CifWord, Bit,
             packet.context_buffer(), packet.context_base_offset(), packet.buffer_size());
 
@@ -117,7 +106,7 @@ auto get(Packet& packet, field::field_tag_t<CifWord, Bit>) noexcept
                                                                  : cif::CIF3_FIELDS;
 
     // Check if field is variable-length (needs runtime size calculation)
-    if constexpr (detail::VariableFieldTrait<Trait>) {
+    if constexpr (VariableFieldTrait<Trait>) {
         // Variable-length field - compute size from buffer
         size_t size_words = Trait::compute_size_words(packet.context_buffer(), field_offset);
         field_size_bytes = size_words * 4;
@@ -130,8 +119,32 @@ auto get(Packet& packet, field::field_tag_t<CifWord, Bit>) noexcept
     return FieldProxy<Tag, Packet>(packet, field_offset, field_size_bytes, true);
 }
 
+/// Internal implementation of field presence check
+template <uint8_t CifWord, uint8_t Bit>
+constexpr bool has_impl(uint32_t cif0, uint32_t cif1, uint32_t cif2, uint32_t cif3) noexcept {
+    return is_field_present<CifWord, Bit>(cif0, cif1, cif2, cif3);
+}
+
+} // namespace detail
+
 // ============================================================================
-// Convenience: has() - Check if field is present
+// Public API: get() - Get field proxy via free function
+// ============================================================================
+
+/// Get a FieldProxy for accessing a CIF field in a context packet
+/// @tparam Tag Field tag type (e.g., field_tag_t<0, 29>)
+/// @param packet Context packet (ContextPacket or ContextPacketView)
+/// @param tag Field tag (e.g., field::bandwidth)
+/// @return FieldProxy object (check .has_value() before using)
+template <typename Packet, uint8_t CifWord, uint8_t Bit>
+    requires detail::CifPacketBase<Packet>
+auto get(Packet& packet, field::field_tag_t<CifWord, Bit> tag) noexcept
+    -> FieldProxy<field::field_tag_t<CifWord, Bit>, Packet> {
+    return detail::get_impl(packet, tag);
+}
+
+// ============================================================================
+// Public API: has() - Check field presence via free function
 // ============================================================================
 
 /// Check if a field is present in the packet
@@ -142,8 +155,8 @@ auto get(Packet& packet, field::field_tag_t<CifWord, Bit>) noexcept
 template <typename Packet, uint8_t CifWord, uint8_t Bit>
     requires detail::CifPacketBase<Packet>
 constexpr bool has(const Packet& packet, field::field_tag_t<CifWord, Bit>) noexcept {
-    return detail::is_field_present<CifWord, Bit>(packet.cif0(), packet.cif1(), packet.cif2(),
-                                                  packet.cif3());
+    return detail::has_impl<CifWord, Bit>(packet.cif0(), packet.cif1(), packet.cif2(),
+                                          packet.cif3());
 }
 
 // ============================================================================

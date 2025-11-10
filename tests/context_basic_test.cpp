@@ -1,16 +1,11 @@
 #include "context_test_fixture.hpp"
 
+using namespace vrtio::field;
+
 TEST_F(ContextPacketTest, BasicCompileTimePacket) {
     // Create a simple context packet with bandwidth and sample rate
-    constexpr uint32_t cif0_mask = cif0::BANDWIDTH | cif0::SAMPLE_RATE;
-    using TestContext = ContextPacket<true,        // Has stream ID
-                                      NoTimeStamp, // No timestamp
-                                      NoClassId,   // No class ID
-                                      cif0_mask,   // CIF0
-                                      0,           // No CIF1
-                                      0,           // No CIF2
-                                      false        // No trailer
-                                      >;
+    // Note: Context packets always have Stream ID per VITA 49.2 spec
+    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth, sample_rate>;
 
     TestContext packet(buffer.data());
 
@@ -21,28 +16,20 @@ TEST_F(ContextPacketTest, BasicCompileTimePacket) {
 
     // Set fields
     packet.set_stream_id(0x12345678);
-    get(packet, field::bandwidth).set_value(20'000'000.0);   // 20 MHz
-    get(packet, field::sample_rate).set_value(10'000'000.0); // 10 MSPS
+    get(packet, bandwidth).set_value(20'000'000.0);   // 20 MHz
+    get(packet, sample_rate).set_value(10'000'000.0); // 10 MSPS
 
     // Verify fields
     EXPECT_EQ(packet.stream_id(), 0x12345678);
-    EXPECT_DOUBLE_EQ(get(packet, field::bandwidth).value(), 20'000'000.0);
-    EXPECT_DOUBLE_EQ(get(packet, field::sample_rate).value(), 10'000'000.0);
+    EXPECT_DOUBLE_EQ(get(packet, bandwidth).value(), 20'000'000.0);
+    EXPECT_DOUBLE_EQ(get(packet, sample_rate).value(), 10'000'000.0);
 }
 
 TEST_F(ContextPacketTest, PacketWithClassId) {
     // Define a class ID
     using TestClassId = ClassId<0x123456, 0xABCDEF00>;
 
-    constexpr uint32_t cif0_mask = cif0::BANDWIDTH;
-    using TestContext = ContextPacket<true,        // Has stream ID
-                                      NoTimeStamp, // No timestamp
-                                      TestClassId, // Has class ID
-                                      cif0_mask,   // CIF0
-                                      0,           // No CIF1
-                                      0,           // No CIF2
-                                      false        // No trailer
-                                      >;
+    using TestContext = ContextPacket<NoTimeStamp, TestClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
@@ -51,10 +38,10 @@ TEST_F(ContextPacketTest, PacketWithClassId) {
               1 + 1 + 2 + 1 + 2); // header + stream + class_id + cif0 + bandwidth
 
     packet.set_stream_id(0x87654321);
-    get(packet, field::bandwidth).set_value(40'000'000.0); // 40 MHz
+    get(packet, bandwidth).set_value(40'000'000.0); // 40 MHz
 
     EXPECT_EQ(packet.stream_id(), 0x87654321);
-    EXPECT_DOUBLE_EQ(get(packet, field::bandwidth).value(), 40'000'000.0);
+    EXPECT_DOUBLE_EQ(get(packet, bandwidth).value(), 40'000'000.0);
 }
 
 TEST_F(ContextPacketTest, RuntimeParserBasic) {
@@ -69,7 +56,8 @@ TEST_F(ContextPacketTest, RuntimeParserBasic) {
     cif::write_u32_safe(buffer.data(), 4, 0xAABBCCDD);
 
     // CIF0 - enable bandwidth and sample rate
-    uint32_t cif0_mask = cif0::BANDWIDTH | cif0::SAMPLE_RATE;
+    uint32_t cif0_mask =
+        vrtio::detail::field_bitmask<bandwidth>() | vrtio::detail::field_bitmask<sample_rate>();
     cif::write_u32_safe(buffer.data(), 8, cif0_mask);
 
     // Bandwidth (64-bit)
@@ -90,29 +78,32 @@ TEST_F(ContextPacketTest, RuntimeParserBasic) {
     EXPECT_EQ(view.cif1(), 0);
     EXPECT_EQ(view.cif2(), 0);
 
-    auto bw = get(view, field::bandwidth);
+    auto bw = get(view, bandwidth);
     EXPECT_TRUE(bw.has_value());
     EXPECT_EQ(bw.raw_value(), 25'000'000);
 
-    auto sr = get(view, field::sample_rate);
+    auto sr = get(view, sample_rate);
     EXPECT_TRUE(sr.has_value());
     EXPECT_EQ(sr.raw_value(), 12'500'000);
 
     // Field that's not present should return nullopt
-    EXPECT_FALSE(get(view, field::gain).has_value());
+    EXPECT_FALSE(get(view, gain).has_value());
 }
 
 TEST_F(ContextPacketTest, SizeFieldValidation) {
     // Create packet with wrong size field in header
-    // Actual structure: header (1) + CIF0 (1) + bandwidth (2) = 4 words
+    // Actual structure: header (1) + stream_id (1) + CIF0 (1) + bandwidth (2) = 5 words
     // But header claims 10 words (mismatch!)
     uint32_t header = (static_cast<uint32_t>(PacketType::Context) << header::packet_type_shift) |
                       10; // type=4, WRONG size=10 words
     cif::write_u32_safe(buffer.data(), 0, header);
 
-    uint32_t cif0_mask = cif0::BANDWIDTH;
-    cif::write_u32_safe(buffer.data(), 4, cif0_mask);
-    cif::write_u64_safe(buffer.data(), 8, 25'000'000);
+    // Stream ID (always present per spec)
+    cif::write_u32_safe(buffer.data(), 4, 0);
+
+    uint32_t cif0_mask = vrtio::detail::field_bitmask<bandwidth>();
+    cif::write_u32_safe(buffer.data(), 8, cif0_mask);
+    cif::write_u64_safe(buffer.data(), 12, 25'000'000);
 
     // Provide buffer large enough for header's claim, so we get past buffer_too_small check
     ContextPacketView view(buffer.data(), 10 * 4);

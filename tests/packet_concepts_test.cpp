@@ -6,6 +6,7 @@
 #include <vrtio/packet/data_packet_view.hpp>
 
 using namespace vrtio;
+using namespace vrtio::field;
 
 // Test that SignalPacket satisfies FixedPacketLike concept
 TEST(PacketConceptsTest, SignalPacketIsFixedPacketLike) {
@@ -35,9 +36,8 @@ TEST(PacketConceptsTest, SignalPacketViewIsFixedPacketViewLike) {
 
 // Test that ContextPacket satisfies VariablePacketLike concept
 TEST(PacketConceptsTest, ContextPacketIsVariablePacketLike) {
-    using PacketType =
-        ContextPacket<true, // HasStreamId
-                      NoTimeStamp, NoClassId, cif0::BANDWIDTH | cif0::SAMPLE_RATE, 0, 0, 0>;
+    // Note: Context packets always have Stream ID per VITA 49.2 spec
+    using PacketType = ContextPacket<NoTimeStamp, NoClassId, bandwidth, sample_rate>;
 
     static_assert(PacketBase<PacketType>);
     static_assert(VariablePacketLike<PacketType>);
@@ -87,7 +87,7 @@ TEST(PacketConceptsTest, SignalPacketHelperConcepts) {
 // Test that concepts properly distinguish packet categories
 TEST(PacketConceptsTest, ConceptsMutuallyExclusive) {
     using SignalPkt = DataPacket<PacketType::SignalData, NoTimeStamp, Trailer::None, 64>;
-    using ContextPkt = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
+    using ContextPkt = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
 
     // Signal is Fixed, not Variable
     static_assert(FixedPacketLike<SignalPkt>);
@@ -167,7 +167,7 @@ TEST(PacketConceptsTest, RuntimeBehaviorConsistency) {
     });
 
     // Create context packet
-    using ContextType = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
+    using ContextType = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
     alignas(4) std::array<uint8_t, ContextType::size_bytes> context_buffer;
     ContextType context_pkt(context_buffer.data());
 
