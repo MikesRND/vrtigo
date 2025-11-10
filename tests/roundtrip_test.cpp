@@ -1,20 +1,21 @@
-#include <vrtio.hpp>
-#include <gtest/gtest.h>
 #include <array>
+
 #include <cstring>
+#include <gtest/gtest.h>
+#include <vrtio.hpp>
 
 // Test fixture for round-trip tests
 class RoundTripTest : public ::testing::Test {
 protected:
     // Helper to verify payload data
-    template<size_t N>
+    template <size_t N>
     void fill_test_payload(std::span<uint8_t, N> payload) {
         for (size_t i = 0; i < payload.size(); ++i) {
             payload[i] = static_cast<uint8_t>((i * 7 + 13) & 0xFF);
         }
     }
 
-    template<size_t N>
+    template <size_t N>
     void verify_test_payload(std::span<const uint8_t, N> payload) {
         for (size_t i = 0; i < payload.size(); ++i) {
             EXPECT_EQ(payload[i], static_cast<uint8_t>((i * 7 + 13) & 0xFF))
@@ -22,7 +23,7 @@ protected:
         }
     }
 
-    template<size_t N>
+    template <size_t N>
     void verify_test_payload(std::span<uint8_t, N> payload) {
         verify_test_payload(std::span<const uint8_t, N>(payload));
     }
@@ -30,11 +31,10 @@ protected:
 
 // Test 1: Minimal packet (no stream, no timestamps, no trailer)
 TEST_F(RoundTripTest, MinimalPacket) {
-    using PacketType = vrtio::SignalDataPacketNoId<
-        vrtio::NoTimeStamp,  // No timestamps
-        vrtio::Trailer::None,  // No trailer
-        128     // 512 bytes payload
-    >;
+    using PacketType = vrtio::SignalDataPacketNoId<vrtio::NoTimeStamp,   // No timestamps
+                                                   vrtio::Trailer::None, // No trailer
+                                                   128                   // 512 bytes payload
+                                                   >;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
@@ -59,11 +59,7 @@ TEST_F(RoundTripTest, MinimalPacket) {
 
 // Test 2: Packet with stream ID (type 1)
 TEST_F(RoundTripTest, PacketWithStreamId) {
-    using PacketType = vrtio::SignalDataPacket<
-        vrtio::NoTimeStamp,
-        vrtio::Trailer::None,
-        256
-    >;
+    using PacketType = vrtio::SignalDataPacket<vrtio::NoTimeStamp, vrtio::Trailer::None, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
@@ -84,11 +80,8 @@ TEST_F(RoundTripTest, PacketWithStreamId) {
 
 // Test 3: Packet with integer timestamp (TSI)
 TEST_F(RoundTripTest, PacketWithIntegerTimestamp) {
-    using PacketType = vrtio::SignalDataPacket<
-        vrtio::TimeStampUTC,  // Using UTC timestamps
-        vrtio::Trailer::None,
-        128
-    >;
+    using PacketType = vrtio::SignalDataPacket<vrtio::TimeStampUTC, // Using UTC timestamps
+                                               vrtio::Trailer::None, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
@@ -113,18 +106,17 @@ TEST_F(RoundTripTest, PacketWithIntegerTimestamp) {
 
 // Test 4: Packet with fractional timestamp (TSF)
 TEST_F(RoundTripTest, PacketWithFractionalTimestamp) {
-    using PacketType = vrtio::SignalDataPacket<
-        vrtio::TimeStampUTC,  // Using UTC timestamps (with picoseconds)
-        vrtio::Trailer::None,
-        256
-    >;
+    using PacketType =
+        vrtio::SignalDataPacket<vrtio::TimeStampUTC, // Using UTC timestamps (with picoseconds)
+                                vrtio::Trailer::None, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
     // Create packet
     PacketType packet(buffer.data());
     packet.set_stream_id(0xCAFEBABE);
-    auto ts = vrtio::TimeStampUTC::fromComponents(1234567890, 999999999999ULL);  // Max picoseconds in a second
+    auto ts = vrtio::TimeStampUTC::fromComponents(1234567890,
+                                                  999999999999ULL); // Max picoseconds in a second
     packet.setTimeStamp(ts);
     packet.set_packet_count(15);
     fill_test_payload(packet.payload());
@@ -143,11 +135,9 @@ TEST_F(RoundTripTest, PacketWithFractionalTimestamp) {
 
 // Test 5: Packet with trailer
 TEST_F(RoundTripTest, PacketWithTrailer) {
-    using PacketType = vrtio::SignalDataPacket<
-        vrtio::TimeStampUTC,  // Using UTC timestamps
-        vrtio::Trailer::Included,  // Has trailer
-        128
-    >;
+    using PacketType = vrtio::SignalDataPacket<vrtio::TimeStampUTC,      // Using UTC timestamps
+                                               vrtio::Trailer::Included, // Has trailer
+                                               128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
@@ -156,7 +146,7 @@ TEST_F(RoundTripTest, PacketWithTrailer) {
     packet.set_stream_id(0xDEADBEEF);
     auto ts = vrtio::TimeStampUTC::fromComponents(1500000000, 0);
     packet.setTimeStamp(ts);
-    vrtio::TrailerBuilder{0x80000001}.apply(packet.trailer());  // Some status bits
+    vrtio::TrailerBuilder{0x80000001}.apply(packet.trailer()); // Some status bits
     packet.set_packet_count(3);
     fill_test_payload(packet.payload());
 
@@ -174,11 +164,10 @@ TEST_F(RoundTripTest, PacketWithTrailer) {
 
 // Test 6: Full-featured packet (all optional fields)
 TEST_F(RoundTripTest, FullFeaturedPacket) {
-    using PacketType = vrtio::SignalDataPacket<
-        vrtio::TimeStampUTC,  // UTC with picoseconds
-        vrtio::Trailer::Included,  // Has trailer
-        512    // 2048 bytes payload
-    >;
+    using PacketType = vrtio::SignalDataPacket<vrtio::TimeStampUTC,      // UTC with picoseconds
+                                               vrtio::Trailer::Included, // Has trailer
+                                               512                       // 2048 bytes payload
+                                               >;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
@@ -207,11 +196,9 @@ TEST_F(RoundTripTest, FullFeaturedPacket) {
 
 // Test 7: Builder round-trip
 TEST_F(RoundTripTest, BuilderRoundTrip) {
-    using PacketType = vrtio::SignalDataPacket<
-        vrtio::TimeStampUTC,  // UTC with picoseconds
-        vrtio::Trailer::Included,  // Trailer included
-        256
-    >;
+    using PacketType = vrtio::SignalDataPacket<vrtio::TimeStampUTC,      // UTC with picoseconds
+                                               vrtio::Trailer::Included, // Trailer included
+                                               256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> tx_buffer;
     alignas(4) std::array<uint8_t, 1024> payload_data;
@@ -222,9 +209,7 @@ TEST_F(RoundTripTest, BuilderRoundTrip) {
     }
 
     // Build packet using fluent API
-    auto trailer_cfg = vrtio::TrailerBuilder{}
-        .clear()
-        .context_packets(1);
+    auto trailer_cfg = vrtio::TrailerBuilder{}.clear().context_packets(1);
 
     auto ts = vrtio::TimeStampUTC::fromComponents(1700000000, 500000000000ULL);
     vrtio::PacketBuilder<PacketType>(tx_buffer.data())
@@ -260,11 +245,7 @@ TEST_F(RoundTripTest, BuilderRoundTrip) {
 
 // Test 8: Multiple sequential packets
 TEST_F(RoundTripTest, MultiplePackets) {
-    using PacketType = vrtio::SignalDataPacket<
-        vrtio::TimeStampUTC,
-        vrtio::Trailer::None,
-        128
-    >;
+    using PacketType = vrtio::SignalDataPacket<vrtio::TimeStampUTC, vrtio::Trailer::None, 128>;
 
     constexpr size_t NUM_PACKETS = 10;
     alignas(4) std::array<uint8_t, PacketType::size_bytes * NUM_PACKETS> buffer;
@@ -307,11 +288,9 @@ TEST_F(RoundTripTest, MultiplePackets) {
 
 // Test 9: Verify header bits are set correctly
 TEST_F(RoundTripTest, HeaderBitsCorrect) {
-    using PacketType = vrtio::SignalDataPacket<
-        vrtio::TimeStampUTC,                          // UTC with picoseconds
-        vrtio::Trailer::Included,  // Has trailer
-        256
-    >;
+    using PacketType = vrtio::SignalDataPacket<vrtio::TimeStampUTC,      // UTC with picoseconds
+                                               vrtio::Trailer::Included, // Has trailer
+                                               256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
     PacketType packet(buffer.data());
@@ -339,11 +318,8 @@ TEST_F(RoundTripTest, HeaderBitsCorrect) {
 
 // Test 10: Type 0 packet (no stream ID)
 TEST_F(RoundTripTest, Type0PacketNoStreamId) {
-    using PacketType = vrtio::SignalDataPacketNoId<
-        vrtio::TimeStampUTC,  // Using UTC timestamps
-        vrtio::Trailer::None,
-        256
-    >;
+    using PacketType = vrtio::SignalDataPacketNoId<vrtio::TimeStampUTC, // Using UTC timestamps
+                                                   vrtio::Trailer::None, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 

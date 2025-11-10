@@ -1,9 +1,10 @@
 #pragma once
 
-#include <vrtio.hpp>
-#include <gtest/gtest.h>
 #include <array>
+
 #include <cstring>
+#include <gtest/gtest.h>
+#include <vrtio.hpp>
 
 using namespace vrtio;
 
@@ -13,7 +14,5 @@ protected:
     // Buffer for testing
     alignas(4) std::array<uint8_t, 4096> buffer{};
 
-    void SetUp() override {
-        std::memset(buffer.data(), 0, buffer.size());
-    }
+    void SetUp() override { std::memset(buffer.data(), 0, buffer.size()); }
 };

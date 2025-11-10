@@ -6,7 +6,7 @@ namespace vrtio::field {
 
 /// Minimal tag type - self-contained, no dependencies on internal headers
 /// Tags store only CIF word and bit position as compile-time constants
-template<uint8_t CifWord, uint8_t BitPos>
+template <uint8_t CifWord, uint8_t BitPos>
 struct field_tag_t {
     static constexpr uint8_t cif = CifWord;
     static constexpr uint8_t bit = BitPos;
@@ -21,7 +21,7 @@ struct field_tag_t {
 // Bit 2: CIF2 Enable (control bit)
 // Bits 3-8: Reserved or unsupported
 
-inline constexpr field_tag_t<0, 9>  context_association_lists;
+inline constexpr field_tag_t<0, 9> context_association_lists;
 inline constexpr field_tag_t<0, 10> gps_ascii;
 inline constexpr field_tag_t<0, 11> ephemeris_ref_id;
 inline constexpr field_tag_t<0, 12> relative_ephemeris;
@@ -54,12 +54,12 @@ inline constexpr auto& formatted_gps = formatted_gps_ins;
 // ============================================================================
 
 // Bit 0: Reserved
-inline constexpr field_tag_t<1, 1>  buffer_size;
-inline constexpr field_tag_t<1, 2>  version_build_code;
-inline constexpr field_tag_t<1, 3>  v49_spec_compliance;
-inline constexpr field_tag_t<1, 4>  health_status;
-inline constexpr field_tag_t<1, 5>  discrete_io_64;
-inline constexpr field_tag_t<1, 6>  discrete_io_32;
+inline constexpr field_tag_t<1, 1> buffer_size;
+inline constexpr field_tag_t<1, 2> version_build_code;
+inline constexpr field_tag_t<1, 3> v49_spec_compliance;
+inline constexpr field_tag_t<1, 4> health_status;
+inline constexpr field_tag_t<1, 5> discrete_io_64;
+inline constexpr field_tag_t<1, 6> discrete_io_32;
 // Bit 7: Index List (unsupported - variable)
 // Bit 8: Reserved
 // Bit 9: Sector Scan (unsupported - variable)
@@ -92,13 +92,13 @@ inline constexpr auto& snr = snr_noise_figure;
 // ============================================================================
 
 // Bits 0-2: Reserved
-inline constexpr field_tag_t<2, 3>  rf_footprint_range;
-inline constexpr field_tag_t<2, 4>  rf_footprint;
-inline constexpr field_tag_t<2, 5>  communication_priority;
-inline constexpr field_tag_t<2, 6>  function_priority;
-inline constexpr field_tag_t<2, 7>  event_id;
-inline constexpr field_tag_t<2, 8>  mode_id;
-inline constexpr field_tag_t<2, 9>  function_id;
+inline constexpr field_tag_t<2, 3> rf_footprint_range;
+inline constexpr field_tag_t<2, 4> rf_footprint;
+inline constexpr field_tag_t<2, 5> communication_priority;
+inline constexpr field_tag_t<2, 6> function_priority;
+inline constexpr field_tag_t<2, 7> event_id;
+inline constexpr field_tag_t<2, 8> mode_id;
+inline constexpr field_tag_t<2, 9> function_id;
 inline constexpr field_tag_t<2, 10> modulation_type;
 inline constexpr field_tag_t<2, 11> modulation_class;
 inline constexpr field_tag_t<2, 12> ems_device_instance;
@@ -127,13 +127,13 @@ inline constexpr field_tag_t<2, 31> bind;
 // ============================================================================
 
 // Bit 0: Reserved
-inline constexpr field_tag_t<3, 1>  network_id;
-inline constexpr field_tag_t<3, 2>  tropospheric_state;
-inline constexpr field_tag_t<3, 3>  sea_swell_state;
-inline constexpr field_tag_t<3, 4>  barometric_pressure;
-inline constexpr field_tag_t<3, 5>  humidity;
-inline constexpr field_tag_t<3, 6>  sea_ground_temperature;
-inline constexpr field_tag_t<3, 7>  air_temperature;
+inline constexpr field_tag_t<3, 1> network_id;
+inline constexpr field_tag_t<3, 2> tropospheric_state;
+inline constexpr field_tag_t<3, 3> sea_swell_state;
+inline constexpr field_tag_t<3, 4> barometric_pressure;
+inline constexpr field_tag_t<3, 5> humidity;
+inline constexpr field_tag_t<3, 6> sea_ground_temperature;
+inline constexpr field_tag_t<3, 7> air_temperature;
 // Bits 8-15: Reserved
 // Bits 16-17: Age/Shelf Life - TSI/TSF dependent (deferred)
 // Bits 18-19: Reserved

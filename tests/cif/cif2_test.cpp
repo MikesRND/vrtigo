@@ -2,36 +2,36 @@
 
 TEST_F(ContextPacketTest, CIF2Fields) {
     // Create packet with CIF2 controller UUID
-    constexpr uint32_t cif0_mask = 0;  // No CIF0 fields (CIF2 enable bit set automatically)
+    constexpr uint32_t cif0_mask = 0; // No CIF0 fields (CIF2 enable bit set automatically)
     constexpr uint32_t cif2_mask = cif2::CONTROLLER_UUID;
 
-    using TestContext = ContextPacket<
-        false,          // No stream ID
-        NoTimeStamp,    // No timestamp
-        NoClassId,      // No class ID
-        cif0_mask,      // CIF0
-        0,              // No CIF1
-        cif2_mask,      // CIF2
-        false           // No trailer
-    >;
+    using TestContext = ContextPacket<false,       // No stream ID
+                                      NoTimeStamp, // No timestamp
+                                      NoClassId,   // No class ID
+                                      cif0_mask,   // CIF0
+                                      0,           // No CIF1
+                                      cif2_mask,   // CIF2
+                                      false        // No trailer
+                                      >;
 
     TestContext packet(buffer.data());
 
     // Check size includes CIF2 field
-    EXPECT_EQ(TestContext::size_words, 1 + 1 + 1 + 4);  // header + cif0 + cif2 + uuid
+    EXPECT_EQ(TestContext::size_words, 1 + 1 + 1 + 4); // header + cif0 + cif2 + uuid
 }
 
 TEST_F(ContextPacketTest, RuntimeParseCIF2) {
     // Build a packet with CIF2 enabled and Controller UUID field
-    // Type 4 has stream ID: header(1) + stream_id(1) + CIF0(1) + CIF2(1) + Controller UUID(4) = 8 words
-    uint32_t header = (static_cast<uint32_t>(PacketType::Context) << header::PACKET_TYPE_SHIFT) | 8;
+    // Type 4 has stream ID: header(1) + stream_id(1) + CIF0(1) + CIF2(1) + Controller UUID(4) = 8
+    // words
+    uint32_t header = (static_cast<uint32_t>(PacketType::Context) << header::packet_type_shift) | 8;
     cif::write_u32_safe(buffer.data(), 0, header);
 
     // Stream ID (type 4 has stream ID per VITA 49.2)
     cif::write_u32_safe(buffer.data(), 4, 0x12345678);
 
     // CIF0 with CIF2 enable bit set
-    uint32_t cif0_mask = (1U << 2);  // Enable CIF2
+    uint32_t cif0_mask = (1U << 2); // Enable CIF2
     cif::write_u32_safe(buffer.data(), 8, cif0_mask);
 
     // CIF2 with Controller UUID enabled
@@ -47,7 +47,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF2) {
 
     // Parse and validate
     ContextPacketView view(buffer.data(), 8 * 4);
-    EXPECT_EQ(view.error(), validation_error::none);
+    EXPECT_EQ(view.error(), ValidationError::none);
 
     // Verify CIF0 and CIF2 are read correctly
     EXPECT_EQ(view.cif0(), cif0_mask);
@@ -57,7 +57,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF2) {
     auto uuid_proxy = get(view, field::controller_uuid);
     ASSERT_TRUE(uuid_proxy.has_value());
     auto uuid = uuid_proxy.raw_bytes();
-    ASSERT_EQ(uuid.size(), 16);  // 128 bits = 16 bytes
+    ASSERT_EQ(uuid.size(), 16); // 128 bits = 16 bytes
 
     // Verify UUID bytes match what we wrote
     for (int i = 0; i < 4; i++) {
@@ -69,32 +69,28 @@ TEST_F(ContextPacketTest, RuntimeParseCIF2) {
 TEST_F(ContextPacketTest, CompileTimeCIF2RuntimeParse) {
     // Create packet with CIF2 field at compile time
     constexpr uint32_t cif2_mask = cif2::CONTROLLER_UUID;
-    using TestContext = ContextPacket<
-        true,           // Has stream ID (context packets require stream ID)
-        NoTimeStamp,
-        NoClassId,
-        0,              // No CIF0 data fields (CIF2 enable bit auto-set)
-        0,              // No CIF1
-        cif2_mask,      // CIF2
-        false
-    >;
+    using TestContext = ContextPacket<true, // Has stream ID (context packets require stream ID)
+                                      NoTimeStamp, NoClassId,
+                                      0,         // No CIF0 data fields (CIF2 enable bit auto-set)
+                                      0,         // No CIF1
+                                      cif2_mask, // CIF2
+                                      false>;
 
     // Compile-time assertion: verify CIF2 enable bit is auto-set
     static_assert((TestContext::cif0_value & 0x04) != 0,
-        "CIF2 enable bit (bit 2) should be auto-set when CIF2 != 0");
+                  "CIF2 enable bit (bit 2) should be auto-set when CIF2 != 0");
     static_assert((TestContext::cif0_value & 0x02) == 0,
-        "CIF1 enable bit (bit 1) should NOT be set when CIF1 == 0");
+                  "CIF1 enable bit (bit 1) should NOT be set when CIF1 == 0");
 
     TestContext tx_packet(buffer.data());
     tx_packet.set_stream_id(0xAABBCCDD);
 
     // Parse with runtime view
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.error(), validation_error::none);
+    EXPECT_EQ(view.error(), ValidationError::none);
     EXPECT_TRUE(view.has_stream_id());
     EXPECT_EQ(view.stream_id().value(), 0xAABBCCDD);
     // CIF0 should have bit 2 set (CIF2 enable)
     EXPECT_EQ(view.cif0() & 0x04, 0x04);
     EXPECT_EQ(view.cif2(), cif2_mask);
 }
-

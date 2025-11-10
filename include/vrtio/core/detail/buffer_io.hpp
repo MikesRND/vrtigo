@@ -1,8 +1,9 @@
 #pragma once
 
-#include "../endian.hpp"
 #include <cstdint>
 #include <cstring>
+
+#include "../endian.hpp"
 
 namespace vrtio::detail {
 
@@ -62,4 +63,4 @@ inline void write_u64(uint8_t* buffer, size_t offset, uint64_t value) noexcept {
     std::memcpy(buffer + offset, &value, sizeof(value));
 }
 
-}  // namespace vrtio::detail
+} // namespace vrtio::detail

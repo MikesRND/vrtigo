@@ -1,17 +1,19 @@
-#include <vrtio/vrtio_io.hpp>
-#include <gtest/gtest.h>
-#include "test_utils.hpp"
+#include <chrono>
 #include <filesystem>
 #include <fstream>
-#include <vector>
 #include <map>
-#include <chrono>
+#include <vector>
+
+#include <gtest/gtest.h>
+#include <vrtio/vrtio_io.hpp>
+
+#include "test_utils.hpp"
 
 using namespace vrtio::io;
 using namespace vrtio::detail;
-using vrtio::validation_error;
-using vrtio::PacketType;
 using vrtio::ContextPacketView;
+using vrtio::PacketType;
+using vrtio::ValidationError;
 
 // Test data file paths
 const std::filesystem::path test_data_dir = TEST_DATA_DIR;
@@ -95,7 +97,7 @@ TEST(FileReaderTest, BufferResizing) {
     auto result = reader.read_next(small_buffer.data(), small_buffer.size());
 
     // Should fail with buffer_too_small
-    EXPECT_EQ(result.error, validation_error::buffer_too_small);
+    EXPECT_EQ(result.error, ValidationError::buffer_too_small);
     EXPECT_GT(result.buffer_size_required, small_buffer.size());
 
     // Resize and retry
@@ -125,7 +127,7 @@ TEST(FileReaderTest, SpanInterface) {
     ASSERT_FALSE(packet2.empty());
 
     // Verify buffer is reused (same pointer) - this is the key behavior
-    EXPECT_EQ(packet1.data(), packet2.data());  // Same buffer location (span reuses internal buffer)
+    EXPECT_EQ(packet1.data(), packet2.data()); // Same buffer location (span reuses internal buffer)
 
     // The original packet1 span is now invalidated (buffer was overwritten)
     // We successfully demonstrated buffer reuse
@@ -141,13 +143,13 @@ TEST(FileReaderTest, ParseSignalPackets) {
     bool found_signal = false;
     size_t count = 0;
 
-    while (count++ < 50) {  // Check first 50 packets
+    while (count++ < 50) { // Check first 50 packets
         auto packet = reader.read_next_span();
-        if (packet.empty()) break;
+        if (packet.empty())
+            break;
 
         auto& info = reader.last_error();
-        if (info.type == PacketType::SignalData ||
-            info.type == PacketType::SignalDataNoId) {
+        if (info.type == PacketType::SignalData || info.type == PacketType::SignalDataNoId) {
             found_signal = true;
 
             // Verify we can feed to SignalPacket (just check header)
@@ -168,7 +170,8 @@ TEST(FileReaderTest, ParseContextPackets) {
 
     while (count++ < 50) {
         auto packet = reader.read_next_span();
-        if (packet.empty()) break;
+        if (packet.empty())
+            break;
 
         auto& info = reader.last_error();
         if (info.type == PacketType::Context || info.type == PacketType::ExtensionContext) {
@@ -179,7 +182,7 @@ TEST(FileReaderTest, ParseContextPackets) {
 
             // Note: We don't validate because test data may have unsupported/reserved fields
             // The file reader's job is just to read packets correctly
-            EXPECT_GE(packet.size(), 4);  // At least a header
+            EXPECT_GE(packet.size(), 4); // At least a header
             break;
         }
     }
@@ -196,7 +199,8 @@ TEST(FileReaderTest, MixedPacketStream) {
 
     while (total++ < 100) {
         auto packet = reader.read_next_span();
-        if (packet.empty()) break;
+        if (packet.empty())
+            break;
 
         auto& info = reader.last_error();
         type_counts[info.type]++;
@@ -217,7 +221,8 @@ TEST(FileReaderTest, ContextThenSignal) {
 
     for (int i = 0; i < 10; ++i) {
         auto packet = reader.read_next_span();
-        if (packet.empty()) break;
+        if (packet.empty())
+            break;
 
         types.push_back(reader.last_error().type);
     }
@@ -257,7 +262,7 @@ TEST(FileReaderTest, DetectTruncatedPacket) {
     // Either we get a valid tiny packet, or we detect truncation
     if (packet.empty()) {
         auto& err = reader.last_error();
-        EXPECT_TRUE(err.error != validation_error::none || err.is_eof());
+        EXPECT_TRUE(err.error != ValidationError::none || err.is_eof());
     }
 
     std::filesystem::remove(temp_file);
@@ -271,7 +276,7 @@ TEST(FileReaderTest, DetectInvalidPacketType) {
         std::ofstream file(temp_file, std::ios::binary);
 
         // Create header with invalid packet type (15)
-        uint32_t bad_header = (15U << 28) | 10;  // Type 15 (invalid), size 10
+        uint32_t bad_header = (15U << 28) | 10; // Type 15 (invalid), size 10
         bad_header = host_to_network32(bad_header);
 
         file.write(reinterpret_cast<char*>(&bad_header), 4);
@@ -285,7 +290,7 @@ TEST(FileReaderTest, DetectInvalidPacketType) {
     auto packet = reader.read_next_span();
 
     EXPECT_TRUE(packet.empty());
-    EXPECT_EQ(reader.last_error().error, validation_error::invalid_packet_type);
+    EXPECT_EQ(reader.last_error().error, ValidationError::invalid_packet_type);
 
     std::filesystem::remove(temp_file);
 }
@@ -297,7 +302,7 @@ TEST(FileReaderTest, DetectZeroSize) {
         std::ofstream file(temp_file, std::ios::binary);
 
         // Create header with size = 0 (invalid)
-        uint32_t bad_header = (1U << 28) | (1U << 25) | 0;  // Type 1, size 0
+        uint32_t bad_header = (1U << 28) | (1U << 25) | 0; // Type 1, size 0
         bad_header = host_to_network32(bad_header);
 
         file.write(reinterpret_cast<char*>(&bad_header), 4);
@@ -307,7 +312,7 @@ TEST(FileReaderTest, DetectZeroSize) {
     auto packet = reader.read_next_span();
 
     EXPECT_TRUE(packet.empty());
-    EXPECT_EQ(reader.last_error().error, validation_error::size_field_mismatch);
+    EXPECT_EQ(reader.last_error().error, ValidationError::size_field_mismatch);
 
     std::filesystem::remove(temp_file);
 }
@@ -319,7 +324,7 @@ TEST(FileReaderTest, DetectSizeOverflow) {
         std::ofstream file(temp_file, std::ios::binary);
 
         // Create header with size > MaxPacketWords
-        uint32_t bad_header = (1U << 28) | (1U << 25) | 0xFFFF;  // Max size + wrong config
+        uint32_t bad_header = (1U << 28) | (1U << 25) | 0xFFFF; // Max size + wrong config
         bad_header = host_to_network32(bad_header);
 
         file.write(reinterpret_cast<char*>(&bad_header), 4);
@@ -330,7 +335,7 @@ TEST(FileReaderTest, DetectSizeOverflow) {
     auto packet = reader.read_next_span();
 
     EXPECT_TRUE(packet.empty());
-    EXPECT_EQ(reader.last_error().error, validation_error::size_field_mismatch);
+    EXPECT_EQ(reader.last_error().error, ValidationError::size_field_mismatch);
 
     std::filesystem::remove(temp_file);
 }
@@ -342,7 +347,7 @@ TEST(FileReaderTest, BufferTooSmallHandling) {
     auto result = reader.read_next(tiny_buffer.data(), tiny_buffer.size());
 
     // Should report buffer too small
-    EXPECT_EQ(result.error, validation_error::buffer_too_small);
+    EXPECT_EQ(result.error, ValidationError::buffer_too_small);
     EXPECT_GT(result.buffer_size_required, 4);
 
     // File position should be rewound (ready to retry)
@@ -383,7 +388,7 @@ TEST(FileReaderTest, CorruptedHeader) {
     // Should detect some kind of error (likely invalid type or size)
     if (packet.empty()) {
         auto& err = reader.last_error();
-        EXPECT_NE(err.error, validation_error::none);
+        EXPECT_NE(err.error, ValidationError::none);
     }
 
     std::filesystem::remove(temp_file);
@@ -401,7 +406,8 @@ TEST(FileReaderTest, SampleDataFullParse) {
 
     while (true) {
         auto packet = reader.read_next_span();
-        if (packet.empty()) break;
+        if (packet.empty())
+            break;
 
         packet_count++;
         total_bytes += packet.size();
@@ -430,14 +436,13 @@ TEST(FileReaderTest, SineWaveDataFullParse) {
 
     while (true) {
         auto packet = reader.read_next_span();
-        if (packet.empty()) break;
+        if (packet.empty())
+            break;
 
         auto& info = reader.last_error();
 
         // Look for signal packets
-        if (info.type == PacketType::SignalData ||
-            info.type == PacketType::SignalDataNoId) {
-
+        if (info.type == PacketType::SignalData || info.type == PacketType::SignalDataNoId) {
             // Extract payload (skip header + optional fields)
             // For simplicity, assume payload starts after reasonable header
             if (packet.size() > 32) {
@@ -456,8 +461,8 @@ TEST(FileReaderTest, SineWaveDataFullParse) {
     EXPECT_GT(signal_packets, 0);
     if (signal_packets > 0) {
         EXPECT_GT(total_energy, 0.0);
-        std::cout << "Signal packets: " << signal_packets
-                  << ", Total energy: " << total_energy << "\n";
+        std::cout << "Signal packets: " << signal_packets << ", Total energy: " << total_energy
+                  << "\n";
     }
 }
 
@@ -543,20 +548,20 @@ TEST(FileReaderTest, LargeFileParsing) {
     size_t packet_count = 0;
     while (true) {
         auto packet = reader.read_next_span();
-        if (packet.empty()) break;
+        if (packet.empty())
+            break;
         packet_count++;
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-    std::cout << "Parsed " << packet_count << " packets in "
-              << duration.count() << " ms\n";
+    std::cout << "Parsed " << packet_count << " packets in " << duration.count() << " ms\n";
 
     // Reasonable performance: should parse at least 100 packets/sec
     if (packet_count > 0) {
         double packets_per_sec = packet_count * 1000.0 / duration.count();
-        EXPECT_GT(packets_per_sec, 10.0);  // Very conservative threshold
+        EXPECT_GT(packets_per_sec, 10.0); // Very conservative threshold
     }
 }
 
@@ -569,7 +574,8 @@ TEST(FileReaderTest, ZeroAllocationVerify) {
     // Read using span interface (uses internal stack buffer)
     for (int i = 0; i < 10; ++i) {
         auto packet = reader.read_next_span();
-        if (packet.empty()) break;
+        if (packet.empty())
+            break;
 
         // Verify we got data without explicit new/malloc
         EXPECT_FALSE(packet.empty());
@@ -581,7 +587,8 @@ TEST(FileReaderTest, ZeroAllocationVerify) {
     std::array<uint8_t, 4096> user_buffer;
     for (int i = 0; i < 10; ++i) {
         auto result = reader.read_next(user_buffer.data(), user_buffer.size());
-        if (!result.is_valid()) break;
+        if (!result.is_valid())
+            break;
 
         EXPECT_GT(result.packet_size_bytes, 0);
     }

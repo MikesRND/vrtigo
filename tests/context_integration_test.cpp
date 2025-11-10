@@ -3,21 +3,17 @@
 TEST_F(ContextPacketTest, RoundTrip) {
     // Create packet with template
     constexpr uint32_t cif0_mask = cif0::BANDWIDTH | cif0::GAIN;
-    using TestContext = ContextPacket<
-        true,           // Has stream ID
-        NoTimeStamp,
-        NoClassId,
-        cif0_mask, 0, 0, 0
-    >;
+    using TestContext = ContextPacket<true, // Has stream ID
+                                      NoTimeStamp, NoClassId, cif0_mask, 0, 0, 0>;
 
     TestContext tx_packet(buffer.data());
     tx_packet.set_stream_id(0xDEADBEEF);
-    get(tx_packet, field::bandwidth).set_value(100'000'000.0);  // 100 MHz
+    get(tx_packet, field::bandwidth).set_value(100'000'000.0); // 100 MHz
     get(tx_packet, field::gain).set_raw_value(0x12345678U);
 
     // Parse same buffer with view
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.error(), validation_error::none);
+    EXPECT_EQ(view.error(), ValidationError::none);
 
     EXPECT_EQ(view.stream_id().value(), 0xDEADBEEF);
     EXPECT_DOUBLE_EQ(get(view, field::bandwidth).value(), 100'000'000.0);
@@ -30,35 +26,35 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2CompileTime) {
     constexpr uint32_t cif1_mask = cif1::AUX_FREQUENCY;
     constexpr uint32_t cif2_mask = cif2::CONTROLLER_UUID;
 
-    using TestContext = ContextPacket<
-        true,           // Has stream ID
-        NoTimeStamp,
-        NoClassId,
-        cif0_mask,      // CIF0 has bandwidth
-        cif1_mask,      // CIF1 has aux frequency
-        cif2_mask,      // CIF2 has controller UUID
-        0               // No CIF3
-    >;
+    using TestContext = ContextPacket<true, // Has stream ID
+                                      NoTimeStamp, NoClassId,
+                                      cif0_mask, // CIF0 has bandwidth
+                                      cif1_mask, // CIF1 has aux frequency
+                                      cif2_mask, // CIF2 has controller UUID
+                                      0          // No CIF3
+                                      >;
 
     // Compile-time assertions: verify both enable bits are auto-set
     static_assert((TestContext::cif0_value & (1U << cif::CIF1_ENABLE_BIT)) != 0,
-        "CIF1 enable bit should be set when CIF1 != 0");
+                  "CIF1 enable bit should be set when CIF1 != 0");
     static_assert((TestContext::cif0_value & (1U << cif::CIF2_ENABLE_BIT)) != 0,
-        "CIF2 enable bit should be set when CIF2 != 0");
+                  "CIF2 enable bit should be set when CIF2 != 0");
     static_assert((TestContext::cif0_value & (1U << 29)) != 0,
-        "Bandwidth bit should be preserved from CIF0 parameter");
+                  "Bandwidth bit should be preserved from CIF0 parameter");
 
     TestContext tx_packet(buffer.data());
     tx_packet.set_stream_id(0x11223344);
-    get(tx_packet, field::bandwidth).set_value(50'000'000.0);      // 50 MHz (has interpreted support)
-    get(tx_packet, field::aux_frequency).set_raw_value(25'000'000ULL);  // Raw (no interpreted support)
+    get(tx_packet, field::bandwidth).set_value(50'000'000.0); // 50 MHz (has interpreted support)
+    get(tx_packet, field::aux_frequency)
+        .set_raw_value(25'000'000ULL); // Raw (no interpreted support)
 
     // Parse with runtime view
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.error(), validation_error::none);
+    EXPECT_EQ(view.error(), ValidationError::none);
 
     // Verify CIF0 has both enable bits set
-    constexpr uint32_t cif_enable_mask = (1U << cif::CIF1_ENABLE_BIT) | (1U << cif::CIF2_ENABLE_BIT);
+    constexpr uint32_t cif_enable_mask =
+        (1U << cif::CIF1_ENABLE_BIT) | (1U << cif::CIF2_ENABLE_BIT);
     EXPECT_EQ(view.cif0() & cif_enable_mask, cif_enable_mask);
     EXPECT_EQ(view.cif1(), cif1_mask);
     EXPECT_EQ(view.cif2(), cif2_mask);
@@ -71,9 +67,10 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2CompileTime) {
 
 TEST_F(ContextPacketTest, CombinedCIF1AndCIF2Runtime) {
     // Manually build a packet with both CIF1 and CIF2
-    // Structure: header(1) + stream_id(1) + CIF0(1) + CIF1(1) + CIF2(1) + bandwidth(2) + aux_freq(2) + uuid(4) = 13 words
-    // Use ext_context (type 5) for packets with stream ID
-    uint32_t header = (static_cast<uint32_t>(PacketType::ExtensionContext) << header::PACKET_TYPE_SHIFT) | 13;
+    // Structure: header(1) + stream_id(1) + CIF0(1) + CIF1(1) + CIF2(1) + bandwidth(2) +
+    // aux_freq(2) + uuid(4) = 13 words Use ext_context (type 5) for packets with stream ID
+    uint32_t header =
+        (static_cast<uint32_t>(PacketType::ExtensionContext) << header::packet_type_shift) | 13;
     cif::write_u32_safe(buffer.data(), 0, header);
 
     // Stream ID
@@ -105,7 +102,7 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2Runtime) {
 
     // Parse and validate
     ContextPacketView view(buffer.data(), 13 * 4);
-    EXPECT_EQ(view.error(), validation_error::none);
+    EXPECT_EQ(view.error(), ValidationError::none);
 
     // Verify structure
     EXPECT_EQ(view.cif0(), cif0_mask);
@@ -126,13 +123,7 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2Runtime) {
 TEST_F(ContextPacketTest, MultiWordFieldWrite) {
     // Create a compile-time packet with Data Payload Format (2 words, FieldView<2>)
     constexpr uint32_t cif0_mask = cif0::DATA_PAYLOAD_FORMAT;
-    using TestContext = ContextPacket<
-        true,
-        NoTimeStamp,
-        NoClassId,
-        cif0_mask,
-        0, 0, 0
-    >;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0_mask, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -155,7 +146,7 @@ TEST_F(ContextPacketTest, MultiWordFieldWrite) {
 
     // Verify round-trip through runtime parser
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.error(), validation_error::none);
+    EXPECT_EQ(view.error(), ValidationError::none);
 
     auto runtime_value = get(view, field::data_payload_format);
     ASSERT_TRUE(runtime_value.has_value());

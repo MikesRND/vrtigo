@@ -3,7 +3,8 @@
 TEST_F(ContextPacketTest, GPSASCIIVariableField) {
     // Manually create packet with GPS ASCII field
     // Type 4 has stream ID: header (1) + stream_id (1) + CIF0 (1) + GPS ASCII (4) = 7 words
-    uint32_t header = (static_cast<uint32_t>(PacketType::Context) << header::PACKET_TYPE_SHIFT) | 7;  // type=4, size=7 words
+    uint32_t header = (static_cast<uint32_t>(PacketType::Context) << header::packet_type_shift) |
+                      7; // type=4, size=7 words
     cif::write_u32_safe(buffer.data(), 0, header);
 
     // Stream ID (type 4 has stream ID per VITA 49.2)
@@ -14,7 +15,7 @@ TEST_F(ContextPacketTest, GPSASCIIVariableField) {
     cif::write_u32_safe(buffer.data(), 8, cif0_mask);
 
     // GPS ASCII field: count + data
-    uint32_t char_count = 12;  // "Hello World!" = 12 chars
+    uint32_t char_count = 12; // "Hello World!" = 12 chars
     cif::write_u32_safe(buffer.data(), 12, char_count);
 
     // Write ASCII data (3 words needed for 12 chars)
@@ -22,13 +23,13 @@ TEST_F(ContextPacketTest, GPSASCIIVariableField) {
     std::memcpy(buffer.data() + 16, msg, 12);
 
     ContextPacketView view(buffer.data(), 7 * 4);
-    EXPECT_EQ(view.error(), validation_error::none);
+    EXPECT_EQ(view.error(), ValidationError::none);
 
     // Use new get() API instead of has_gps_ascii() / gps_ascii_data()
     auto gps_proxy = get(view, field::gps_ascii);
     EXPECT_TRUE(gps_proxy.has_value());
     auto gps_data = gps_proxy.raw_bytes();
-    EXPECT_EQ(gps_data.size(), 4 * 4);  // 1 count + 3 data words (12 bytes)
+    EXPECT_EQ(gps_data.size(), 4 * 4); // 1 count + 3 data words (12 bytes)
 
     // Extract the character count
     uint32_t parsed_count;
@@ -42,7 +43,8 @@ TEST_F(ContextPacketTest, GPSASCIIVariableField) {
 
 TEST_F(ContextPacketTest, ContextAssociationLists) {
     // Type 4 has stream ID: header (1) + stream_id (1) + CIF0 (1) + context_assoc (4) = 7 words
-    uint32_t header = (static_cast<uint32_t>(PacketType::Context) << header::PACKET_TYPE_SHIFT) | 7;  // type=4, size=7 words
+    uint32_t header = (static_cast<uint32_t>(PacketType::Context) << header::packet_type_shift) |
+                      7; // type=4, size=7 words
     cif::write_u32_safe(buffer.data(), 0, header);
 
     // Stream ID (type 4 has stream ID per VITA 49.2)
@@ -66,13 +68,13 @@ TEST_F(ContextPacketTest, ContextAssociationLists) {
     cif::write_u32_safe(buffer.data(), 24, 0x3333);
 
     ContextPacketView view(buffer.data(), 7 * 4);
-    EXPECT_EQ(view.error(), validation_error::none);
+    EXPECT_EQ(view.error(), ValidationError::none);
 
     // Use new get() API instead of has_context_association() / context_association_data()
     auto assoc_proxy = get(view, field::context_association_lists);
     EXPECT_TRUE(assoc_proxy.has_value());
     auto assoc_data = assoc_proxy.raw_bytes();
-    EXPECT_EQ(assoc_data.size(), 4 * 4);  // 1 counts + 2 stream + 1 context
+    EXPECT_EQ(assoc_data.size(), 4 * 4); // 1 counts + 2 stream + 1 context
 }
 
 TEST_F(ContextPacketTest, CompileTimeForbidsVariable) {

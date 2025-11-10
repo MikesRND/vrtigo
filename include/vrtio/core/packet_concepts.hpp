@@ -1,11 +1,13 @@
 #pragma once
 
-#include "types.hpp"
 #include <concepts>
 #include <span>
+#include <utility>
+
 #include <cstddef>
 #include <cstdint>
-#include <utility>
+
+#include "types.hpp"
 
 namespace vrtio {
 
@@ -48,13 +50,13 @@ concept PacketBase = (
  *
  * Examples: SignalPacket<...>
  */
-template<typename T>
+template <typename T>
 concept FixedPacketLike = PacketBase<T> && requires(const T& pkt, T& mut_pkt) {
     // Compile-time size
     { T::size_bytes } -> std::convertible_to<size_t>;
 
     // Validation
-    { pkt.validate(size_t{}) } -> std::same_as<validation_error>;
+    { pkt.validate(size_t{}) } -> std::same_as<ValidationError>;
 
     // Payload access (fixed-size span)
     { pkt.payload() } -> std::convertible_to<std::span<const uint8_t>>;
@@ -76,11 +78,11 @@ concept FixedPacketLike = PacketBase<T> && requires(const T& pkt, T& mut_pkt) {
  *
  * Examples: SignalPacketView
  */
-template<typename T>
+template <typename T>
 concept FixedPacketViewLike = PacketBase<T> && requires(const T& view) {
     // Validation status
     { view.is_valid() } -> std::same_as<bool>;
-    { view.error() } -> std::same_as<validation_error>;
+    { view.error() } -> std::same_as<ValidationError>;
 
     // Runtime size
     { view.packet_size_bytes() } -> std::convertible_to<size_t>;
@@ -106,7 +108,7 @@ concept FixedPacketViewLike = PacketBase<T> && requires(const T& view) {
  *
  * Examples: ContextPacket<...>
  */
-template<typename T>
+template <typename T>
 concept VariablePacketLike = PacketBase<T> && requires(const T& pkt, T& mut_pkt) {
     // Compile-time size
     { T::size_bytes } -> std::convertible_to<size_t>;
@@ -139,7 +141,7 @@ concept VariablePacketLike = PacketBase<T> && requires(const T& pkt, T& mut_pkt)
  *
  * Examples: ContextPacketView
  */
-template<typename T>
+template <typename T>
 concept VariablePacketViewLike = PacketBase<T> && requires(const T& view) {
     // Validation status
     { view.is_valid() } -> std::same_as<bool>;
@@ -165,7 +167,7 @@ concept VariablePacketViewLike = PacketBase<T> && requires(const T& view) {
  * Union of FixedPacketLike and VariablePacketLike concepts.
  * Use this when you need to accept any compile-time packet type.
  */
-template<typename T>
+template <typename T>
 concept CompileTimePacket = FixedPacketLike<T> || VariablePacketLike<T>;
 
 /**
@@ -174,7 +176,7 @@ concept CompileTimePacket = FixedPacketLike<T> || VariablePacketLike<T>;
  * Union of FixedPacketViewLike and VariablePacketViewLike concepts.
  * Use this when you need to accept any runtime parser type.
  */
-template<typename T>
+template <typename T>
 concept RuntimePacketView = FixedPacketViewLike<T> || VariablePacketViewLike<T>;
 
 /**
@@ -182,7 +184,7 @@ concept RuntimePacketView = FixedPacketViewLike<T> || VariablePacketViewLike<T>;
  *
  * Use this when you need to accept any packet-like object.
  */
-template<typename T>
+template <typename T>
 concept AnyPacketLike = CompileTimePacket<T> || RuntimePacketView<T>;
 
 // ========================================================================
@@ -192,19 +194,19 @@ concept AnyPacketLike = CompileTimePacket<T> || RuntimePacketView<T>;
 /**
  * Packet has stream ID field
  */
-template<typename T>
+template <typename T>
 concept HasStreamId = requires(T& pkt) {
     { pkt.set_stream_id(uint32_t{}) } -> std::same_as<void>;
     { std::as_const(pkt).stream_id() } -> std::same_as<uint32_t>;
 };
 
-template<typename T>
+template <typename T>
 concept MutableTrailerProxy = requires(T proxy) {
     { proxy.raw() } -> std::same_as<uint32_t>;
     { proxy.set_raw(uint32_t{}) } -> std::same_as<void>;
 };
 
-template<typename T>
+template <typename T>
 concept ConstTrailerProxy = requires(T proxy) {
     { proxy.raw() } -> std::same_as<uint32_t>;
 };
@@ -212,7 +214,7 @@ concept ConstTrailerProxy = requires(T proxy) {
 /**
  * Packet has trailer field
  */
-template<typename T>
+template <typename T>
 concept HasTrailer = requires(T& pkt) {
     { pkt.trailer() } -> MutableTrailerProxy;
     { std::as_const(pkt).trailer() } -> ConstTrailerProxy;
@@ -221,7 +223,7 @@ concept HasTrailer = requires(T& pkt) {
 /**
  * Packet has payload field
  */
-template<typename T>
+template <typename T>
 concept HasPayload = requires(T& pkt, const uint8_t* data, size_t size) {
     { pkt.set_payload(data, size) } -> std::same_as<void>;
     { std::as_const(pkt).payload() } -> std::convertible_to<std::span<const uint8_t>>;
@@ -230,10 +232,10 @@ concept HasPayload = requires(T& pkt, const uint8_t* data, size_t size) {
 /**
  * Packet has packet count field
  */
-template<typename T>
+template <typename T>
 concept HasPacketCount = requires(T& pkt) {
     { pkt.set_packet_count(uint8_t{}) } -> std::same_as<void>;
     { std::as_const(pkt).packet_count() } -> std::same_as<uint8_t>;
 };
 
-}  // namespace vrtio
+} // namespace vrtio

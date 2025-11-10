@@ -2,14 +2,10 @@
 
 TEST_F(ContextPacketTest, CIF3FieldsBasic) {
     // Test a selection of 1-word and 2-word CIF3 fields
-    constexpr uint32_t cif3_mask = cif3::NETWORK_ID | cif3::TROPOSPHERIC_STATE |
-                                   cif3::JITTER | cif3::PULSE_WIDTH;
-    using TestContext = ContextPacket<
-        true,
-        NoTimeStamp,
-        NoClassId,
-        0, 0, 0,        // No CIF0, CIF1, CIF2
-        cif3_mask>;
+    constexpr uint32_t cif3_mask =
+        cif3::NETWORK_ID | cif3::TROPOSPHERIC_STATE | cif3::JITTER | cif3::PULSE_WIDTH;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, 0, 0, 0, // No CIF0, CIF1, CIF2
+                                      cif3_mask>;
 
     TestContext packet(buffer.data());
 
@@ -31,7 +27,7 @@ TEST_F(ContextPacketTest, CIF3FieldsBasic) {
 TEST_F(ContextPacketTest, RuntimeParseCIF3) {
     // Build a packet with CIF3 enabled
     // Type 4 has stream ID: header(1) + stream_id(1) + CIF0(1) + CIF3(1) + network_id(1) = 5 words
-    uint32_t header = (static_cast<uint32_t>(PacketType::Context) << header::PACKET_TYPE_SHIFT) | 5;
+    uint32_t header = (static_cast<uint32_t>(PacketType::Context) << header::packet_type_shift) | 5;
     cif::write_u32_safe(buffer.data(), 0, header);
 
     // Stream ID (type 4 has stream ID per VITA 49.2)
@@ -50,7 +46,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF3) {
 
     // Parse and validate
     ContextPacketView view(buffer.data(), 5 * 4);
-    EXPECT_EQ(view.error(), validation_error::none);
+    EXPECT_EQ(view.error(), ValidationError::none);
     EXPECT_TRUE(view.is_valid());
 
     // Verify CIF3 is present
@@ -63,12 +59,9 @@ TEST_F(ContextPacketTest, RuntimeParseCIF3) {
 
 TEST_F(ContextPacketTest, CompileTimeCIF3) {
     constexpr uint32_t cif3_mask = cif3::NETWORK_ID | cif3::TROPOSPHERIC_STATE;
-    using TestContext = ContextPacket<
-        true,           // Has stream ID
-        NoTimeStamp,
-        NoClassId,
-        0, 0, 0,        // No CIF0, CIF1, CIF2
-        cif3_mask>;
+    using TestContext = ContextPacket<true,                            // Has stream ID
+                                      NoTimeStamp, NoClassId, 0, 0, 0, // No CIF0, CIF1, CIF2
+                                      cif3_mask>;
 
     TestContext packet(buffer.data());
 
@@ -85,9 +78,8 @@ TEST_F(ContextPacketTest, CompileTimeCIF3) {
 
     // Parse as runtime packet to verify structure
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.error(), validation_error::none);
+    EXPECT_EQ(view.error(), ValidationError::none);
     EXPECT_EQ(view.cif3(), cif3_mask);
     EXPECT_EQ(get(view, field::network_id).raw_value(), 0x11111111);
     EXPECT_EQ(get(view, field::tropospheric_state).raw_value(), 0x22222222);
 }
-

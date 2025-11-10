@@ -3,6 +3,7 @@
 .PHONY: all build clean configure debug release examples help check
 .PHONY: test run list-tests list-examples format install uninstall
 .PHONY: quick-check ci-coverage ci-debug ci-clang ci-install-verify ci-local ci-full clean-all rebuild
+.PHONY: format-check format-fix format-diff tidy tidy-fix ci-format ci-tidy
 
 # Default build directory
 BUILD_DIR ?= build
@@ -188,14 +189,47 @@ uninstall:
 		exit 1; \
 	fi
 
-# Format code (if clang-format is available)
-format:
-	@if command -v clang-format >/dev/null 2>&1; then \
-		find include examples tests -name "*.hpp" -o -name "*.cpp" | xargs clang-format -i; \
-		echo "Code formatted"; \
-	else \
-		echo "clang-format not found"; \
-	fi
+# ============================================================================
+# Code Quality Targets
+# ============================================================================
+
+# Check code formatting (CI-friendly, returns error if changes needed)
+format-check:
+	@./scripts/ci/format-check.sh
+
+# Auto-fix code formatting
+format-fix:
+	@./scripts/ci/format-fix.sh
+
+# Show formatting differences (uses git diff for colored output)
+format-diff:
+	@echo "Formatting differences (using clang-format):"
+	@for file in $$(find include tests examples -type f \( -name "*.hpp" -o -name "*.cpp" \) 2>/dev/null); do \
+		if command -v clang-format >/dev/null 2>&1; then \
+			if ! clang-format --dry-run --Werror "$$file" &>/dev/null; then \
+				echo "\n=== $$file ==="; \
+				clang-format "$$file" | diff -u "$$file" - || true; \
+			fi; \
+		fi; \
+	done
+
+# Legacy alias for format-fix
+format: format-fix
+
+# Run clang-tidy static analysis
+tidy:
+	@./scripts/ci/clang-tidy.sh build
+
+# Run clang-tidy with auto-fix (use with caution!)
+tidy-fix:
+	@echo "Running clang-tidy with auto-fix (this may modify your code)..."
+	@./scripts/ci/clang-tidy.sh build --fix
+
+# CI format check (matches CI job)
+ci-format: format-check
+
+# CI static analysis check (matches CI job)
+ci-tidy: tidy
 
 # ============================================================================
 # Help Target
@@ -244,8 +278,15 @@ help:
 	@echo "    make install             Install library system-wide"
 	@echo "    make uninstall           Uninstall from system"
 	@echo ""
+	@echo "  Code Quality:"
+	@echo "    make format-check        Check code formatting (CI-friendly)"
+	@echo "    make format-fix          Auto-fix code formatting"
+	@echo "    make format-diff         Show formatting differences"
+	@echo "    make tidy                Run clang-tidy static analysis"
+	@echo "    make ci-format           Format check (matches CI)"
+	@echo "    make ci-tidy             Static analysis (matches CI)"
+	@echo ""
 	@echo "  Utilities:"
-	@echo "    make format              Format code with clang-format"
 	@echo "    make list-tests          List all test targets"
 	@echo "    make list-examples       List all example targets"
 	@echo ""

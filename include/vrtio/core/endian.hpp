@@ -1,7 +1,8 @@
 #pragma once
 
-#include <cstdint>
 #include <bit>
+
+#include <cstdint>
 
 namespace vrtio {
 namespace detail {
@@ -10,8 +11,7 @@ namespace detail {
 inline constexpr bool is_little_endian = (std::endian::native == std::endian::little);
 inline constexpr bool is_big_endian = (std::endian::native == std::endian::big);
 
-static_assert(is_little_endian || is_big_endian,
-              "Mixed endianness not supported");
+static_assert(is_little_endian || is_big_endian, "Mixed endianness not supported");
 
 // Byte swap operations (constexpr for compile-time use)
 constexpr uint16_t byteswap16(uint16_t value) noexcept {
@@ -53,16 +53,16 @@ constexpr uint64_t host_to_network64(uint64_t value) noexcept {
 
 // Convert from network byte order (big-endian) to host
 constexpr uint16_t network_to_host16(uint16_t value) noexcept {
-    return host_to_network16(value);  // Same operation
+    return host_to_network16(value); // Same operation
 }
 
 constexpr uint32_t network_to_host32(uint32_t value) noexcept {
-    return host_to_network32(value);  // Same operation
+    return host_to_network32(value); // Same operation
 }
 
 constexpr uint64_t network_to_host64(uint64_t value) noexcept {
-    return host_to_network64(value);  // Same operation
+    return host_to_network64(value); // Same operation
 }
 
-}  // namespace detail
-}  // namespace vrtio
+} // namespace detail
+} // namespace vrtio

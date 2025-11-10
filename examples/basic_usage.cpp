@@ -1,10 +1,11 @@
 // Basic usage example for VRTIO
 
-#include <vrtio.hpp>
-#include <iostream>
-#include <iomanip>
 #include <array>
+#include <iomanip>
+#include <iostream>
+
 #include <ctime>
+#include <vrtio.hpp>
 
 int main() {
     std::cout << "VRTIO - Basic Usage Example\n";
@@ -14,11 +15,11 @@ int main() {
     {
         std::cout << "Example 1: Signal packet without stream ID\n";
 
-        using SimplePacket = vrtio::SignalDataPacketNoId<
-            vrtio::TimeStampUTC,  // Using UTC timestamps
-            vrtio::Trailer::None,  // No trailer
-            256     // 1024 bytes payload
-        >;
+        using SimplePacket =
+            vrtio::SignalDataPacketNoId<vrtio::TimeStampUTC,  // Using UTC timestamps
+                                        vrtio::Trailer::None, // No trailer
+                                        256                   // 1024 bytes payload
+                                        >;
 
         std::cout << "  Packet size: " << SimplePacket::size_bytes << " bytes\n";
         std::cout << "  Payload size: " << SimplePacket::payload_size_bytes << " bytes\n";
@@ -51,11 +52,10 @@ int main() {
     {
         std::cout << "Example 2: Signal packet with stream ID (builder pattern)\n";
 
-        using StreamPacket = vrtio::SignalDataPacket<
-            vrtio::TimeStampUTC,  // Using UTC timestamps
-            vrtio::Trailer::Included,  // Trailer included
-            512     // 2048 bytes payload
-        >;
+        using StreamPacket = vrtio::SignalDataPacket<vrtio::TimeStampUTC, // Using UTC timestamps
+                                                     vrtio::Trailer::Included, // Trailer included
+                                                     512                       // 2048 bytes payload
+                                                     >;
 
         std::cout << "  Packet size: " << StreamPacket::size_bytes << " bytes\n";
         std::cout << "  Has stream ID: " << (StreamPacket::has_stream_id ? "yes" : "no") << "\n";
@@ -66,21 +66,18 @@ int main() {
         // Use builder pattern
         std::array<uint8_t, 2048> sensor_data{};
 
-        auto trailer_cfg = vrtio::TrailerBuilder{}
-            .clear()
-            .context_packets(1);
+        auto trailer_cfg = vrtio::TrailerBuilder{}.clear().context_packets(1);
 
         // Create timestamp
         auto ts = vrtio::TimeStampUTC::fromComponents(1699000000, 500000);
 
         auto builder = vrtio::PacketBuilder<StreamPacket>(tx_buffer.data());
-        auto packet = builder
-            .stream_id(0x12345678)
-            .timestamp(ts)
-            .trailer(trailer_cfg)
-            .packet_count(10)  // 4-bit field: valid range 0-15
-            .payload(sensor_data.data(), sensor_data.size())
-            .build();
+        auto packet = builder.stream_id(0x12345678)
+                          .timestamp(ts)
+                          .trailer(trailer_cfg)
+                          .packet_count(10) // 4-bit field: valid range 0-15
+                          .payload(sensor_data.data(), sensor_data.size())
+                          .build();
 
         auto read_ts = packet.getTimeStamp();
         std::cout << "  Stream ID: 0x" << std::hex << packet.stream_id() << std::dec << "\n";
@@ -95,11 +92,10 @@ int main() {
     {
         std::cout << "Example 3: Parsing untrusted packet data\n";
 
-        using RxPacket = vrtio::SignalDataPacket<
-            vrtio::NoTimeStamp,  // No timestamp for this example
-            vrtio::Trailer::None,  // No trailer
-            256
-        >;
+        using RxPacket =
+            vrtio::SignalDataPacket<vrtio::NoTimeStamp,   // No timestamp for this example
+                                    vrtio::Trailer::None, // No trailer
+                                    256>;
 
         // Simulate received data from network/file/etc.
         alignas(4) std::array<uint8_t, RxPacket::size_bytes> rx_buffer;
@@ -107,15 +103,15 @@ int main() {
         // Build a packet to simulate received data
         vrtio::PacketBuilder<RxPacket>(rx_buffer.data())
             .stream_id(0xABCDEF00)
-            .packet_count(3)  // 4-bit field: valid range 0-15
+            .packet_count(3) // 4-bit field: valid range 0-15
             .build();
 
         // SAFE parsing pattern: Parse WITHOUT init, then validate
-        RxPacket received(rx_buffer.data(), false);  // init=false for parsing
+        RxPacket received(rx_buffer.data(), false); // init=false for parsing
 
         // CRITICAL: MUST validate before accessing any fields!
         auto validation_result = received.validate(rx_buffer.size());
-        if (validation_result != vrtio::validation_error::none) {
+        if (validation_result != vrtio::ValidationError::none) {
             std::cerr << "  ERROR: Packet validation failed: "
                       << vrtio::validation_error_string(validation_result) << "\n";
             return 1;
@@ -123,7 +119,8 @@ int main() {
 
         // Now safe to access fields after successful validation
         std::cout << "  Validation: PASSED\n";
-        std::cout << "  Received stream ID: 0x" << std::hex << received.stream_id() << std::dec << "\n";
+        std::cout << "  Received stream ID: 0x" << std::hex << received.stream_id() << std::dec
+                  << "\n";
         std::cout << "  Received count: " << static_cast<int>(received.packet_count()) << "\n";
         std::cout << "  Packet size: " << received.packet_size_words() << " words\n";
         std::cout << "\n";
@@ -133,11 +130,9 @@ int main() {
     {
         std::cout << "Example 4: Compile-time type safety\n";
 
-        using NoStreamPacket = vrtio::SignalDataPacketNoId<
-            vrtio::NoTimeStamp,
-            vrtio::Trailer::None,  // No trailer
-            128
-        >;
+        using NoStreamPacket = vrtio::SignalDataPacketNoId<vrtio::NoTimeStamp,
+                                                           vrtio::Trailer::None, // No trailer
+                                                           128>;
 
         alignas(4) std::array<uint8_t, NoStreamPacket::size_bytes> buffer;
         NoStreamPacket packet(buffer.data());

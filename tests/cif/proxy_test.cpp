@@ -1,6 +1,7 @@
-#include <vrtio.hpp>
-#include <gtest/gtest.h>
 #include <array>
+
+#include <gtest/gtest.h>
+#include <vrtio.hpp>
 
 using namespace vrtio;
 
@@ -20,10 +21,7 @@ protected:
 // =============================================================================
 
 TEST_F(FieldProxyTest, BasicSetAndGet) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH,
-        0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -38,9 +36,7 @@ TEST_F(FieldProxyTest, BasicSetAndGet) {
 
 TEST_F(FieldProxyTest, FieldPresenceCheck) {
     // Create packet WITH bandwidth
-    using WithBandwidth = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH, 0, 0, 0>;
+    using WithBandwidth = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
 
     WithBandwidth pkt1(buffer.data());
 
@@ -48,10 +44,9 @@ TEST_F(FieldProxyTest, FieldPresenceCheck) {
     EXPECT_TRUE(get(pkt1, field::bandwidth).has_value());
 
     // Create packet WITHOUT bandwidth
-    using WithoutBandwidth = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::SAMPLE_RATE,  // Has sample_rate, NOT bandwidth
-        0, 0, 0>;
+    using WithoutBandwidth = ContextPacket<true, NoTimeStamp, NoClassId,
+                                           cif0::SAMPLE_RATE, // Has sample_rate, NOT bandwidth
+                                           0, 0, 0>;
 
     alignas(4) std::array<uint8_t, WithoutBandwidth::size_bytes> buf2{};
     WithoutBandwidth pkt2(buf2.data());
@@ -61,9 +56,7 @@ TEST_F(FieldProxyTest, FieldPresenceCheck) {
 }
 
 TEST_F(FieldProxyTest, UncheckedAccess) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -80,9 +73,7 @@ TEST_F(FieldProxyTest, UncheckedAccess) {
 // =============================================================================
 
 TEST_F(FieldProxyTest, RawBytesAccess) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -100,16 +91,14 @@ TEST_F(FieldProxyTest, RawBytesAccess) {
 }
 
 TEST_F(FieldProxyTest, RawBytesManipulation) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
     // Write raw bytes directly (network byte order)
     uint8_t test_bytes[8] = {
-        0x00, 0x00, 0x00, 0x00,  // Upper 32 bits
-        0x00, 0x0F, 0x42, 0x40   // Lower 32 bits = 1000000
+        0x00, 0x00, 0x00, 0x00, // Upper 32 bits
+        0x00, 0x0F, 0x42, 0x40  // Lower 32 bits = 1000000
     };
 
     auto bw_proxy = get(packet, field::bandwidth);
@@ -120,9 +109,7 @@ TEST_F(FieldProxyTest, RawBytesManipulation) {
 }
 
 TEST_F(FieldProxyTest, OffsetAndSize) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -136,27 +123,24 @@ TEST_F(FieldProxyTest, OffsetAndSize) {
 }
 
 TEST_F(FieldProxyTest, MissingFieldHandling) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::SAMPLE_RATE,  // Has sample_rate, NOT bandwidth
-        0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId,
+                                      cif0::SAMPLE_RATE, // Has sample_rate, NOT bandwidth
+                                      0, 0, 0>;
 
     TestContext packet(buffer.data());
 
     auto missing_proxy = get(packet, field::bandwidth);
 
     EXPECT_FALSE(missing_proxy.has_value());
-    EXPECT_FALSE(missing_proxy);  // operator bool
+    EXPECT_FALSE(missing_proxy); // operator bool
 
     auto missing_data = missing_proxy.raw_bytes();
     EXPECT_TRUE(missing_data.empty());
 }
 
 TEST_F(FieldProxyTest, DifferentFieldSizes) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH | cif0::SAMPLE_RATE | cif0::GAIN,
-        0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId,
+                                      cif0::BANDWIDTH | cif0::SAMPLE_RATE | cif0::GAIN, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -174,9 +158,7 @@ TEST_F(FieldProxyTest, DifferentFieldSizes) {
 }
 
 TEST_F(FieldProxyTest, ConditionalPatternCompatibility) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::GAIN, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::GAIN, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -191,9 +173,7 @@ TEST_F(FieldProxyTest, ConditionalPatternCompatibility) {
 }
 
 TEST_F(FieldProxyTest, MultipleProxiesToSameField) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -210,10 +190,8 @@ TEST_F(FieldProxyTest, MultipleProxiesToSameField) {
 
 TEST_F(FieldProxyTest, MultiFieldPacket) {
     // Packet with bandwidth + sample_rate + gain
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH | cif0::SAMPLE_RATE | cif0::GAIN,
-        0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId,
+                                      cif0::BANDWIDTH | cif0::SAMPLE_RATE | cif0::GAIN, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -234,12 +212,11 @@ TEST_F(FieldProxyTest, MultiFieldPacket) {
 
 TEST_F(FieldProxyTest, MultiCIFWordPacket) {
     // Packet with fields spanning CIF0, CIF1, CIF2
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH,       // CIF0 field
-        cif1::AUX_FREQUENCY,   // CIF1 field
-        cif2::CONTROLLER_UUID, // CIF2 field
-        0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId,
+                                      cif0::BANDWIDTH,       // CIF0 field
+                                      cif1::AUX_FREQUENCY,   // CIF1 field
+                                      cif2::CONTROLLER_UUID, // CIF2 field
+                                      0>;
 
     TestContext packet(buffer.data());
 
@@ -247,7 +224,8 @@ TEST_F(FieldProxyTest, MultiCIFWordPacket) {
     get(packet, field::bandwidth).set_raw_value(150'000'000ULL);
 
     // Verify CIF enable bits are set
-    constexpr uint32_t cif_enable_mask = (1U << cif::CIF1_ENABLE_BIT) | (1U << cif::CIF2_ENABLE_BIT);
+    constexpr uint32_t cif_enable_mask =
+        (1U << cif::CIF1_ENABLE_BIT) | (1U << cif::CIF2_ENABLE_BIT);
     EXPECT_EQ(packet.cif0() & cif_enable_mask, cif_enable_mask);
 
     // Verify bandwidth is accessible despite multi-CIF structure
@@ -256,9 +234,7 @@ TEST_F(FieldProxyTest, MultiCIFWordPacket) {
 
 TEST_F(FieldProxyTest, RuntimeParserIntegration) {
     // Build packet with compile-time type
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
 
     TestContext tx_packet(buffer.data());
 
@@ -267,7 +243,7 @@ TEST_F(FieldProxyTest, RuntimeParserIntegration) {
 
     // Parse with runtime view
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.error(), validation_error::none);
+    EXPECT_EQ(view.error(), ValidationError::none);
 
     // Verify field accessible from runtime parser
     auto bw = get(view, field::bandwidth);

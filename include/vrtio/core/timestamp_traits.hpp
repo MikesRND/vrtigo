@@ -1,12 +1,13 @@
 #pragma once
 
-#include <vrtio/core/types.hpp>
 #include <type_traits>
+
+#include <vrtio/core/types.hpp>
 
 namespace vrtio {
 
 // Forward declaration
-template<tsi_type TSI, tsf_type TSF>
+template <TsiType TSI, TsfType TSF>
 class TimeStamp;
 
 /**
@@ -15,7 +16,7 @@ class TimeStamp;
  * Primary template defaults to invalid/not a timestamp type.
  * Specializations provide TSI/TSF extraction for valid timestamp types.
  */
-template<typename T>
+template <typename T>
 struct TimestampTraits {
     static constexpr bool is_valid = false;
     static constexpr bool has_timestamp = false;
@@ -26,12 +27,12 @@ struct TimestampTraits {
  *
  * Extracts TSI and TSF from TimeStamp template parameters
  */
-template<tsi_type TSI, tsf_type TSF>
+template <TsiType TSI, TsfType TSF>
 struct TimestampTraits<TimeStamp<TSI, TSF>> {
     static constexpr bool is_valid = true;
     static constexpr bool has_timestamp = true;
-    static constexpr tsi_type tsi = TSI;
-    static constexpr tsf_type tsf = TSF;
+    static constexpr TsiType tsi = TSI;
+    static constexpr TsfType tsf = TSF;
     using type = TimeStamp<TSI, TSF>;
 };
 
@@ -45,24 +46,24 @@ struct NoTimeStamp {};
 /**
  * @brief Specialization for NoTimeStamp marker
  */
-template<>
+template <>
 struct TimestampTraits<NoTimeStamp> {
     static constexpr bool is_valid = true;
     static constexpr bool has_timestamp = false;
-    static constexpr tsi_type tsi = tsi_type::none;
-    static constexpr tsf_type tsf = tsf_type::none;
+    static constexpr TsiType tsi = TsiType::none;
+    static constexpr TsfType tsf = TsfType::none;
 };
 
 /**
  * @brief Concept to check if a type is a valid timestamp type
  */
-template<typename T>
+template <typename T>
 concept ValidTimestampType = TimestampTraits<T>::is_valid;
 
 /**
  * @brief Concept to check if a type has actual timestamp data
  */
-template<typename T>
+template <typename T>
 concept HasTimestamp = TimestampTraits<T>::has_timestamp;
 
-}  // namespace vrtio
+} // namespace vrtio

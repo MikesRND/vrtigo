@@ -1,20 +1,19 @@
-#include <vrtio/packet/data_packet.hpp>
-#include <vrtio/packet/builder.hpp>
+#include <array>
+#include <vector>
+
+#include <cstring>
+#include <gtest/gtest.h>
 #include <vrtio/core/trailer.hpp>
 #include <vrtio/core/trailer_view.hpp>
-#include <gtest/gtest.h>
-#include <vector>
-#include <array>
-#include <cstring>
+#include <vrtio/packet/builder.hpp>
+#include <vrtio/packet/data_packet.hpp>
 
 // Test fixture for trailer field manipulation
 class TrailerFieldTest : public ::testing::Test {
 protected:
-    using PacketType = vrtio::SignalDataPacket<
-        vrtio::TimeStampUTC,
-        vrtio::Trailer::Included,  // Trailer included
-        128
-    >;
+    using PacketType = vrtio::SignalDataPacket<vrtio::TimeStampUTC,
+                                               vrtio::Trailer::Included, // Trailer included
+                                               128>;
 
     std::vector<uint8_t> buffer;
 
@@ -261,12 +260,12 @@ TEST_F(TrailerFieldTest, BitIndependence) {
 TEST_F(TrailerFieldTest, BuilderIndividualFields) {
     auto ts = vrtio::TimeStampUTC::fromComponents(1000000, 0);
     auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
-        .stream_id(0x12345678)
-        .timestamp(ts)
-        .trailer_valid_data(true)
-        .trailer_calibrated_time(true)
-        .packet_count(12)  // Max 15 (4 bits)
-        .build();
+                      .stream_id(0x12345678)
+                      .timestamp(ts)
+                      .trailer_valid_data(true)
+                      .trailer_calibrated_time(true)
+                      .packet_count(12) // Max 15 (4 bits)
+                      .build();
 
     EXPECT_EQ(packet.stream_id(), 0x12345678U);
     auto read_ts = packet.getTimeStamp();
@@ -278,10 +277,10 @@ TEST_F(TrailerFieldTest, BuilderIndividualFields) {
 
 TEST_F(TrailerFieldTest, BuilderGoodStatus) {
     auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
-        .stream_id(0x11111111)
-        .trailer_valid_data(true)
-        .trailer_calibrated_time(true)
-        .build();
+                      .stream_id(0x11111111)
+                      .trailer_valid_data(true)
+                      .trailer_calibrated_time(true)
+                      .build();
 
     EXPECT_TRUE(packet.trailer().valid_data());
     EXPECT_TRUE(packet.trailer().calibrated_time());
@@ -290,12 +289,12 @@ TEST_F(TrailerFieldTest, BuilderGoodStatus) {
 
 TEST_F(TrailerFieldTest, BuilderWithErrors) {
     auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
-        .stream_id(0x33333333)
-        .trailer_valid_data(true)
-        .trailer_calibrated_time(true)
-        .trailer_over_range(true)
-        .trailer_sample_loss(true)
-        .build();
+                      .stream_id(0x33333333)
+                      .trailer_valid_data(true)
+                      .trailer_calibrated_time(true)
+                      .trailer_over_range(true)
+                      .trailer_sample_loss(true)
+                      .build();
 
     EXPECT_TRUE(packet.trailer().valid_data());
     EXPECT_TRUE(packet.trailer().calibrated_time());
@@ -306,10 +305,10 @@ TEST_F(TrailerFieldTest, BuilderWithErrors) {
 
 TEST_F(TrailerFieldTest, BuilderContextPackets) {
     auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
-        .stream_id(0x44444444)
-        .trailer_context_packets(10)
-        .trailer_valid_data(true)
-        .build();
+                      .stream_id(0x44444444)
+                      .trailer_context_packets(10)
+                      .trailer_valid_data(true)
+                      .build();
 
     EXPECT_EQ(packet.trailer().context_packets(), 10);
     EXPECT_TRUE(packet.trailer().valid_data());
@@ -317,10 +316,10 @@ TEST_F(TrailerFieldTest, BuilderContextPackets) {
 
 TEST_F(TrailerFieldTest, BuilderReferenceLock) {
     auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
-        .stream_id(0x55555555)
-        .trailer_reference_lock(true)
-        .trailer_valid_data(true)
-        .build();
+                      .stream_id(0x55555555)
+                      .trailer_reference_lock(true)
+                      .trailer_valid_data(true)
+                      .build();
 
     EXPECT_TRUE(packet.trailer().reference_lock());
     EXPECT_TRUE(packet.trailer().valid_data());
@@ -346,7 +345,7 @@ TEST_F(TrailerFieldTest, NetworkByteOrder) {
 
 // Test constexpr helper functions directly
 TEST(TrailerHelperTest, GetBit) {
-    uint32_t value = 0x00030000;  // Bits 16 and 17 set
+    uint32_t value = 0x00030000; // Bits 16 and 17 set
 
     EXPECT_TRUE(vrtio::trailer::get_bit<16>(value));
     EXPECT_TRUE(vrtio::trailer::get_bit<17>(value));
@@ -368,12 +367,10 @@ TEST(TrailerHelperTest, SetBit) {
 }
 
 TEST(TrailerHelperTest, GetField) {
-    uint32_t value = 0x0000007F;  // Context packets = 127
+    uint32_t value = 0x0000007F; // Context packets = 127
 
-    uint32_t field = vrtio::trailer::get_field<
-        vrtio::trailer::context_packets_shift,
-        vrtio::trailer::context_packets_mask
-    >(value);
+    uint32_t field = vrtio::trailer::get_field<vrtio::trailer::context_packets_shift,
+                                               vrtio::trailer::context_packets_mask>(value);
 
     EXPECT_EQ(field, 127U);
 }
@@ -381,19 +378,15 @@ TEST(TrailerHelperTest, GetField) {
 TEST(TrailerHelperTest, SetField) {
     uint32_t value = 0;
 
-    value = vrtio::trailer::set_field<
-        vrtio::trailer::context_packets_shift,
-        vrtio::trailer::context_packets_mask
-    >(value, 42);
+    value = vrtio::trailer::set_field<vrtio::trailer::context_packets_shift,
+                                      vrtio::trailer::context_packets_mask>(value, 42);
 
     EXPECT_EQ(value, 42U);
 
     // Verify it doesn't affect other bits
     value = 0xFFFFFFFF;
-    value = vrtio::trailer::set_field<
-        vrtio::trailer::context_packets_shift,
-        vrtio::trailer::context_packets_mask
-    >(value, 0);
+    value = vrtio::trailer::set_field<vrtio::trailer::context_packets_shift,
+                                      vrtio::trailer::context_packets_mask>(value, 0);
 
     EXPECT_EQ(value & 0x7F, 0U);
     EXPECT_EQ(value & ~0x7FU, 0xFFFFFF80U);
@@ -413,17 +406,17 @@ TEST(TrailerHelperTest, IsCalibratedTime) {
 
 TEST(TrailerHelperTest, HasErrors) {
     EXPECT_FALSE(vrtio::trailer::has_errors(0));
-    EXPECT_TRUE(vrtio::trailer::has_errors(1U << 12));  // over-range
-    EXPECT_TRUE(vrtio::trailer::has_errors(1U << 13));  // sample loss
+    EXPECT_TRUE(vrtio::trailer::has_errors(1U << 12)); // over-range
+    EXPECT_TRUE(vrtio::trailer::has_errors(1U << 13)); // sample loss
     EXPECT_TRUE(vrtio::trailer::has_errors((1U << 12) | (1U << 13)));
-    EXPECT_FALSE(vrtio::trailer::has_errors((1U << 16) | (1U << 17)));  // good status
+    EXPECT_FALSE(vrtio::trailer::has_errors((1U << 16) | (1U << 17))); // good status
 }
 
 TEST(TrailerHelperTest, GetContextPackets) {
     EXPECT_EQ(vrtio::trailer::get_context_packets(0), 0);
     EXPECT_EQ(vrtio::trailer::get_context_packets(42), 42);
     EXPECT_EQ(vrtio::trailer::get_context_packets(127), 127);
-    EXPECT_EQ(vrtio::trailer::get_context_packets(0xFFFFFFFF), 127);  // Masked to 7 bits
+    EXPECT_EQ(vrtio::trailer::get_context_packets(0xFFFFFFFF), 127); // Masked to 7 bits
 }
 
 TEST(TrailerHelperTest, CreateGoodStatus) {
@@ -469,10 +462,10 @@ TEST(TrailerViewTest, StatusHelpers) {
 
 TEST(TrailerBuilderTest, FluentValue) {
     auto builder = vrtio::TrailerBuilder{}
-        .valid_data(true)
-        .calibrated_time(true)
-        .context_packets(12)
-        .over_range(true);
+                       .valid_data(true)
+                       .calibrated_time(true)
+                       .context_packets(12)
+                       .over_range(true);
 
     alignas(4) std::array<uint8_t, 4> buffer{};
     builder.apply(vrtio::TrailerView(buffer.data()));
@@ -495,10 +488,10 @@ TEST_F(TrailerFieldTest, ContextPacketsBoundary) {
 
     // Test that values > 127 are masked (truncated to 7 bits)
     packet.trailer().set_context_packets(128);
-    EXPECT_EQ(packet.trailer().context_packets(), 0);  // 128 & 0x7F = 0
+    EXPECT_EQ(packet.trailer().context_packets(), 0); // 128 & 0x7F = 0
 
     packet.trailer().set_context_packets(255);
-    EXPECT_EQ(packet.trailer().context_packets(), 127);  // 255 & 0x7F = 127
+    EXPECT_EQ(packet.trailer().context_packets(), 127); // 255 & 0x7F = 127
 }
 
 TEST_F(TrailerFieldTest, AllBitsSet) {
@@ -527,14 +520,14 @@ TEST_F(TrailerFieldTest, SerializationRoundtrip) {
     // Create and configure packet
     auto ts = vrtio::TimeStampUTC::fromComponents(999999, 0);
     [[maybe_unused]] auto packet1 = vrtio::PacketBuilder<PacketType>(buffer.data())
-        .stream_id(0xABCDEF00)
-        .timestamp(ts)
-        .trailer_valid_data(true)
-        .trailer_calibrated_time(true)
-        .trailer_context_packets(25)
-        .trailer_reference_lock(true)
-        .packet_count(10)
-        .build();
+                                        .stream_id(0xABCDEF00)
+                                        .timestamp(ts)
+                                        .trailer_valid_data(true)
+                                        .trailer_calibrated_time(true)
+                                        .trailer_context_packets(25)
+                                        .trailer_reference_lock(true)
+                                        .packet_count(10)
+                                        .build();
 
     // Simulate receiving: parse into a new buffer
     std::vector<uint8_t> rx_buffer(buffer.begin(), buffer.end());

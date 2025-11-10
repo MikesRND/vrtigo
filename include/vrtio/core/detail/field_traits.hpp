@@ -1,43 +1,44 @@
 #pragma once
 
-#include "vrtio/core/field_values.hpp"
 #include "vrtio/core/cif.hpp"
-#include <cstdint>
+#include "vrtio/core/field_values.hpp"
+
 #include <concepts>
+
+#include <cstdint>
 
 namespace vrtio::detail {
 
 /// Base FieldTraits template - must be specialized for each field
-template<uint8_t Cif, uint8_t Bit>
-struct FieldTraits;  // Intentionally incomplete - forces specialization
+template <uint8_t Cif, uint8_t Bit>
+struct FieldTraits; // Intentionally incomplete - forces specialization
 
 /// Concept: All field traits must provide value_type and name
-template<typename T>
+template <typename T>
 concept FieldTraitLike = requires {
     typename T::value_type;
     { T::name } -> std::convertible_to<const char*>;
 };
 
 /// Concept: Fixed-size field traits must provide read/write
-template<typename T>
-concept FixedFieldTrait = FieldTraitLike<T> && requires(
-    const uint8_t* base, size_t offset,
-    uint8_t* mut_base, const typename T::value_type& v) {
-    { T::read(base, offset) } -> std::same_as<typename T::value_type>;
-    { T::write(mut_base, offset, v) } -> std::same_as<void>;
-};
+template <typename T>
+concept FixedFieldTrait =
+    FieldTraitLike<T> && requires(const uint8_t* base, size_t offset, uint8_t* mut_base,
+                                  const typename T::value_type& v) {
+        { T::read(base, offset) } -> std::same_as<typename T::value_type>;
+        { T::write(mut_base, offset, v) } -> std::same_as<void>;
+    };
 
 /// Concept: Variable-length field traits MUST provide compute_size_words
 /// Note: Variable fields have read() but NOT write() - they are read-only
-template<typename T>
-concept VariableFieldTrait = FieldTraitLike<T> && requires(
-    const uint8_t* base, size_t offset) {
+template <typename T>
+concept VariableFieldTrait = FieldTraitLike<T> && requires(const uint8_t* base, size_t offset) {
     { T::read(base, offset) } -> std::same_as<typename T::value_type>;
     { T::compute_size_words(base, offset) } -> std::same_as<size_t>;
 };
 
 /// Helper for dependent static_assert in template contexts
-template<typename>
+template <typename>
 inline constexpr bool always_false = false;
 
 /// Concept: Field has interpreted value support (unit conversion, etc.)
@@ -45,34 +46,37 @@ inline constexpr bool always_false = false;
 /// - interpreted_type (e.g., double for Hz, dBm, °C)
 /// - to_interpreted(value_type) -> interpreted_type
 /// - from_interpreted(interpreted_type) -> value_type
-template<typename Tag>
+template <typename Tag>
 concept HasInterpretedAccess = requires {
     typename FieldTraits<Tag::cif, Tag::bit>::interpreted_type;
-    { FieldTraits<Tag::cif, Tag::bit>::to_interpreted(
-        std::declval<typename FieldTraits<Tag::cif, Tag::bit>::value_type>()
-    ) } -> std::same_as<typename FieldTraits<Tag::cif, Tag::bit>::interpreted_type>;
-    { FieldTraits<Tag::cif, Tag::bit>::from_interpreted(
-        std::declval<typename FieldTraits<Tag::cif, Tag::bit>::interpreted_type>()
-    ) } -> std::same_as<typename FieldTraits<Tag::cif, Tag::bit>::value_type>;
+    {
+        FieldTraits<Tag::cif, Tag::bit>::to_interpreted(
+            std::declval<typename FieldTraits<Tag::cif, Tag::bit>::value_type>())
+    } -> std::same_as<typename FieldTraits<Tag::cif, Tag::bit>::interpreted_type>;
+    {
+        FieldTraits<Tag::cif, Tag::bit>::from_interpreted(
+            std::declval<typename FieldTraits<Tag::cif, Tag::bit>::interpreted_type>())
+    } -> std::same_as<typename FieldTraits<Tag::cif, Tag::bit>::value_type>;
 };
 
 /// Dummy type for fields without interpreted support
 struct NoInterpretedType {};
 
 /// Helper: Get interpreted_type if it exists, otherwise NoInterpretedType
-/// This allows return types and parameter types to be well-formed even for fields without interpreted support
-template<typename Tag>
+/// This allows return types and parameter types to be well-formed even for fields without
+/// interpreted support
+template <typename Tag>
 struct InterpretedTypeOrDummy {
     using type = NoInterpretedType;
 };
 
-template<typename Tag>
+template <typename Tag>
     requires requires { typename FieldTraits<Tag::cif, Tag::bit>::interpreted_type; }
 struct InterpretedTypeOrDummy<Tag> {
     using type = typename FieldTraits<Tag::cif, Tag::bit>::interpreted_type;
 };
 
-template<typename Tag>
+template <typename Tag>
 using interpreted_type_or_dummy_t = typename InterpretedTypeOrDummy<Tag>::type;
 
 // ============================================================================
@@ -80,7 +84,7 @@ using interpreted_type_or_dummy_t = typename InterpretedTypeOrDummy<Tag>::type;
 // ============================================================================
 
 // CIF0 Bit 9: Context Association Lists (VARIABLE)
-template<>
+template <>
 struct FieldTraits<0, 9> {
     using value_type = ContextAssociationLists;
     static constexpr const char* name = "Context Association Lists";
@@ -89,10 +93,8 @@ struct FieldTraits<0, 9> {
         uint32_t counts = cif::read_u32_safe(base, offset);
         uint16_t streams = counts >> 16;
         uint16_t contexts = counts & 0xFFFF;
-        return {
-            VariableListView{base, offset + 4, streams},
-            VariableListView{base, offset + 4 + streams*4, contexts}
-        };
+        return {VariableListView{base, offset + 4, streams},
+                VariableListView{base, offset + 4 + streams * 4, contexts}};
     }
 
     static size_t compute_size_words(const uint8_t* base, size_t offset) noexcept {
@@ -104,7 +106,7 @@ struct FieldTraits<0, 9> {
 static_assert(VariableFieldTrait<FieldTraits<0, 9>>);
 
 // CIF0 Bit 10: GPS ASCII (VARIABLE)
-template<>
+template <>
 struct FieldTraits<0, 10> {
     using value_type = GPSASCIIView;
     static constexpr const char* name = "GPS ASCII";
@@ -116,14 +118,14 @@ struct FieldTraits<0, 10> {
 
     static size_t compute_size_words(const uint8_t* base, size_t offset) noexcept {
         uint32_t count = cif::read_u32_safe(base, offset);
-        return 1 + (count + 3) / 4;  // Round up to word boundary
+        return 1 + (count + 3) / 4; // Round up to word boundary
     }
 };
 
 static_assert(VariableFieldTrait<FieldTraits<0, 10>>);
 
 // CIF0 Bit 11: Ephemeris Reference ID
-template<>
+template <>
 struct FieldTraits<0, 11> {
     using value_type = uint32_t;
     static constexpr const char* name = "Ephemeris Reference ID";
@@ -138,7 +140,7 @@ struct FieldTraits<0, 11> {
 };
 
 // CIF0 Bit 12: Relative Ephemeris (13 words)
-template<>
+template <>
 struct FieldTraits<0, 12> {
     using value_type = FieldView<13>;
     static constexpr const char* name = "Relative Ephemeris";
@@ -153,7 +155,7 @@ struct FieldTraits<0, 12> {
 };
 
 // CIF0 Bit 13: ECEF Ephemeris (13 words)
-template<>
+template <>
 struct FieldTraits<0, 13> {
     using value_type = FieldView<13>;
     static constexpr const char* name = "ECEF Ephemeris";
@@ -168,7 +170,7 @@ struct FieldTraits<0, 13> {
 };
 
 // CIF0 Bit 14: Formatted GPS/INS (11 words)
-template<>
+template <>
 struct FieldTraits<0, 14> {
     using value_type = FieldView<11>;
     static constexpr const char* name = "Formatted GPS/INS";
@@ -183,7 +185,7 @@ struct FieldTraits<0, 14> {
 };
 
 // CIF0 Bit 15: Data Payload Format (2 words)
-template<>
+template <>
 struct FieldTraits<0, 15> {
     using value_type = FieldView<2>;
     static constexpr const char* name = "Data Payload Format";
@@ -198,7 +200,7 @@ struct FieldTraits<0, 15> {
 };
 
 // CIF0 Bit 16: State/Event Indicators
-template<>
+template <>
 struct FieldTraits<0, 16> {
     using value_type = uint32_t;
     static constexpr const char* name = "State/Event Indicators";
@@ -213,7 +215,7 @@ struct FieldTraits<0, 16> {
 };
 
 // CIF0 Bit 17: Device ID (2 words)
-template<>
+template <>
 struct FieldTraits<0, 17> {
     using value_type = uint64_t;
     static constexpr const char* name = "Device ID";
@@ -228,7 +230,7 @@ struct FieldTraits<0, 17> {
 };
 
 // CIF0 Bit 18: Temperature
-template<>
+template <>
 struct FieldTraits<0, 18> {
     using value_type = uint32_t;
     static constexpr const char* name = "Temperature";
@@ -243,7 +245,7 @@ struct FieldTraits<0, 18> {
 };
 
 // CIF0 Bit 19: Timestamp Calibration Time
-template<>
+template <>
 struct FieldTraits<0, 19> {
     using value_type = uint32_t;
     static constexpr const char* name = "Timestamp Calibration Time";
@@ -258,7 +260,7 @@ struct FieldTraits<0, 19> {
 };
 
 // CIF0 Bit 20: Timestamp Adjustment (2 words)
-template<>
+template <>
 struct FieldTraits<0, 20> {
     using value_type = uint64_t;
     static constexpr const char* name = "Timestamp Adjustment";
@@ -273,7 +275,7 @@ struct FieldTraits<0, 20> {
 };
 
 // CIF0 Bit 21: Sample Rate (2 words)
-template<>
+template <>
 struct FieldTraits<0, 21> {
     using value_type = uint64_t;
     static constexpr const char* name = "Sample Rate";
@@ -290,16 +292,16 @@ struct FieldTraits<0, 21> {
     using interpreted_type = double;
 
     static interpreted_type to_interpreted(value_type raw) noexcept {
-        return static_cast<double>(raw) / 4096.0;  // Q52.12 → Hz
+        return static_cast<double>(raw) / 4096.0; // Q52.12 → Hz
     }
 
     static value_type from_interpreted(interpreted_type hz) noexcept {
-        return static_cast<value_type>(hz * 4096.0 + 0.5);  // Round to nearest
+        return static_cast<value_type>(hz * 4096.0 + 0.5); // Round to nearest
     }
 };
 
 // CIF0 Bit 22: Over-Range Count
-template<>
+template <>
 struct FieldTraits<0, 22> {
     using value_type = uint32_t;
     static constexpr const char* name = "Over-Range Count";
@@ -314,7 +316,7 @@ struct FieldTraits<0, 22> {
 };
 
 // CIF0 Bit 23: Gain
-template<>
+template <>
 struct FieldTraits<0, 23> {
     using value_type = uint32_t;
     static constexpr const char* name = "Gain";
@@ -329,7 +331,7 @@ struct FieldTraits<0, 23> {
 };
 
 // CIF0 Bit 24: Reference Level
-template<>
+template <>
 struct FieldTraits<0, 24> {
     using value_type = uint32_t;
     static constexpr const char* name = "Reference Level";
@@ -344,7 +346,7 @@ struct FieldTraits<0, 24> {
 };
 
 // CIF0 Bit 25: IF Band Offset (2 words)
-template<>
+template <>
 struct FieldTraits<0, 25> {
     using value_type = uint64_t;
     static constexpr const char* name = "IF Band Offset";
@@ -359,7 +361,7 @@ struct FieldTraits<0, 25> {
 };
 
 // CIF0 Bit 26: RF Frequency Offset (2 words)
-template<>
+template <>
 struct FieldTraits<0, 26> {
     using value_type = uint64_t;
     static constexpr const char* name = "RF Frequency Offset";
@@ -374,7 +376,7 @@ struct FieldTraits<0, 26> {
 };
 
 // CIF0 Bit 27: RF Reference Frequency (2 words)
-template<>
+template <>
 struct FieldTraits<0, 27> {
     using value_type = uint64_t;
     static constexpr const char* name = "RF Reference Frequency";
@@ -389,7 +391,7 @@ struct FieldTraits<0, 27> {
 };
 
 // CIF0 Bit 28: IF Reference Frequency (2 words)
-template<>
+template <>
 struct FieldTraits<0, 28> {
     using value_type = uint64_t;
     static constexpr const char* name = "IF Reference Frequency";
@@ -404,7 +406,7 @@ struct FieldTraits<0, 28> {
 };
 
 // CIF0 Bit 29: Bandwidth (2 words)
-template<>
+template <>
 struct FieldTraits<0, 29> {
     using value_type = uint64_t;
     static constexpr const char* name = "Bandwidth";
@@ -432,7 +434,7 @@ struct FieldTraits<0, 29> {
 };
 
 // CIF0 Bit 30: Reference Point ID
-template<>
+template <>
 struct FieldTraits<0, 30> {
     using value_type = uint32_t;
     static constexpr const char* name = "Reference Point ID";
@@ -447,12 +449,13 @@ struct FieldTraits<0, 30> {
 };
 
 // CIF0 Bit 31: Change Indicator (flag only - no data)
-template<>
+template <>
 struct FieldTraits<0, 31> {
     using value_type = bool;
     static constexpr const char* name = "Change Indicator";
 
-    static value_type read([[maybe_unused]] const uint8_t* base, [[maybe_unused]] size_t offset) noexcept {
+    static value_type read([[maybe_unused]] const uint8_t* base,
+                           [[maybe_unused]] size_t offset) noexcept {
         // Change indicator is just a flag - presence indicates change
         return true;
     }
@@ -463,7 +466,7 @@ struct FieldTraits<0, 31> {
 // ============================================================================
 
 // CIF1 Bit 1: Buffer Size
-template<>
+template <>
 struct FieldTraits<1, 1> {
     using value_type = uint32_t;
     static constexpr const char* name = "Buffer Size";
@@ -478,7 +481,7 @@ struct FieldTraits<1, 1> {
 };
 
 // CIF1 Bit 2: Version and Build Code
-template<>
+template <>
 struct FieldTraits<1, 2> {
     using value_type = uint32_t;
     static constexpr const char* name = "Version and Build Code";
@@ -493,7 +496,7 @@ struct FieldTraits<1, 2> {
 };
 
 // CIF1 Bit 3: V49 Spec Compliance
-template<>
+template <>
 struct FieldTraits<1, 3> {
     using value_type = uint32_t;
     static constexpr const char* name = "V49 Spec Compliance";
@@ -508,7 +511,7 @@ struct FieldTraits<1, 3> {
 };
 
 // CIF1 Bit 4: Health Status
-template<>
+template <>
 struct FieldTraits<1, 4> {
     using value_type = uint32_t;
     static constexpr const char* name = "Health Status";
@@ -523,7 +526,7 @@ struct FieldTraits<1, 4> {
 };
 
 // CIF1 Bit 5: Discrete I/O (64-bit) (2 words)
-template<>
+template <>
 struct FieldTraits<1, 5> {
     using value_type = uint64_t;
     static constexpr const char* name = "Discrete I/O (64-bit)";
@@ -538,7 +541,7 @@ struct FieldTraits<1, 5> {
 };
 
 // CIF1 Bit 6: Discrete I/O (32-bit)
-template<>
+template <>
 struct FieldTraits<1, 6> {
     using value_type = uint32_t;
     static constexpr const char* name = "Discrete I/O (32-bit)";
@@ -553,7 +556,7 @@ struct FieldTraits<1, 6> {
 };
 
 // CIF1 Bit 10: Spectrum (13 words)
-template<>
+template <>
 struct FieldTraits<1, 10> {
     using value_type = FieldView<13>;
     static constexpr const char* name = "Spectrum";
@@ -568,7 +571,7 @@ struct FieldTraits<1, 10> {
 };
 
 // CIF1 Bit 13: Auxiliary Bandwidth (2 words)
-template<>
+template <>
 struct FieldTraits<1, 13> {
     using value_type = uint64_t;
     static constexpr const char* name = "Auxiliary Bandwidth";
@@ -583,7 +586,7 @@ struct FieldTraits<1, 13> {
 };
 
 // CIF1 Bit 14: Auxiliary Gain
-template<>
+template <>
 struct FieldTraits<1, 14> {
     using value_type = uint32_t;
     static constexpr const char* name = "Auxiliary Gain";
@@ -598,7 +601,7 @@ struct FieldTraits<1, 14> {
 };
 
 // CIF1 Bit 15: Auxiliary Frequency (2 words)
-template<>
+template <>
 struct FieldTraits<1, 15> {
     using value_type = uint64_t;
     static constexpr const char* name = "Auxiliary Frequency";
@@ -613,7 +616,7 @@ struct FieldTraits<1, 15> {
 };
 
 // CIF1 Bit 16: SNR/Noise Figure
-template<>
+template <>
 struct FieldTraits<1, 16> {
     using value_type = uint32_t;
     static constexpr const char* name = "SNR/Noise Figure";
@@ -628,7 +631,7 @@ struct FieldTraits<1, 16> {
 };
 
 // CIF1 Bit 17: Intercept Points
-template<>
+template <>
 struct FieldTraits<1, 17> {
     using value_type = uint32_t;
     static constexpr const char* name = "Intercept Points";
@@ -643,7 +646,7 @@ struct FieldTraits<1, 17> {
 };
 
 // CIF1 Bit 18: Compression Point
-template<>
+template <>
 struct FieldTraits<1, 18> {
     using value_type = uint32_t;
     static constexpr const char* name = "Compression Point";
@@ -658,7 +661,7 @@ struct FieldTraits<1, 18> {
 };
 
 // CIF1 Bit 19: Threshold
-template<>
+template <>
 struct FieldTraits<1, 19> {
     using value_type = uint32_t;
     static constexpr const char* name = "Threshold";
@@ -673,7 +676,7 @@ struct FieldTraits<1, 19> {
 };
 
 // CIF1 Bit 20: Eb/No BER
-template<>
+template <>
 struct FieldTraits<1, 20> {
     using value_type = uint32_t;
     static constexpr const char* name = "Eb/No BER";
@@ -688,7 +691,7 @@ struct FieldTraits<1, 20> {
 };
 
 // CIF1 Bit 24: Range
-template<>
+template <>
 struct FieldTraits<1, 24> {
     using value_type = uint32_t;
     static constexpr const char* name = "Range";
@@ -703,7 +706,7 @@ struct FieldTraits<1, 24> {
 };
 
 // CIF1 Bit 25: Beam Width
-template<>
+template <>
 struct FieldTraits<1, 25> {
     using value_type = uint32_t;
     static constexpr const char* name = "Beam Width";
@@ -718,7 +721,7 @@ struct FieldTraits<1, 25> {
 };
 
 // CIF1 Bit 26: Spatial Reference Type
-template<>
+template <>
 struct FieldTraits<1, 26> {
     using value_type = uint32_t;
     static constexpr const char* name = "Spatial Reference Type";
@@ -733,7 +736,7 @@ struct FieldTraits<1, 26> {
 };
 
 // CIF1 Bit 27: Spatial Scan Type
-template<>
+template <>
 struct FieldTraits<1, 27> {
     using value_type = uint32_t;
     static constexpr const char* name = "Spatial Scan Type";
@@ -748,7 +751,7 @@ struct FieldTraits<1, 27> {
 };
 
 // CIF1 Bit 29: 3-D Pointing Vector (single)
-template<>
+template <>
 struct FieldTraits<1, 29> {
     using value_type = uint32_t;
     static constexpr const char* name = "3-D Pointing Vector (single)";
@@ -763,7 +766,7 @@ struct FieldTraits<1, 29> {
 };
 
 // CIF1 Bit 30: Polarization
-template<>
+template <>
 struct FieldTraits<1, 30> {
     using value_type = uint32_t;
     static constexpr const char* name = "Polarization";
@@ -778,7 +781,7 @@ struct FieldTraits<1, 30> {
 };
 
 // CIF1 Bit 31: Phase Offset
-template<>
+template <>
 struct FieldTraits<1, 31> {
     using value_type = uint32_t;
     static constexpr const char* name = "Phase Offset";
@@ -797,7 +800,7 @@ struct FieldTraits<1, 31> {
 // ============================================================================
 
 // CIF2 Bit 3: RF Footprint Range
-template<>
+template <>
 struct FieldTraits<2, 3> {
     using value_type = uint32_t;
     static constexpr const char* name = "RF Footprint Range";
@@ -812,7 +815,7 @@ struct FieldTraits<2, 3> {
 };
 
 // CIF2 Bit 4: RF Footprint
-template<>
+template <>
 struct FieldTraits<2, 4> {
     using value_type = uint32_t;
     static constexpr const char* name = "RF Footprint";
@@ -827,7 +830,7 @@ struct FieldTraits<2, 4> {
 };
 
 // CIF2 Bit 5: Communication Priority
-template<>
+template <>
 struct FieldTraits<2, 5> {
     using value_type = uint32_t;
     static constexpr const char* name = "Communication Priority";
@@ -842,7 +845,7 @@ struct FieldTraits<2, 5> {
 };
 
 // CIF2 Bit 6: Function Priority
-template<>
+template <>
 struct FieldTraits<2, 6> {
     using value_type = uint32_t;
     static constexpr const char* name = "Function Priority";
@@ -857,7 +860,7 @@ struct FieldTraits<2, 6> {
 };
 
 // CIF2 Bit 7: Event ID
-template<>
+template <>
 struct FieldTraits<2, 7> {
     using value_type = uint32_t;
     static constexpr const char* name = "Event ID";
@@ -872,7 +875,7 @@ struct FieldTraits<2, 7> {
 };
 
 // CIF2 Bit 8: Mode ID
-template<>
+template <>
 struct FieldTraits<2, 8> {
     using value_type = uint32_t;
     static constexpr const char* name = "Mode ID";
@@ -887,7 +890,7 @@ struct FieldTraits<2, 8> {
 };
 
 // CIF2 Bit 9: Function ID
-template<>
+template <>
 struct FieldTraits<2, 9> {
     using value_type = uint32_t;
     static constexpr const char* name = "Function ID";
@@ -902,7 +905,7 @@ struct FieldTraits<2, 9> {
 };
 
 // CIF2 Bit 10: Modulation Type
-template<>
+template <>
 struct FieldTraits<2, 10> {
     using value_type = uint32_t;
     static constexpr const char* name = "Modulation Type";
@@ -917,7 +920,7 @@ struct FieldTraits<2, 10> {
 };
 
 // CIF2 Bit 11: Modulation Class
-template<>
+template <>
 struct FieldTraits<2, 11> {
     using value_type = uint32_t;
     static constexpr const char* name = "Modulation Class";
@@ -932,7 +935,7 @@ struct FieldTraits<2, 11> {
 };
 
 // CIF2 Bit 12: EMS Device Instance
-template<>
+template <>
 struct FieldTraits<2, 12> {
     using value_type = uint32_t;
     static constexpr const char* name = "EMS Device Instance";
@@ -947,7 +950,7 @@ struct FieldTraits<2, 12> {
 };
 
 // CIF2 Bit 13: EMS Device Type
-template<>
+template <>
 struct FieldTraits<2, 13> {
     using value_type = uint32_t;
     static constexpr const char* name = "EMS Device Type";
@@ -962,7 +965,7 @@ struct FieldTraits<2, 13> {
 };
 
 // CIF2 Bit 14: EMS Device Class
-template<>
+template <>
 struct FieldTraits<2, 14> {
     using value_type = uint32_t;
     static constexpr const char* name = "EMS Device Class";
@@ -977,7 +980,7 @@ struct FieldTraits<2, 14> {
 };
 
 // CIF2 Bit 15: Platform Display
-template<>
+template <>
 struct FieldTraits<2, 15> {
     using value_type = uint32_t;
     static constexpr const char* name = "Platform Display";
@@ -992,7 +995,7 @@ struct FieldTraits<2, 15> {
 };
 
 // CIF2 Bit 16: Platform Instance
-template<>
+template <>
 struct FieldTraits<2, 16> {
     using value_type = uint32_t;
     static constexpr const char* name = "Platform Instance";
@@ -1007,7 +1010,7 @@ struct FieldTraits<2, 16> {
 };
 
 // CIF2 Bit 17: Platform Class
-template<>
+template <>
 struct FieldTraits<2, 17> {
     using value_type = uint32_t;
     static constexpr const char* name = "Platform Class";
@@ -1022,7 +1025,7 @@ struct FieldTraits<2, 17> {
 };
 
 // CIF2 Bit 18: Operator ID
-template<>
+template <>
 struct FieldTraits<2, 18> {
     using value_type = uint32_t;
     static constexpr const char* name = "Operator ID";
@@ -1037,7 +1040,7 @@ struct FieldTraits<2, 18> {
 };
 
 // CIF2 Bit 19: Country Code
-template<>
+template <>
 struct FieldTraits<2, 19> {
     using value_type = uint32_t;
     static constexpr const char* name = "Country Code";
@@ -1052,7 +1055,7 @@ struct FieldTraits<2, 19> {
 };
 
 // CIF2 Bit 20: Track ID
-template<>
+template <>
 struct FieldTraits<2, 20> {
     using value_type = uint32_t;
     static constexpr const char* name = "Track ID";
@@ -1067,7 +1070,7 @@ struct FieldTraits<2, 20> {
 };
 
 // CIF2 Bit 21: Information Source
-template<>
+template <>
 struct FieldTraits<2, 21> {
     using value_type = uint32_t;
     static constexpr const char* name = "Information Source";
@@ -1082,7 +1085,7 @@ struct FieldTraits<2, 21> {
 };
 
 // CIF2 Bit 22: Controller UUID (4 words)
-template<>
+template <>
 struct FieldTraits<2, 22> {
     using value_type = FieldView<4>;
     static constexpr const char* name = "Controller UUID";
@@ -1097,7 +1100,7 @@ struct FieldTraits<2, 22> {
 };
 
 // CIF2 Bit 23: Controller ID
-template<>
+template <>
 struct FieldTraits<2, 23> {
     using value_type = uint32_t;
     static constexpr const char* name = "Controller ID";
@@ -1112,7 +1115,7 @@ struct FieldTraits<2, 23> {
 };
 
 // CIF2 Bit 24: Controllee UUID (4 words)
-template<>
+template <>
 struct FieldTraits<2, 24> {
     using value_type = FieldView<4>;
     static constexpr const char* name = "Controllee UUID";
@@ -1127,7 +1130,7 @@ struct FieldTraits<2, 24> {
 };
 
 // CIF2 Bit 25: Controllee ID
-template<>
+template <>
 struct FieldTraits<2, 25> {
     using value_type = uint32_t;
     static constexpr const char* name = "Controllee ID";
@@ -1142,7 +1145,7 @@ struct FieldTraits<2, 25> {
 };
 
 // CIF2 Bit 26: Cited Message ID
-template<>
+template <>
 struct FieldTraits<2, 26> {
     using value_type = uint32_t;
     static constexpr const char* name = "Cited Message ID";
@@ -1157,7 +1160,7 @@ struct FieldTraits<2, 26> {
 };
 
 // CIF2 Bit 27: Child Stream ID
-template<>
+template <>
 struct FieldTraits<2, 27> {
     using value_type = uint32_t;
     static constexpr const char* name = "Child Stream ID";
@@ -1172,7 +1175,7 @@ struct FieldTraits<2, 27> {
 };
 
 // CIF2 Bit 28: Parent Stream ID
-template<>
+template <>
 struct FieldTraits<2, 28> {
     using value_type = uint32_t;
     static constexpr const char* name = "Parent Stream ID";
@@ -1187,7 +1190,7 @@ struct FieldTraits<2, 28> {
 };
 
 // CIF2 Bit 29: Sibling Stream ID
-template<>
+template <>
 struct FieldTraits<2, 29> {
     using value_type = uint32_t;
     static constexpr const char* name = "Sibling Stream ID";
@@ -1202,7 +1205,7 @@ struct FieldTraits<2, 29> {
 };
 
 // CIF2 Bit 30: Cited SID
-template<>
+template <>
 struct FieldTraits<2, 30> {
     using value_type = uint32_t;
     static constexpr const char* name = "Cited SID";
@@ -1217,7 +1220,7 @@ struct FieldTraits<2, 30> {
 };
 
 // CIF2 Bit 31: Bind
-template<>
+template <>
 struct FieldTraits<2, 31> {
     using value_type = uint32_t;
     static constexpr const char* name = "Bind";
@@ -1236,7 +1239,7 @@ struct FieldTraits<2, 31> {
 // ============================================================================
 
 // CIF3 Bit 1: Network ID
-template<>
+template <>
 struct FieldTraits<3, 1> {
     using value_type = uint32_t;
     static constexpr const char* name = "Network ID";
@@ -1251,7 +1254,7 @@ struct FieldTraits<3, 1> {
 };
 
 // CIF3 Bit 2: Tropospheric State
-template<>
+template <>
 struct FieldTraits<3, 2> {
     using value_type = uint32_t;
     static constexpr const char* name = "Tropospheric State";
@@ -1266,7 +1269,7 @@ struct FieldTraits<3, 2> {
 };
 
 // CIF3 Bit 3: Sea and Swell State
-template<>
+template <>
 struct FieldTraits<3, 3> {
     using value_type = uint32_t;
     static constexpr const char* name = "Sea and Swell State";
@@ -1281,7 +1284,7 @@ struct FieldTraits<3, 3> {
 };
 
 // CIF3 Bit 4: Barometric Pressure
-template<>
+template <>
 struct FieldTraits<3, 4> {
     using value_type = uint32_t;
     static constexpr const char* name = "Barometric Pressure";
@@ -1296,7 +1299,7 @@ struct FieldTraits<3, 4> {
 };
 
 // CIF3 Bit 5: Humidity
-template<>
+template <>
 struct FieldTraits<3, 5> {
     using value_type = uint32_t;
     static constexpr const char* name = "Humidity";
@@ -1311,7 +1314,7 @@ struct FieldTraits<3, 5> {
 };
 
 // CIF3 Bit 6: Sea/Ground Temperature
-template<>
+template <>
 struct FieldTraits<3, 6> {
     using value_type = uint32_t;
     static constexpr const char* name = "Sea/Ground Temperature";
@@ -1326,7 +1329,7 @@ struct FieldTraits<3, 6> {
 };
 
 // CIF3 Bit 7: Air Temperature
-template<>
+template <>
 struct FieldTraits<3, 7> {
     using value_type = uint32_t;
     static constexpr const char* name = "Air Temperature";
@@ -1341,7 +1344,7 @@ struct FieldTraits<3, 7> {
 };
 
 // CIF3 Bit 20: Jitter (2 words)
-template<>
+template <>
 struct FieldTraits<3, 20> {
     using value_type = uint64_t;
     static constexpr const char* name = "Jitter";
@@ -1356,7 +1359,7 @@ struct FieldTraits<3, 20> {
 };
 
 // CIF3 Bit 21: Dwell (2 words)
-template<>
+template <>
 struct FieldTraits<3, 21> {
     using value_type = uint64_t;
     static constexpr const char* name = "Dwell";
@@ -1371,7 +1374,7 @@ struct FieldTraits<3, 21> {
 };
 
 // CIF3 Bit 22: Duration (2 words)
-template<>
+template <>
 struct FieldTraits<3, 22> {
     using value_type = uint64_t;
     static constexpr const char* name = "Duration";
@@ -1386,7 +1389,7 @@ struct FieldTraits<3, 22> {
 };
 
 // CIF3 Bit 23: Period (2 words)
-template<>
+template <>
 struct FieldTraits<3, 23> {
     using value_type = uint64_t;
     static constexpr const char* name = "Period";
@@ -1401,7 +1404,7 @@ struct FieldTraits<3, 23> {
 };
 
 // CIF3 Bit 24: Pulse Width (2 words)
-template<>
+template <>
 struct FieldTraits<3, 24> {
     using value_type = uint64_t;
     static constexpr const char* name = "Pulse Width";
@@ -1416,7 +1419,7 @@ struct FieldTraits<3, 24> {
 };
 
 // CIF3 Bit 25: Offset Time (2 words)
-template<>
+template <>
 struct FieldTraits<3, 25> {
     using value_type = uint64_t;
     static constexpr const char* name = "Offset Time";
@@ -1431,7 +1434,7 @@ struct FieldTraits<3, 25> {
 };
 
 // CIF3 Bit 26: Fall Time (2 words)
-template<>
+template <>
 struct FieldTraits<3, 26> {
     using value_type = uint64_t;
     static constexpr const char* name = "Fall Time";
@@ -1446,7 +1449,7 @@ struct FieldTraits<3, 26> {
 };
 
 // CIF3 Bit 27: Rise Time (2 words)
-template<>
+template <>
 struct FieldTraits<3, 27> {
     using value_type = uint64_t;
     static constexpr const char* name = "Rise Time";
@@ -1461,7 +1464,7 @@ struct FieldTraits<3, 27> {
 };
 
 // CIF3 Bit 30: Timestamp Skew (2 words)
-template<>
+template <>
 struct FieldTraits<3, 30> {
     using value_type = uint64_t;
     static constexpr const char* name = "Timestamp Skew";
@@ -1476,7 +1479,7 @@ struct FieldTraits<3, 30> {
 };
 
 // CIF3 Bit 31: Timestamp Details (2 words)
-template<>
+template <>
 struct FieldTraits<3, 31> {
     using value_type = uint64_t;
     static constexpr const char* name = "Timestamp Details";

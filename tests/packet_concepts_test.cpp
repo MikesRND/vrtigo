@@ -1,20 +1,15 @@
 #include <gtest/gtest.h>
 #include <vrtio/core/packet_concepts.hpp>
-#include <vrtio/packet/data_packet.hpp>
-#include <vrtio/packet/data_packet_view.hpp>
 #include <vrtio/packet/context_packet.hpp>
 #include <vrtio/packet/context_packet_view.hpp>
+#include <vrtio/packet/data_packet.hpp>
+#include <vrtio/packet/data_packet_view.hpp>
 
 using namespace vrtio;
 
 // Test that SignalPacket satisfies FixedPacketLike concept
 TEST(PacketConceptsTest, SignalPacketIsFixedPacketLike) {
-    using PacketType = DataPacket<
-        PacketType::SignalData,
-        TimeStampUTC,
-        Trailer::Included,
-        64
-    >;
+    using PacketType = DataPacket<PacketType::SignalData, TimeStampUTC, Trailer::Included, 64>;
 
     static_assert(PacketBase<PacketType>);
     static_assert(FixedPacketLike<PacketType>);
@@ -40,13 +35,9 @@ TEST(PacketConceptsTest, SignalPacketViewIsFixedPacketViewLike) {
 
 // Test that ContextPacket satisfies VariablePacketLike concept
 TEST(PacketConceptsTest, ContextPacketIsVariablePacketLike) {
-    using PacketType = ContextPacket<
-        true,                     // HasStreamId
-        NoTimeStamp,
-        NoClassId,
-        cif0::BANDWIDTH | cif0::SAMPLE_RATE,
-        0, 0, 0
-    >;
+    using PacketType =
+        ContextPacket<true, // HasStreamId
+                      NoTimeStamp, NoClassId, cif0::BANDWIDTH | cif0::SAMPLE_RATE, 0, 0, 0>;
 
     static_assert(PacketBase<PacketType>);
     static_assert(VariablePacketLike<PacketType>);
@@ -162,14 +153,14 @@ TEST(PacketConceptsTest, RuntimeBehaviorConsistency) {
         EXPECT_EQ(signal_pkt.stream_id(), 0x12345678);
         EXPECT_EQ(signal_pkt.as_bytes().data(), signal_buffer.data());
         auto err = signal_pkt.validate(signal_buffer.size());
-        EXPECT_EQ(err, validation_error::none);
+        EXPECT_EQ(err, ValidationError::none);
     });
 
     // Create signal packet view
     SignalPacketView view(signal_buffer.data(), signal_buffer.size());
     EXPECT_NO_THROW({
         EXPECT_TRUE(view.is_valid());
-        EXPECT_EQ(view.error(), validation_error::none);
+        EXPECT_EQ(view.error(), ValidationError::none);
         auto id = view.stream_id();
         ASSERT_TRUE(id.has_value());
         EXPECT_EQ(*id, 0x12345678);
@@ -191,7 +182,7 @@ TEST(PacketConceptsTest, RuntimeBehaviorConsistency) {
     ContextPacketView ctx_view(context_buffer.data(), context_buffer.size());
     EXPECT_NO_THROW({
         auto err = ctx_view.error();
-        EXPECT_EQ(err, validation_error::none);
+        EXPECT_EQ(err, ValidationError::none);
         EXPECT_TRUE(ctx_view.is_valid());
         EXPECT_NE(ctx_view.context_buffer(), nullptr);
     });

@@ -1,9 +1,10 @@
-#include <vrtio.hpp>
-#include <iostream>
-#include <iomanip>
 #include <chrono>
+#include <iomanip>
+#include <iostream>
 #include <thread>
+
 #include <ctime>
+#include <vrtio.hpp>
 
 using namespace vrtio;
 
@@ -41,10 +42,10 @@ int main() {
     printTimeStamp(ts_seconds, "From UTC seconds (1699000000)");
 
     // From components (seconds + picoseconds)
-    auto ts_components = TimeStampUTC::fromComponents(
-        1699000000,
-        123'456'789'012ULL  // 123.456789012 microseconds
-    );
+    auto ts_components =
+        TimeStampUTC::fromComponents(1699000000,
+                                     123'456'789'012ULL // 123.456789012 microseconds
+        );
     printTimeStamp(ts_components, "From components");
 
     // From std::chrono
@@ -57,19 +58,16 @@ int main() {
     std::cout << "---------------------------------\n";
 
     // Define packet type with UTC timestamps and real-time picoseconds
-    using PacketType = SignalDataPacket<
-        TimeStampUTC,
-        Trailer::None,  // No trailer
-        256     // payload words
-    >;
+    using PacketType = SignalDataPacket<TimeStampUTC,
+                                        Trailer::None, // No trailer
+                                        256            // payload words
+                                        >;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
     // Create packet using builder with unified timestamp
-    auto packet = PacketBuilder<PacketType>(buffer.data())
-        .stream_id(0x12345678)
-        .timestamp(ts_now)
-        .build();
+    auto packet =
+        PacketBuilder<PacketType>(buffer.data()).stream_id(0x12345678).timestamp(ts_now).build();
 
     std::cout << "Created packet with timestamp:\n";
     std::cout << "  Stream ID: 0x" << std::hex << packet.stream_id() << std::dec << "\n";
@@ -124,10 +122,10 @@ int main() {
     std::cout << "--------------------------\n";
 
     // Create timestamp with picosecond precision
-    auto ts_precise = TimeStampUTC::fromComponents(
-        1700000000,
-        123'456'789'012ULL  // Exactly 123,456,789,012 picoseconds
-    );
+    auto ts_precise =
+        TimeStampUTC::fromComponents(1700000000,
+                                     123'456'789'012ULL // Exactly 123,456,789,012 picoseconds
+        );
 
     std::cout << "Original timestamp:\n";
     std::cout << "  Picoseconds: " << ts_precise.fractional() << " ps\n";
@@ -140,8 +138,8 @@ int main() {
 
     std::cout << "\nAfter chrono round-trip:\n";
     std::cout << "  Picoseconds: " << ts_from_chrono.fractional() << " ps\n";
-    std::cout << "  Lost precision: "
-              << (ts_precise.fractional() - ts_from_chrono.fractional()) << " ps\n\n";
+    std::cout << "  Lost precision: " << (ts_precise.fractional() - ts_from_chrono.fractional())
+              << " ps\n\n";
 
     // Example 6: GPS Timestamps using TimeStamp<gps, real_time>
     std::cout << "6. GPS TimeStamps with Typed API\n";
@@ -149,28 +147,29 @@ int main() {
 
     // Use TimeStamp<gps, real_time> to configure packet structure correctly
     // This sets TSI=2 (GPS) and TSF=2 (real_time) in the packet header
-    using GPSPacket = SignalDataPacket<
-        TimeStamp<tsi_type::gps, tsf_type::real_time>,  // GPS timestamp configuration
-        Trailer::None,  // No trailer
-        256
-    >;
+    using GPSPacket =
+        SignalDataPacket<TimeStamp<TsiType::gps, TsfType::real_time>, // GPS timestamp configuration
+                         Trailer::None,                               // No trailer
+                         256>;
 
     std::cout << "GPS Packet Configuration:\n";
     std::cout << "  TSI type: GPS (value = 2)\n";
     std::cout << "  TSF type: real_time (value = 2)\n";
-    std::cout << "  Packet has TSI field: " << (GPSPacket::tsi_type_v != tsi_type::none ? "yes" : "no") << "\n";
-    std::cout << "  Packet has TSF field: " << (GPSPacket::tsf_type_v != tsf_type::none ? "yes" : "no") << "\n\n";
+    std::cout << "  Packet has TSI field: "
+              << (GPSPacket::tsi_type_v != TsiType::none ? "yes" : "no") << "\n";
+    std::cout << "  Packet has TSF field: "
+              << (GPSPacket::tsf_type_v != TsfType::none ? "yes" : "no") << "\n\n";
 
     // Create packet with GPS timestamps
     alignas(4) std::array<uint8_t, GPSPacket::size_bytes> gps_buffer{};
     GPSPacket gps_packet(gps_buffer.data());
 
     // GPS timestamp values (domain-specific)
-    uint32_t gps_seconds = 1234567890;  // GPS seconds since Jan 6, 1980
-    uint64_t gps_picoseconds = 500'000'000'000ULL;  // 0.5 seconds
+    uint32_t gps_seconds = 1234567890;             // GPS seconds since Jan 6, 1980
+    uint64_t gps_picoseconds = 500'000'000'000ULL; // 0.5 seconds
 
     // Create GPS timestamp and set it using typed API
-    using GPSTimeStamp = TimeStamp<tsi_type::gps, tsf_type::real_time>;
+    using GPSTimeStamp = TimeStamp<TsiType::gps, TsfType::real_time>;
     GPSTimeStamp gps_ts(gps_seconds, gps_picoseconds);
     gps_packet.setTimeStamp(gps_ts);
 
@@ -197,10 +196,10 @@ int main() {
     alignas(4) std::array<uint8_t, GPSPacket::size_bytes> builder_buffer{};
     auto gps_ts_builder = GPSTimeStamp::fromComponents(987654321, 123456789012);
     auto built_packet = PacketBuilder<GPSPacket>(builder_buffer.data())
-        .stream_id(0xABCD1234)
-        .timestamp(gps_ts_builder)
-        .packet_count(15)
-        .build();
+                            .stream_id(0xABCD1234)
+                            .timestamp(gps_ts_builder)
+                            .packet_count(15)
+                            .build();
 
     auto built_ts = built_packet.getTimeStamp();
     std::cout << "  Built packet TSI: " << built_ts.seconds() << "\n";
@@ -218,24 +217,23 @@ int main() {
     std::cout << "7. Other TimeStamp Types (TAI Example)\n";
     std::cout << "---------------------------------------\n";
 
-    // TAI and other non-standard timestamps use tsi_type::other
+    // TAI and other non-standard timestamps use TsiType::other
     // The specific time reference is application-defined
-    using TAIPacket = SignalDataPacket<
-        TimeStamp<tsi_type::other, tsf_type::real_time>,  // "Other" TSI for TAI
-        Trailer::None,  // No trailer
-        128
-    >;
+    using TAIPacket =
+        SignalDataPacket<TimeStamp<TsiType::other, TsfType::real_time>, // "Other" TSI for TAI
+                         Trailer::None,                                 // No trailer
+                         128>;
 
     std::cout << "TAI Packet Configuration:\n";
-    std::cout << "  TSI type: other (value = " << static_cast<int>(tsi_type::other) << ")\n";
+    std::cout << "  TSI type: other (value = " << static_cast<int>(TsiType::other) << ")\n";
     std::cout << "  TSF type: real_time (value = 2)\n\n";
 
     alignas(4) std::array<uint8_t, TAIPacket::size_bytes> tai_buffer{};
     TAIPacket tai_packet(tai_buffer.data());
 
     // TAI is ahead of UTC by 37 seconds (as of 2024)
-    uint32_t tai_seconds = 1699000037;  // Example: UTC + 37 seconds
-    auto tai_ts = TimeStamp<tsi_type::other, tsf_type::real_time>::fromComponents(tai_seconds, 0);
+    uint32_t tai_seconds = 1699000037; // Example: UTC + 37 seconds
+    auto tai_ts = TimeStamp<TsiType::other, TsfType::real_time>::fromComponents(tai_seconds, 0);
     tai_packet.setTimeStamp(tai_ts);
 
     std::cout << "TAI timestamp example:\n";
@@ -250,8 +248,7 @@ int main() {
 
     for (int i = 0; i < 3; ++i) {
         auto ts = TimeStampUTC::now();
-        std::cout << "Update " << (i + 1) << ": "
-                  << ts.seconds() << "s + "
+        std::cout << "Update " << (i + 1) << ": " << ts.seconds() << "s + "
                   << ts.fractional() / 1'000'000'000ULL << "ms\n";
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }

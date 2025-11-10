@@ -1,15 +1,17 @@
 #pragma once
 
-#include "../core/types.hpp"
-#include "../core/endian.hpp"
-#include "../core/detail/header_decode.hpp"
-#include <cstdio>
-#include <cstdint>
-#include <cstring>
 #include <array>
 #include <span>
 #include <string>
 #include <utility>
+
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+
+#include "../core/detail/header_decode.hpp"
+#include "../core/endian.hpp"
+#include "../core/types.hpp"
 
 namespace vrtio::io {
 
@@ -33,7 +35,7 @@ namespace vrtio::io {
  *
  * @note The MaxPacketWords parameter must be > 0 and <= 65535 (VRT maximum)
  */
-template<uint16_t MaxPacketWords = 65535>
+template <uint16_t MaxPacketWords = 65535>
 class VRTFileReader {
     // Compile-time validation
     static_assert(MaxPacketWords > 0, "MaxPacketWords must be positive");
@@ -41,8 +43,9 @@ class VRTFileReader {
                   "MaxPacketWords exceeds VRT specification maximum (65535)");
 
     // Warning if buffer is very large (>1MB)
-    static_assert(MaxPacketWords * vrt_word_size <= 1024 * 1024 || MaxPacketWords == 65535,
-                  "WARNING: Scratch buffer exceeds 1MB. Consider heap allocation or smaller MaxPacketWords.");
+    static_assert(
+        MaxPacketWords * vrt_word_size <= 1024 * 1024 || MaxPacketWords == 65535,
+        "WARNING: Scratch buffer exceeds 1MB. Consider heap allocation or smaller MaxPacketWords.");
 
 public:
     /**
@@ -52,21 +55,19 @@ public:
      * success/failure status, packet metadata, and buffer requirements.
      */
     struct ReadResult {
-        validation_error error;         ///< Error code (none = success)
-        PacketType type;                ///< Packet type from header
-        size_t packet_size_bytes;       ///< Actual packet size in bytes
-        size_t buffer_size_required;    ///< Required buffer size (set when buffer too small)
-        size_t file_offset;             ///< File offset where packet starts
-        uint32_t header;                ///< Header word (host byte order, already converted)
+        ValidationError error;       ///< Error code (none = success)
+        PacketType type;             ///< Packet type from header
+        size_t packet_size_bytes;    ///< Actual packet size in bytes
+        size_t buffer_size_required; ///< Required buffer size (set when buffer too small)
+        size_t file_offset;          ///< File offset where packet starts
+        uint32_t header;             ///< Header word (host byte order, already converted)
 
         /// Check if read was successful
-        bool is_valid() const noexcept {
-            return error == validation_error::none;
-        }
+        bool is_valid() const noexcept { return error == ValidationError::none; }
 
         /// Check if this is end-of-file (not an error)
         bool is_eof() const noexcept {
-            return error == validation_error::buffer_too_small && packet_size_bytes == 0;
+            return error == ValidationError::buffer_too_small && packet_size_bytes == 0;
         }
     };
 
@@ -77,12 +78,11 @@ public:
      * @throws std::runtime_error if file cannot be opened
      */
     explicit VRTFileReader(const char* filepath)
-        : file_(nullptr)
-        , file_size_(0)
-        , current_offset_(0)
-        , packets_read_(0)
-        , last_error_{}
-    {
+        : file_(nullptr),
+          file_size_(0),
+          current_offset_(0),
+          packets_read_(0),
+          last_error_{} {
         file_ = std::fopen(filepath, "rb");
         if (!file_) {
             throw std::runtime_error(std::string("Failed to open file: ") + filepath);
@@ -109,13 +109,12 @@ public:
 
     // Move-only semantics
     VRTFileReader(VRTFileReader&& other) noexcept
-        : file_(other.file_)
-        , file_size_(other.file_size_)
-        , current_offset_(other.current_offset_)
-        , packets_read_(other.packets_read_)
-        , scratch_buffer_(std::move(other.scratch_buffer_))
-        , last_error_(other.last_error_)
-    {
+        : file_(other.file_),
+          file_size_(other.file_size_),
+          current_offset_(other.current_offset_),
+          packets_read_(other.packets_read_),
+          scratch_buffer_(std::move(other.scratch_buffer_)),
+          last_error_(other.last_error_) {
         other.file_ = nullptr;
     }
 
@@ -154,21 +153,21 @@ public:
 
         // Check for EOF
         if (current_offset_ >= file_size_) {
-            result.error = validation_error::buffer_too_small;  // Signals EOF
+            result.error = ValidationError::buffer_too_small; // Signals EOF
             result.packet_size_bytes = 0;
             return result;
         }
 
         // Read header (4 bytes minimum)
         if (file_size_ - current_offset_ < vrt_word_size) {
-            result.error = validation_error::buffer_too_small;
+            result.error = ValidationError::buffer_too_small;
             result.packet_size_bytes = 0;
             return result;
         }
 
         uint32_t header_raw;
         if (std::fread(&header_raw, vrt_word_size, 1, file_) != 1) {
-            result.error = validation_error::buffer_too_small;
+            result.error = ValidationError::buffer_too_small;
             result.packet_size_bytes = 0;
             return result;
         }
@@ -181,7 +180,7 @@ public:
 
         // Validate packet type
         if (!detail::is_valid_packet_type(decoded.type)) {
-            result.error = validation_error::invalid_packet_type;
+            result.error = ValidationError::invalid_packet_type;
             current_offset_ += vrt_word_size;
             return result;
         }
@@ -192,14 +191,14 @@ public:
 
         // Validate packet size
         if (decoded.size_words == 0 || decoded.size_words > MaxPacketWords) {
-            result.error = validation_error::size_field_mismatch;
+            result.error = ValidationError::size_field_mismatch;
             current_offset_ += vrt_word_size;
             return result;
         }
 
         // Check user buffer size
         if (buffer_size < result.packet_size_bytes) {
-            result.error = validation_error::buffer_too_small;
+            result.error = ValidationError::buffer_too_small;
             // Rewind to start of packet for potential retry
             std::fseek(file_, current_offset_, SEEK_SET);
             return result;
@@ -207,7 +206,7 @@ public:
 
         // Check file has enough data
         if (current_offset_ + result.packet_size_bytes > file_size_) {
-            result.error = validation_error::buffer_too_small;
+            result.error = ValidationError::buffer_too_small;
             std::fseek(file_, current_offset_, SEEK_SET);
             return result;
         }
@@ -219,14 +218,14 @@ public:
         size_t remaining = result.packet_size_bytes - vrt_word_size;
         if (remaining > 0) {
             if (std::fread(buffer + vrt_word_size, 1, remaining, file_) != remaining) {
-                result.error = validation_error::buffer_too_small;
+                result.error = ValidationError::buffer_too_small;
                 std::fseek(file_, current_offset_, SEEK_SET);
                 return result;
             }
         }
 
         // Success
-        result.error = validation_error::none;
+        result.error = ValidationError::none;
         current_offset_ += result.packet_size_bytes;
         packets_read_++;
 
@@ -264,9 +263,7 @@ public:
      *
      * @return ReadResult from last read_next_span() call
      */
-    const ReadResult& last_error() const noexcept {
-        return last_error_;
-    }
+    const ReadResult& last_error() const noexcept { return last_error_; }
 
     /**
      * @brief Stream all packets through a callback function
@@ -274,7 +271,8 @@ public:
      * Efficiently processes all packets in the file using the callback pattern.
      * The callback receives a span to each packet in sequence.
      *
-     * @tparam Callback Function/lambda type with signature: bool(std::span<const uint8_t>, const ReadResult&)
+     * @tparam Callback Function/lambda type with signature: bool(std::span<const uint8_t>, const
+     * ReadResult&)
      * @param callback Function called for each packet. Return false to stop iteration.
      * @return Number of packets successfully processed
      *
@@ -290,7 +288,7 @@ public:
      * });
      * @endcode
      */
-    template<typename Callback>
+    template <typename Callback>
     size_t for_each_packet(Callback&& callback) noexcept {
         size_t processed = 0;
 
@@ -334,38 +332,30 @@ public:
     /**
      * @brief Get current file position in bytes
      */
-    size_t tell() const noexcept {
-        return current_offset_;
-    }
+    size_t tell() const noexcept { return current_offset_; }
 
     /**
      * @brief Get total file size in bytes
      */
-    size_t size() const noexcept {
-        return file_size_;
-    }
+    size_t size() const noexcept { return file_size_; }
 
     /**
      * @brief Get number of packets read so far
      */
-    size_t packets_read() const noexcept {
-        return packets_read_;
-    }
+    size_t packets_read() const noexcept { return packets_read_; }
 
     /**
      * @brief Check if file is still open
      */
-    bool is_open() const noexcept {
-        return file_ != nullptr;
-    }
+    bool is_open() const noexcept { return file_ != nullptr; }
 
 private:
-    FILE* file_;                                                    ///< File handle
-    size_t file_size_;                                              ///< Total file size in bytes
-    size_t current_offset_;                                         ///< Current read position
-    size_t packets_read_;                                           ///< Number of packets read
-    std::array<uint8_t, MaxPacketWords * vrt_word_size> scratch_buffer_;  ///< Internal buffer
-    ReadResult last_error_;                                         ///< Last error from read_next_span()
+    FILE* file_;            ///< File handle
+    size_t file_size_;      ///< Total file size in bytes
+    size_t current_offset_; ///< Current read position
+    size_t packets_read_;   ///< Number of packets read
+    std::array<uint8_t, MaxPacketWords * vrt_word_size> scratch_buffer_; ///< Internal buffer
+    ReadResult last_error_; ///< Last error from read_next_span()
 };
 
 } // namespace vrtio::io

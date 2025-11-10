@@ -1,8 +1,9 @@
 #pragma once
 
-#include <span>
 #include <complex>
+#include <span>
 #include <vector>
+
 #include <cstdint>
 #include <cstring>
 
@@ -19,30 +20,26 @@ namespace test_utils {
  */
 inline double compute_signal_energy(std::span<const uint8_t> payload) {
     if (payload.size() < 4 || payload.size() % 4 != 0) {
-        return 0.0;  // Invalid payload size
+        return 0.0; // Invalid payload size
     }
 
     double energy = 0.0;
-    size_t num_samples = payload.size() / 4;  // Each IQ sample is 4 bytes (2 * int16)
+    size_t num_samples = payload.size() / 4; // Each IQ sample is 4 bytes (2 * int16)
 
     for (size_t i = 0; i < num_samples; ++i) {
         size_t offset = i * 4;
 
         // Read I sample (16-bit, network byte order)
-        int16_t i_sample = static_cast<int16_t>(
-            (static_cast<uint16_t>(payload[offset]) << 8) |
-            static_cast<uint16_t>(payload[offset + 1])
-        );
+        int16_t i_sample = static_cast<int16_t>((static_cast<uint16_t>(payload[offset]) << 8) |
+                                                static_cast<uint16_t>(payload[offset + 1]));
 
         // Read Q sample (16-bit, network byte order)
-        int16_t q_sample = static_cast<int16_t>(
-            (static_cast<uint16_t>(payload[offset + 2]) << 8) |
-            static_cast<uint16_t>(payload[offset + 3])
-        );
+        int16_t q_sample = static_cast<int16_t>((static_cast<uint16_t>(payload[offset + 2]) << 8) |
+                                                static_cast<uint16_t>(payload[offset + 3]));
 
         // Accumulate energy: I² + Q²
-        energy += static_cast<double>(i_sample) * i_sample +
-                  static_cast<double>(q_sample) * q_sample;
+        energy +=
+            static_cast<double>(i_sample) * i_sample + static_cast<double>(q_sample) * q_sample;
     }
 
     return energy;
@@ -96,7 +93,7 @@ inline std::vector<std::complex<int16_t>> extract_iq_samples(std::span<const uin
     std::vector<std::complex<int16_t>> samples;
 
     if (payload.size() < 4 || payload.size() % 4 != 0) {
-        return samples;  // Invalid payload size
+        return samples; // Invalid payload size
     }
 
     size_t num_samples = payload.size() / 4;
@@ -106,16 +103,12 @@ inline std::vector<std::complex<int16_t>> extract_iq_samples(std::span<const uin
         size_t offset = i * 4;
 
         // Read I sample (16-bit, network byte order)
-        int16_t i_sample = static_cast<int16_t>(
-            (static_cast<uint16_t>(payload[offset]) << 8) |
-            static_cast<uint16_t>(payload[offset + 1])
-        );
+        int16_t i_sample = static_cast<int16_t>((static_cast<uint16_t>(payload[offset]) << 8) |
+                                                static_cast<uint16_t>(payload[offset + 1]));
 
         // Read Q sample (16-bit, network byte order)
-        int16_t q_sample = static_cast<int16_t>(
-            (static_cast<uint16_t>(payload[offset + 2]) << 8) |
-            static_cast<uint16_t>(payload[offset + 3])
-        );
+        int16_t q_sample = static_cast<int16_t>((static_cast<uint16_t>(payload[offset + 2]) << 8) |
+                                                static_cast<uint16_t>(payload[offset + 3]));
 
         samples.emplace_back(i_sample, q_sample);
     }
@@ -169,18 +162,14 @@ inline uint32_t compute_peak_magnitude(std::span<const uint8_t> payload) {
     for (size_t i = 0; i < num_samples; ++i) {
         size_t offset = i * 4;
 
-        int16_t i_sample = static_cast<int16_t>(
-            (static_cast<uint16_t>(payload[offset]) << 8) |
-            static_cast<uint16_t>(payload[offset + 1])
-        );
+        int16_t i_sample = static_cast<int16_t>((static_cast<uint16_t>(payload[offset]) << 8) |
+                                                static_cast<uint16_t>(payload[offset + 1]));
 
-        int16_t q_sample = static_cast<int16_t>(
-            (static_cast<uint16_t>(payload[offset + 2]) << 8) |
-            static_cast<uint16_t>(payload[offset + 3])
-        );
+        int16_t q_sample = static_cast<int16_t>((static_cast<uint16_t>(payload[offset + 2]) << 8) |
+                                                static_cast<uint16_t>(payload[offset + 3]));
 
-        uint32_t magnitude = static_cast<uint32_t>(std::abs(i_sample)) +
-                             static_cast<uint32_t>(std::abs(q_sample));
+        uint32_t magnitude =
+            static_cast<uint32_t>(std::abs(i_sample)) + static_cast<uint32_t>(std::abs(q_sample));
 
         if (magnitude > peak) {
             peak = magnitude;

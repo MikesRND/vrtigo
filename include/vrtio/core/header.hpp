@@ -28,14 +28,14 @@ namespace header {
 // ========================================================================
 // Packet Type Field (bits 31-28)
 // ========================================================================
-inline constexpr uint8_t PACKET_TYPE_SHIFT = 28;
-inline constexpr uint32_t PACKET_TYPE_MASK = 0xF;  // After shift
+inline constexpr uint8_t packet_type_shift = 28;
+inline constexpr uint32_t packet_type_mask = 0xF; // After shift
 
 // ========================================================================
 // Class ID Indicator (bit 27)
 // ========================================================================
-inline constexpr uint8_t CLASS_ID_SHIFT = 27;
-inline constexpr uint32_t CLASS_ID_MASK = 0x1;  // After shift
+inline constexpr uint8_t class_id_shift = 27;
+inline constexpr uint32_t class_id_mask = 0x1; // After shift
 
 // ========================================================================
 // Packet-Specific Indicator Bits (bits 26-24)
@@ -45,35 +45,35 @@ inline constexpr uint32_t CLASS_ID_MASK = 0x1;  // After shift
 // - Context (4-5):        bit 26=Reserved, bit 25=Nd0, bit 24=TSM
 // - Command (6-7):        bit 26=Ack, bit 25=Reserved, bit 24=CanceLation
 
-inline constexpr uint8_t INDICATOR_BIT_26_SHIFT = 26;  // Trailer/Ack
-inline constexpr uint8_t INDICATOR_BIT_25_SHIFT = 25;  // Nd0
-inline constexpr uint8_t INDICATOR_BIT_24_SHIFT = 24;  // Spectrum/TSM/Cancel
-inline constexpr uint32_t INDICATOR_BIT_MASK = 0x1;    // After shift (single bit)
+inline constexpr uint8_t indicator_bit_26_shift = 26; // Trailer/Ack
+inline constexpr uint8_t indicator_bit_25_shift = 25; // Nd0
+inline constexpr uint8_t indicator_bit_24_shift = 24; // Spectrum/TSM/Cancel
+inline constexpr uint32_t indicator_bit_mask = 0x1;   // After shift (single bit)
 
 // ========================================================================
 // TSI Field (bits 22-21) - Integer Timestamp Type
 // ========================================================================
-inline constexpr uint8_t TSI_SHIFT = 22;
-inline constexpr uint32_t TSI_MASK = 0x3;  // After shift (2 bits)
+inline constexpr uint8_t tsi_shift = 22;
+inline constexpr uint32_t tsi_mask = 0x3; // After shift (2 bits)
 
 // ========================================================================
 // TSF Field (bits 20-19) - Fractional Timestamp Type
 // ========================================================================
-inline constexpr uint8_t TSF_SHIFT = 20;
-inline constexpr uint32_t TSF_MASK = 0x3;  // After shift (2 bits)
+inline constexpr uint8_t tsf_shift = 20;
+inline constexpr uint32_t tsf_mask = 0x3; // After shift (2 bits)
 
 // ========================================================================
 // Packet Count Field (bits 19-16)
 // ========================================================================
-inline constexpr uint8_t PACKET_COUNT_SHIFT = 16;
-inline constexpr uint32_t PACKET_COUNT_MASK = 0xF;  // After shift (4 bits)
+inline constexpr uint8_t packet_count_shift = 16;
+inline constexpr uint32_t packet_count_mask = 0xF; // After shift (4 bits)
 
 // ========================================================================
 // Packet Size Field (bits 15-0)
 // ========================================================================
-inline constexpr uint8_t SIZE_SHIFT = 0;
-inline constexpr uint32_t SIZE_MASK = 0xFFFF;  // After shift (16 bits)
+inline constexpr uint8_t size_shift = 0;
+inline constexpr uint32_t size_mask = 0xFFFF; // After shift (16 bits)
 
-}  // namespace header
+} // namespace header
 
-}  // namespace vrtio
+} // namespace vrtio

@@ -1,8 +1,9 @@
 #pragma once
 
-#include "../types.hpp"
-#include "../header.hpp"
 #include <cstdint>
+
+#include "../header.hpp"
+#include "../types.hpp"
 
 namespace vrtio::detail {
 
@@ -19,35 +20,37 @@ namespace vrtio::detail {
  */
 struct DecodedHeader {
     // ========== Universal Fields (valid for all packet types) ==========
-    PacketType type;            ///< Packet type (determines which interpreted fields are valid)
-    uint16_t size_words;        ///< Packet size in 32-bit words
-    bool has_class_id;          ///< Class ID field present (bit 27)
-    tsi_type tsi;               ///< Integer timestamp type (bits 23-22)
-    tsf_type tsf;               ///< Fractional timestamp type (bits 21-20)
-    uint8_t packet_count;       ///< Packet count (bits 19-16)
+    PacketType type;      ///< Packet type (determines which interpreted fields are valid)
+    uint16_t size_words;  ///< Packet size in 32-bit words
+    bool has_class_id;    ///< Class ID field present (bit 27)
+    TsiType tsi;          ///< Integer timestamp type (bits 23-22)
+    TsfType tsf;          ///< Fractional timestamp type (bits 21-20)
+    uint8_t packet_count; ///< Packet count (bits 19-16)
 
     // ========== Raw Indicator Bits (for debugging/advanced use) ==========
-    bool bit_26;                ///< Raw bit 26: Trailer(Signal/ExtData) / Reserved(Context) / Ack(Command)
-    bool bit_25;                ///< Raw bit 25: Nd0(Signal/ExtData/Context) / Reserved(Command)
-    bool bit_24;                ///< Raw bit 24: Spectrum(Signal/ExtData) / TSM(Context) / Cancel(Command)
+    bool bit_26; ///< Raw bit 26: Trailer(Signal/ExtData) / Reserved(Context) / Ack(Command)
+    bool bit_25; ///< Raw bit 25: Nd0(Signal/ExtData/Context) / Reserved(Command)
+    bool bit_24; ///< Raw bit 24: Spectrum(Signal/ExtData) / TSM(Context) / Cancel(Command)
 
     // ========== Type-Aware Interpreted Fields ==========
     // Only the fields relevant to the packet type are meaningful!
     // Field names align with VITA 49.2 spec terminology
 
     // Signal/Extension Data packets (types 0-3)
-    bool trailer_included;      ///< Trailer field present (bit 26) - ONLY valid for Signal/ExtData packets
-    bool signal_spectrum;       ///< Spectrum vs Time data (bit 24) - ONLY valid for Signal/ExtData packets
+    bool trailer_included; ///< Trailer field present (bit 26) - ONLY valid for Signal/ExtData
+                           ///< packets
+    bool
+        signal_spectrum; ///< Spectrum vs Time data (bit 24) - ONLY valid for Signal/ExtData packets
 
     // Signal/Extension Data and Context packets (types 0-5)
-    bool nd0;                   ///< Not a V49.0 packet (bit 25) - ONLY valid for Signal/ExtData/Context packets
+    bool nd0; ///< Not a V49.0 packet (bit 25) - ONLY valid for Signal/ExtData/Context packets
 
     // Context packets (types 4-5)
-    bool context_tsm;           ///< Timestamp Mode (bit 24) - ONLY valid for Context packets
+    bool context_tsm; ///< Timestamp Mode (bit 24) - ONLY valid for Context packets
 
     // Command packets (types 6-7)
-    bool command_ack;           ///< Acknowledge vs Control (bit 26) - ONLY valid for Command packets
-    bool command_cancel;        ///< CanceLation indicator (bit 24) - ONLY valid for Command packets
+    bool command_ack;    ///< Acknowledge vs Control (bit 26) - ONLY valid for Command packets
+    bool command_cancel; ///< CanceLation indicator (bit 24) - ONLY valid for Command packets
 };
 
 /**
@@ -76,20 +79,21 @@ struct DecodedHeader {
  * @return DecodedHeader struct with both raw bits and type-aware interpreted fields
  */
 inline DecodedHeader decode_header(uint32_t header) noexcept {
-    DecodedHeader result{};  // Zero-initialize all fields
+    DecodedHeader result{}; // Zero-initialize all fields
 
     // ========== Extract Universal Fields ==========
-    result.type = static_cast<PacketType>((header >> header::PACKET_TYPE_SHIFT) & header::PACKET_TYPE_MASK);
-    result.has_class_id = (header >> header::CLASS_ID_SHIFT) & header::CLASS_ID_MASK;
-    result.tsi = static_cast<tsi_type>((header >> header::TSI_SHIFT) & header::TSI_MASK);
-    result.tsf = static_cast<tsf_type>((header >> header::TSF_SHIFT) & header::TSF_MASK);
-    result.packet_count = (header >> header::PACKET_COUNT_SHIFT) & header::PACKET_COUNT_MASK;
-    result.size_words = (header >> header::SIZE_SHIFT) & header::SIZE_MASK;
+    result.type =
+        static_cast<PacketType>((header >> header::packet_type_shift) & header::packet_type_mask);
+    result.has_class_id = (header >> header::class_id_shift) & header::class_id_mask;
+    result.tsi = static_cast<TsiType>((header >> header::tsi_shift) & header::tsi_mask);
+    result.tsf = static_cast<TsfType>((header >> header::tsf_shift) & header::tsf_mask);
+    result.packet_count = (header >> header::packet_count_shift) & header::packet_count_mask;
+    result.size_words = (header >> header::size_shift) & header::size_mask;
 
     // ========== Extract Raw Indicator Bits ==========
-    result.bit_26 = (header >> header::INDICATOR_BIT_26_SHIFT) & header::INDICATOR_BIT_MASK;
-    result.bit_25 = (header >> header::INDICATOR_BIT_25_SHIFT) & header::INDICATOR_BIT_MASK;
-    result.bit_24 = (header >> header::INDICATOR_BIT_24_SHIFT) & header::INDICATOR_BIT_MASK;
+    result.bit_26 = (header >> header::indicator_bit_26_shift) & header::indicator_bit_mask;
+    result.bit_25 = (header >> header::indicator_bit_25_shift) & header::indicator_bit_mask;
+    result.bit_24 = (header >> header::indicator_bit_24_shift) & header::indicator_bit_mask;
 
     // ========== Interpret Indicator Bits Based on Packet Type ==========
     uint8_t type_value = static_cast<uint8_t>(result.type);
@@ -102,8 +106,7 @@ inline DecodedHeader decode_header(uint32_t header) noexcept {
         result.context_tsm = false;
         result.command_ack = false;
         result.command_cancel = false;
-    }
-    else if (type_value == 4 || type_value == 5) {
+    } else if (type_value == 4 || type_value == 5) {
         // Context (4) or Extension Context (5)
         result.context_tsm = result.bit_24;
         result.nd0 = result.bit_25;
@@ -111,8 +114,7 @@ inline DecodedHeader decode_header(uint32_t header) noexcept {
         result.signal_spectrum = false;
         result.command_ack = false;
         result.command_cancel = false;
-    }
-    else if (type_value == 6 || type_value == 7) {
+    } else if (type_value == 6 || type_value == 7) {
         // Command (6) or Extension Command (7)
         result.command_ack = result.bit_26;
         result.command_cancel = result.bit_24;
@@ -120,8 +122,7 @@ inline DecodedHeader decode_header(uint32_t header) noexcept {
         result.signal_spectrum = false;
         result.nd0 = false;
         result.context_tsm = false;
-    }
-    else {
+    } else {
         // Invalid/reserved packet type (8-15)
         // Set all interpreted fields to false
         result.trailer_included = false;
@@ -152,7 +153,7 @@ inline bool is_valid_packet_type(PacketType type) noexcept {
  * @param tsi The TSI type to validate
  * @return true if valid (all 2-bit values are valid)
  */
-inline constexpr bool is_valid_tsi_type(tsi_type tsi) noexcept {
+inline constexpr bool is_valid_tsi_type(TsiType tsi) noexcept {
     // All 2-bit values (0-3) are valid TSI types
     return static_cast<uint8_t>(tsi) <= 3;
 }
@@ -163,7 +164,7 @@ inline constexpr bool is_valid_tsi_type(tsi_type tsi) noexcept {
  * @param tsf The TSF type to validate
  * @return true if valid (all 2-bit values are valid)
  */
-inline constexpr bool is_valid_tsf_type(tsf_type tsf) noexcept {
+inline constexpr bool is_valid_tsf_type(TsfType tsf) noexcept {
     // All 2-bit values (0-3) are valid TSF types
     return static_cast<uint8_t>(tsf) <= 3;
 }

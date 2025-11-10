@@ -1,7 +1,7 @@
-#include <vrtio/core/endian.hpp>
-#include <gtest/gtest.h>
 #include <cstdint>
 #include <cstring>
+#include <gtest/gtest.h>
+#include <vrtio/core/endian.hpp>
 
 // Test byte swapping functions
 TEST(EndianTest, ByteSwap16) {
@@ -61,10 +61,10 @@ TEST(EndianTest, NetworkIsBigEndian) {
 
     if (vrtio::detail::is_little_endian) {
         // On little-endian, bytes should be swapped to big-endian
-        EXPECT_EQ(bytes[0], 0x12);  // MSB
+        EXPECT_EQ(bytes[0], 0x12); // MSB
         EXPECT_EQ(bytes[1], 0x34);
         EXPECT_EQ(bytes[2], 0x56);
-        EXPECT_EQ(bytes[3], 0x78);  // LSB
+        EXPECT_EQ(bytes[3], 0x78); // LSB
     } else {
         // On big-endian, bytes should remain unchanged
         EXPECT_EQ(bytes[0], 0x12);
@@ -93,10 +93,10 @@ TEST(EndianTest, PlatformDetection) {
     // Both cannot be true
     EXPECT_FALSE(vrtio::detail::is_little_endian && vrtio::detail::is_big_endian);
 
-    // Most modern systems are little-endian
-    #if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+// Most modern systems are little-endian
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
     EXPECT_TRUE(vrtio::detail::is_little_endian);
-    #endif
+#endif
 }
 
 // Test edge cases
@@ -142,7 +142,7 @@ TEST(EndianTest, VRTFieldConversion) {
 // Test 64-bit timestamp conversion
 TEST(EndianTest, TimestampConversion) {
     // Picosecond timestamp
-    uint64_t timestamp = 999999999999ULL;  // Max picoseconds in a second
+    uint64_t timestamp = 999999999999ULL; // Max picoseconds in a second
     uint64_t network_ts = vrtio::detail::host_to_network64(timestamp);
 
     // Simulate write/read

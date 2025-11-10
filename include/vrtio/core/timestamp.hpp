@@ -1,18 +1,19 @@
 #pragma once
 
-#include <vrtio/core/types.hpp>
 #include <chrono>
-#include <cstdint>
 #include <compare>
+
+#include <cstdint>
 #include <ctime>
+#include <vrtio/core/types.hpp>
 
 namespace vrtio {
 
 // Primary template - works for ALL timestamp combinations
-template<tsi_type TSI, tsf_type TSF>
+template <TsiType TSI, TsfType TSF>
 class TimeStamp {
     // Helper constant for readability and maintenance
-    static constexpr bool is_utc_real_time = (TSI == tsi_type::utc && TSF == tsf_type::real_time);
+    static constexpr bool is_utc_real_time = (TSI == TsiType::utc && TSF == TsfType::real_time);
 
 public:
     // Constants (always available, compiler optimizes away if unused)
@@ -24,8 +25,7 @@ public:
     // Constructors - basic API available for all timestamp types
     constexpr TimeStamp() noexcept = default;
 
-    constexpr TimeStamp(uint32_t sec, uint64_t frac) noexcept
-        : seconds_(sec), fractional_(frac) {
+    constexpr TimeStamp(uint32_t sec, uint64_t frac) noexcept : seconds_(sec), fractional_(frac) {
         normalize();
     }
 
@@ -38,25 +38,29 @@ public:
     constexpr uint32_t seconds() const noexcept { return seconds_; }
     constexpr uint64_t fractional() const noexcept { return fractional_; }
 
-    constexpr tsi_type tsiType() const noexcept { return TSI; }
-    constexpr tsf_type tsfType() const noexcept { return TSF; }
+    constexpr TsiType tsiType() const noexcept { return TSI; }
+    constexpr TsfType tsfType() const noexcept { return TSF; }
 
     // Comparison operators - basic API available for all types
     constexpr auto operator<=>(const TimeStamp& other) const noexcept = default;
 
     // UTC-specific factory methods
-    static TimeStamp now() noexcept requires(is_utc_real_time) {
+    static TimeStamp now() noexcept
+        requires(is_utc_real_time)
+    {
         auto now = std::chrono::system_clock::now();
         return fromChrono(now);
     }
 
     static constexpr TimeStamp fromUTCSeconds(uint32_t seconds) noexcept
-        requires(is_utc_real_time) {
+        requires(is_utc_real_time)
+    {
         return TimeStamp(seconds, 0);
     }
 
     static TimeStamp fromChrono(std::chrono::system_clock::time_point tp) noexcept
-        requires(is_utc_real_time) {
+        requires(is_utc_real_time)
+    {
         // Convert to duration since epoch
         auto duration = tp.time_since_epoch();
 
@@ -97,7 +101,8 @@ public:
 
     // UTC-specific conversion methods
     std::chrono::system_clock::time_point toChrono() const noexcept
-        requires(is_utc_real_time) {
+        requires(is_utc_real_time)
+    {
         // Convert seconds to duration
         auto sec_duration = std::chrono::seconds(seconds_);
 
@@ -108,15 +113,20 @@ public:
         return std::chrono::system_clock::time_point(sec_duration + nano_duration);
     }
 
-    std::time_t toTimeT() const noexcept requires(is_utc_real_time) {
+    std::time_t toTimeT() const noexcept
+        requires(is_utc_real_time)
+    {
         return static_cast<std::time_t>(seconds_);
     }
 
     // UTC-specific utility method
-    constexpr uint64_t totalPicoseconds() const noexcept requires(is_utc_real_time) {
+    constexpr uint64_t totalPicoseconds() const noexcept
+        requires(is_utc_real_time)
+    {
         // Check if multiplication would overflow
         // UINT64_MAX / PICOSECONDS_PER_SECOND ≈ 18,446,744 seconds (~213 days)
-        constexpr uint32_t MAX_SAFE_SECONDS = static_cast<uint32_t>(UINT64_MAX / PICOSECONDS_PER_SECOND);
+        constexpr uint32_t MAX_SAFE_SECONDS =
+            static_cast<uint32_t>(UINT64_MAX / PICOSECONDS_PER_SECOND);
 
         if (seconds_ > MAX_SAFE_SECONDS) {
             // Would overflow - return saturated value
@@ -135,7 +145,8 @@ public:
 
     // UTC-specific arithmetic operations
     TimeStamp& operator+=(std::chrono::nanoseconds duration) noexcept
-        requires(is_utc_real_time) {
+        requires(is_utc_real_time)
+    {
         // Decompose duration into seconds and nanosecond remainder to avoid overflow
         // This handles durations up to the full range of nanoseconds (~292 years)
         auto sec_duration = std::chrono::duration_cast<std::chrono::seconds>(duration);
@@ -147,7 +158,8 @@ public:
         // Handle seconds component
         if (seconds_to_add >= 0) {
             // Adding positive seconds
-            uint64_t new_seconds = static_cast<uint64_t>(seconds_) + static_cast<uint64_t>(seconds_to_add);
+            uint64_t new_seconds =
+                static_cast<uint64_t>(seconds_) + static_cast<uint64_t>(seconds_to_add);
             if (new_seconds > UINT32_MAX) {
                 // Overflow - clamp to max
                 seconds_ = UINT32_MAX;
@@ -174,7 +186,7 @@ public:
         if (picos_to_add >= 0) {
             // Adding positive picoseconds
             fractional_ += static_cast<uint64_t>(picos_to_add);
-            normalize();  // Handle carry to seconds if needed
+            normalize(); // Handle carry to seconds if needed
         } else {
             // Subtracting picoseconds - handle multi-second borrow properly
             uint64_t picos_to_sub = static_cast<uint64_t>(-picos_to_add);
@@ -187,8 +199,7 @@ public:
                 // Calculate how many full seconds we need to borrow
                 uint64_t deficit = picos_to_sub - fractional_;
                 uint32_t seconds_to_borrow = static_cast<uint32_t>(
-                    (deficit + PICOSECONDS_PER_SECOND - 1) / PICOSECONDS_PER_SECOND
-                );
+                    (deficit + PICOSECONDS_PER_SECOND - 1) / PICOSECONDS_PER_SECOND);
 
                 if (seconds_to_borrow > seconds_) {
                     // Would underflow - clamp to zero
@@ -197,7 +208,8 @@ public:
                 } else {
                     // Borrow the seconds and adjust fractional
                     seconds_ -= seconds_to_borrow;
-                    fractional_ = (seconds_to_borrow * PICOSECONDS_PER_SECOND + fractional_) - picos_to_sub;
+                    fractional_ =
+                        (seconds_to_borrow * PICOSECONDS_PER_SECOND + fractional_) - picos_to_sub;
                 }
             }
         }
@@ -206,7 +218,8 @@ public:
     }
 
     TimeStamp& operator-=(std::chrono::nanoseconds duration) noexcept
-        requires(is_utc_real_time) {
+        requires(is_utc_real_time)
+    {
         // Guard against nanoseconds::min() which cannot be negated
         if (duration == std::chrono::nanoseconds::min()) {
             // nanoseconds::min() is approximately -9.22e18
@@ -223,44 +236,49 @@ public:
 
     // Friend operators with inline definitions (UTC-specific)
     friend TimeStamp operator+(TimeStamp ts, std::chrono::nanoseconds duration) noexcept
-        requires(is_utc_real_time) {
+        requires(is_utc_real_time)
+    {
         ts += duration;
         return ts;
     }
 
     friend TimeStamp operator-(TimeStamp ts, std::chrono::nanoseconds duration) noexcept
-        requires(is_utc_real_time) {
+        requires(is_utc_real_time)
+    {
         ts -= duration;
         return ts;
     }
 
     friend std::chrono::nanoseconds operator-(const TimeStamp& lhs, const TimeStamp& rhs) noexcept
-        requires(is_utc_real_time) {
+        requires(is_utc_real_time)
+    {
         int64_t sec_diff = static_cast<int64_t>(lhs.seconds_) - static_cast<int64_t>(rhs.seconds_);
-        int64_t frac_diff = static_cast<int64_t>(lhs.fractional_) - static_cast<int64_t>(rhs.fractional_);
+        int64_t frac_diff =
+            static_cast<int64_t>(lhs.fractional_) - static_cast<int64_t>(rhs.fractional_);
 
         // Convert seconds to nanoseconds directly to avoid overflow
         // This implementation: sec_diff * 10^9 is safe for differences up to ~292 years
         int64_t total_nanos = sec_diff * static_cast<int64_t>(NANOSECONDS_PER_SECOND);
 
         // Add the fractional difference converted to nanoseconds
-        // Since fractional_ is always < 1 second (for real_time), frac_diff is in range [-10^12, +10^12]
-        // Dividing by 1000 gives range [-10^9, +10^9] which fits safely in int64_t
+        // Since fractional_ is always < 1 second (for real_time), frac_diff is in range [-10^12,
+        // +10^12] Dividing by 1000 gives range [-10^9, +10^9] which fits safely in int64_t
         total_nanos += frac_diff / static_cast<int64_t>(PICOSECONDS_PER_NANOSECOND);
 
         return std::chrono::nanoseconds(total_nanos);
     }
 
 private:
-    uint32_t seconds_{0};      // TSI component - default initialized to zero
-    uint64_t fractional_{0};    // TSF component - default initialized to zero
+    uint32_t seconds_{0};    // TSI component - default initialized to zero
+    uint64_t fractional_{0}; // TSF component - default initialized to zero
 
     // TSF-aware normalization
     constexpr void normalize() noexcept {
-        if constexpr (TSF == tsf_type::real_time) {
+        if constexpr (TSF == TsfType::real_time) {
             // Only normalize for real_time TSF
             if (fractional_ >= PICOSECONDS_PER_SECOND) {
-                uint32_t extra_seconds = static_cast<uint32_t>(fractional_ / PICOSECONDS_PER_SECOND);
+                uint32_t extra_seconds =
+                    static_cast<uint32_t>(fractional_ / PICOSECONDS_PER_SECOND);
 
                 // Check for overflow before adding
                 if (extra_seconds > (UINT32_MAX - seconds_)) {
@@ -278,14 +296,14 @@ private:
 };
 
 // Convenient type alias
-using TimeStampUTC = TimeStamp<tsi_type::utc, tsf_type::real_time>;
+using TimeStampUTC = TimeStamp<TsiType::utc, TsfType::real_time>;
 
 // Documentation for non-UTC timestamps:
 //
 // Any TimeStamp<TSI, TSF> combination can now be instantiated and used with basic API:
-//   - TimeStamp<tsi_type::gps, tsf_type::real_time> for GPS timestamps
-//   - TimeStamp<tsi_type::other, tsf_type::real_time> for TAI timestamps
-//   - TimeStamp<tsi_type::none, tsf_type::sample_count> for sample-count timestamps
+//   - TimeStamp<TsiType::gps, TsfType::real_time> for GPS timestamps
+//   - TimeStamp<TsiType::other, TsfType::real_time> for TAI timestamps
+//   - TimeStamp<TsiType::none, TsfType::sample_count> for sample-count timestamps
 //
 // Basic API available for ALL timestamp types:
 //   - fromComponents(seconds, fractional) - factory method
@@ -306,4 +324,4 @@ using TimeStampUTC = TimeStamp<tsi_type::utc, tsf_type::real_time>;
 // GPS timestamps have a different epoch (Jan 6, 1980 vs Jan 1, 1970 for UTC)
 // These require domain-specific handling that cannot be generalized.
 
-}  // namespace vrtio
+} // namespace vrtio

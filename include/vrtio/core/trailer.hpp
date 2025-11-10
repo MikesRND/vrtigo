@@ -9,7 +9,7 @@ namespace vrtio::trailer {
 
 // Bits 0-6: Associated Context Packets Count (7 bits)
 inline constexpr uint32_t context_packets_shift = 0;
-inline constexpr uint32_t context_packets_mask = 0x7F;  // 7 bits
+inline constexpr uint32_t context_packets_mask = 0x7F; // 7 bits
 
 // Bit 7: Reserved
 inline constexpr uint32_t reserved1_bit = 7;
@@ -34,7 +34,7 @@ inline constexpr uint32_t sample_loss_bit = 13;
 
 // Bits 14-15: Reserved
 inline constexpr uint32_t reserved2_shift = 14;
-inline constexpr uint32_t reserved2_mask = 0x03;  // 2 bits
+inline constexpr uint32_t reserved2_mask = 0x03; // 2 bits
 
 // Bit 16: Calibrated Time Indicator
 inline constexpr uint32_t calibrated_time_bit = 16;
@@ -50,7 +50,7 @@ inline constexpr uint32_t signal_detected_bit = 19;
 
 // Bits 20-31: Reserved
 inline constexpr uint32_t reserved3_shift = 20;
-inline constexpr uint32_t reserved3_mask = 0xFFF;  // 12 bits
+inline constexpr uint32_t reserved3_mask = 0xFFF; // 12 bits
 
 // Bit masks for direct manipulation
 inline constexpr uint32_t reference_lock_mask = 1U << reference_lock_bit;
@@ -76,7 +76,7 @@ inline constexpr uint32_t status_errors = over_range_mask | sample_loss_mask;
  * @param value The trailer word value
  * @return true if bit is set, false otherwise
  */
-template<uint32_t Bit>
+template <uint32_t Bit>
 constexpr bool get_bit(uint32_t value) noexcept {
     static_assert(Bit < 32, "Bit position must be less than 32");
     return (value >> Bit) & 0x01;
@@ -89,7 +89,7 @@ constexpr bool get_bit(uint32_t value) noexcept {
  * @param bit_value The bit value to set (true = 1, false = 0)
  * @return Updated trailer word
  */
-template<uint32_t Bit>
+template <uint32_t Bit>
 constexpr uint32_t set_bit(uint32_t value, bool bit_value) noexcept {
     static_assert(Bit < 32, "Bit position must be less than 32");
     return (value & ~(1U << Bit)) | (bit_value ? (1U << Bit) : 0);
@@ -102,7 +102,7 @@ constexpr uint32_t set_bit(uint32_t value, bool bit_value) noexcept {
  * @param value The trailer word value
  * @return The extracted field value
  */
-template<uint32_t Shift, uint32_t Mask>
+template <uint32_t Shift, uint32_t Mask>
 constexpr uint32_t get_field(uint32_t value) noexcept {
     return (value >> Shift) & Mask;
 }
@@ -115,7 +115,7 @@ constexpr uint32_t get_field(uint32_t value) noexcept {
  * @param field_value The field value to set
  * @return Updated trailer word
  */
-template<uint32_t Shift, uint32_t Mask>
+template <uint32_t Shift, uint32_t Mask>
 constexpr uint32_t set_field(uint32_t value, uint32_t field_value) noexcept {
     return (value & ~(Mask << Shift)) | ((field_value & Mask) << Shift);
 }
@@ -157,4 +157,4 @@ inline constexpr uint32_t create_good_status() noexcept {
     return status_all_good;
 }
 
-}  // namespace vrtio::trailer
+} // namespace vrtio::trailer

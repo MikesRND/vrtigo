@@ -1,23 +1,26 @@
 #pragma once
 
+#include "vrtio/core/endian.hpp"
+
+#include <string_view>
+
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <string_view>
-#include "vrtio/core/endian.hpp"
 
 namespace vrtio {
 
 /// Generic view for multi-word CIF fields (zero-copy)
-template<size_t Words>
+template <size_t Words>
 class FieldView {
     const uint8_t* base_;
     size_t offset_;
 
 public:
     constexpr FieldView(const uint8_t* base, size_t offset) noexcept
-        : base_(base), offset_(offset) {}
+        : base_(base),
+          offset_(offset) {}
 
     /// Read a 32-bit word at the given index
     uint32_t word(size_t index) const noexcept {
@@ -28,9 +31,7 @@ public:
     }
 
     /// Read a 32-bit word as signed integer
-    int32_t word_signed(size_t index) const noexcept {
-        return static_cast<int32_t>(word(index));
-    }
+    int32_t word_signed(size_t index) const noexcept { return static_cast<int32_t>(word(index)); }
 
     /// Read a 64-bit word starting at the given index (consumes 2 words)
     uint64_t word64(size_t index) const noexcept {
@@ -54,19 +55,13 @@ public:
     }
 
     /// Get raw pointer to field data
-    const uint8_t* data() const noexcept {
-        return base_ + offset_;
-    }
+    const uint8_t* data() const noexcept { return base_ + offset_; }
 
     /// Get size in bytes
-    constexpr size_t size_bytes() const noexcept {
-        return Words * 4;
-    }
+    constexpr size_t size_bytes() const noexcept { return Words * 4; }
 
     /// Get size in 32-bit words
-    constexpr size_t size_words() const noexcept {
-        return Words;
-    }
+    constexpr size_t size_words() const noexcept { return Words; }
 };
 
 /// View for variable-length lists (Context Association, Index List, etc.)
@@ -77,7 +72,9 @@ class VariableListView {
 
 public:
     constexpr VariableListView(const uint8_t* base, size_t offset, size_t count) noexcept
-        : base_(base), offset_(offset), count_(count) {}
+        : base_(base),
+          offset_(offset),
+          count_(count) {}
 
     /// Access element by index
     uint32_t operator[](size_t index) const noexcept {
@@ -88,14 +85,10 @@ public:
     }
 
     /// Get number of elements
-    size_t size() const noexcept {
-        return count_;
-    }
+    size_t size() const noexcept { return count_; }
 
     /// Check if list is empty
-    bool empty() const noexcept {
-        return count_ == 0;
-    }
+    bool empty() const noexcept { return count_ == 0; }
 };
 
 /// View for Context Association Lists field (CIF0 bit 9)
@@ -113,7 +106,9 @@ class GPSASCIIView {
 
 public:
     constexpr GPSASCIIView(const uint8_t* base, size_t offset, uint32_t count) noexcept
-        : base_(base), offset_(offset), char_count_(count) {}
+        : base_(base),
+          offset_(offset),
+          char_count_(count) {}
 
     /// Get GPS string as string_view (zero-copy)
     std::string_view as_string() const noexcept {
@@ -121,9 +116,7 @@ public:
     }
 
     /// Get character count
-    size_t size() const noexcept {
-        return char_count_;
-    }
+    size_t size() const noexcept { return char_count_; }
 };
 
 } // namespace vrtio

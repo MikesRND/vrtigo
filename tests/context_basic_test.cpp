@@ -3,26 +3,26 @@
 TEST_F(ContextPacketTest, BasicCompileTimePacket) {
     // Create a simple context packet with bandwidth and sample rate
     constexpr uint32_t cif0_mask = cif0::BANDWIDTH | cif0::SAMPLE_RATE;
-    using TestContext = ContextPacket<
-        true,           // Has stream ID
-        NoTimeStamp,    // No timestamp
-        NoClassId,      // No class ID
-        cif0_mask,      // CIF0
-        0,              // No CIF1
-        0,              // No CIF2
-        false           // No trailer
-    >;
+    using TestContext = ContextPacket<true,        // Has stream ID
+                                      NoTimeStamp, // No timestamp
+                                      NoClassId,   // No class ID
+                                      cif0_mask,   // CIF0
+                                      0,           // No CIF1
+                                      0,           // No CIF2
+                                      false        // No trailer
+                                      >;
 
     TestContext packet(buffer.data());
 
     // Check packet size
-    EXPECT_EQ(TestContext::size_words, 1 + 1 + 1 + 2 + 2);  // header + stream + cif0 + bandwidth + sample_rate
+    EXPECT_EQ(TestContext::size_words,
+              1 + 1 + 1 + 2 + 2); // header + stream + cif0 + bandwidth + sample_rate
     EXPECT_EQ(TestContext::size_bytes, TestContext::size_words * 4);
 
     // Set fields
     packet.set_stream_id(0x12345678);
-    get(packet, field::bandwidth).set_value(20'000'000.0);      // 20 MHz
-    get(packet, field::sample_rate).set_value(10'000'000.0);    // 10 MSPS
+    get(packet, field::bandwidth).set_value(20'000'000.0);   // 20 MHz
+    get(packet, field::sample_rate).set_value(10'000'000.0); // 10 MSPS
 
     // Verify fields
     EXPECT_EQ(packet.stream_id(), 0x12345678);
@@ -35,23 +35,23 @@ TEST_F(ContextPacketTest, PacketWithClassId) {
     using TestClassId = ClassId<0x123456, 0xABCDEF00>;
 
     constexpr uint32_t cif0_mask = cif0::BANDWIDTH;
-    using TestContext = ContextPacket<
-        true,           // Has stream ID
-        NoTimeStamp,    // No timestamp
-        TestClassId,    // Has class ID
-        cif0_mask,      // CIF0
-        0,              // No CIF1
-        0,              // No CIF2
-        false           // No trailer
-    >;
+    using TestContext = ContextPacket<true,        // Has stream ID
+                                      NoTimeStamp, // No timestamp
+                                      TestClassId, // Has class ID
+                                      cif0_mask,   // CIF0
+                                      0,           // No CIF1
+                                      0,           // No CIF2
+                                      false        // No trailer
+                                      >;
 
     TestContext packet(buffer.data());
 
     // Check that class ID increases packet size
-    EXPECT_EQ(TestContext::size_words, 1 + 1 + 2 + 1 + 2);  // header + stream + class_id + cif0 + bandwidth
+    EXPECT_EQ(TestContext::size_words,
+              1 + 1 + 2 + 1 + 2); // header + stream + class_id + cif0 + bandwidth
 
     packet.set_stream_id(0x87654321);
-    get(packet, field::bandwidth).set_value(40'000'000.0);  // 40 MHz
+    get(packet, field::bandwidth).set_value(40'000'000.0); // 40 MHz
 
     EXPECT_EQ(packet.stream_id(), 0x87654321);
     EXPECT_DOUBLE_EQ(get(packet, field::bandwidth).value(), 40'000'000.0);
@@ -62,8 +62,7 @@ TEST_F(ContextPacketTest, RuntimeParserBasic) {
     // Header: extension context packet (type 5), which has stream ID per spec
     // Stream ID presence is determined by packet type (odd=has, even=no), not bit 25
     uint32_t header =
-        (static_cast<uint32_t>(PacketType::ExtensionContext) << header::PACKET_TYPE_SHIFT) |
-        7;
+        (static_cast<uint32_t>(PacketType::ExtensionContext) << header::packet_type_shift) | 7;
     cif::write_u32_safe(buffer.data(), 0, header);
 
     // Stream ID
@@ -81,7 +80,7 @@ TEST_F(ContextPacketTest, RuntimeParserBasic) {
 
     // Parse with ContextPacketView
     ContextPacketView view(buffer.data(), 7 * 4);
-    EXPECT_EQ(view.error(), validation_error::none);
+    EXPECT_EQ(view.error(), ValidationError::none);
 
     // Check parsed values
     EXPECT_TRUE(view.has_stream_id());
@@ -107,7 +106,8 @@ TEST_F(ContextPacketTest, SizeFieldValidation) {
     // Create packet with wrong size field in header
     // Actual structure: header (1) + CIF0 (1) + bandwidth (2) = 4 words
     // But header claims 10 words (mismatch!)
-    uint32_t header = (static_cast<uint32_t>(PacketType::Context) << header::PACKET_TYPE_SHIFT) | 10;  // type=4, WRONG size=10 words
+    uint32_t header = (static_cast<uint32_t>(PacketType::Context) << header::packet_type_shift) |
+                      10; // type=4, WRONG size=10 words
     cif::write_u32_safe(buffer.data(), 0, header);
 
     uint32_t cif0_mask = cif0::BANDWIDTH;
@@ -116,23 +116,23 @@ TEST_F(ContextPacketTest, SizeFieldValidation) {
 
     // Provide buffer large enough for header's claim, so we get past buffer_too_small check
     ContextPacketView view(buffer.data(), 10 * 4);
-    EXPECT_EQ(view.error(), validation_error::size_field_mismatch);
+    EXPECT_EQ(view.error(), ValidationError::size_field_mismatch);
 }
 
 TEST_F(ContextPacketTest, BufferTooSmall) {
-    uint32_t header = (static_cast<uint32_t>(PacketType::Context) << header::PACKET_TYPE_SHIFT) | 10;  // type=4, size=10 words
+    uint32_t header = (static_cast<uint32_t>(PacketType::Context) << header::packet_type_shift) |
+                      10; // type=4, size=10 words
     cif::write_u32_safe(buffer.data(), 0, header);
 
     // Provide buffer smaller than declared size
-    ContextPacketView view(buffer.data(), 3 * 4);  // Only 3 words provided
-    EXPECT_EQ(view.error(), validation_error::buffer_too_small);
+    ContextPacketView view(buffer.data(), 3 * 4); // Only 3 words provided
+    EXPECT_EQ(view.error(), ValidationError::buffer_too_small);
 }
 
 TEST_F(ContextPacketTest, InvalidPacketType) {
-    uint32_t header = (0U << 28) | 3;  // type=0 (not context), size=3
+    uint32_t header = (0U << 28) | 3; // type=0 (not context), size=3
     cif::write_u32_safe(buffer.data(), 0, header);
 
     ContextPacketView view(buffer.data(), 3 * 4);
-    EXPECT_EQ(view.error(), validation_error::invalid_packet_type);
+    EXPECT_EQ(view.error(), ValidationError::invalid_packet_type);
 }
-

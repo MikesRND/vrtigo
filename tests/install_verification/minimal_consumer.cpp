@@ -2,10 +2,11 @@
 // This is built out-of-tree using find_package(vrtio) to ensure
 // downstream consumers can use the library as a header-only dependency
 
+#include <array>
+#include <iostream>
+
 #include <vrtio.hpp>
 #include <vrtio/version.hpp>
-#include <iostream>
-#include <array>
 
 int main() {
     std::cout << "VRTIO Install Verification\n";
@@ -13,11 +14,9 @@ int main() {
     std::cout << "vrtio version: " << vrtio::version_string << "\n\n";
 
     // Create a minimal packet to verify headers compile and link correctly
-    using MinimalPacket = vrtio::SignalDataPacketNoId<
-        vrtio::NoTimeStamp,
-        vrtio::Trailer::None,
-        64  // 256 bytes payload
-    >;
+    using MinimalPacket = vrtio::SignalDataPacketNoId<vrtio::NoTimeStamp, vrtio::Trailer::None,
+                                                      64 // 256 bytes payload
+                                                      >;
 
     std::cout << "Creating minimal packet...\n";
     std::cout << "  Packet size: " << MinimalPacket::size_bytes << " bytes\n";

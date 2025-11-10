@@ -1,7 +1,8 @@
-#include <vrtio.hpp>
-#include <gtest/gtest.h>
 #include <array>
+
 #include <cmath>
+#include <gtest/gtest.h>
+#include <vrtio.hpp>
 
 using namespace vrtio;
 
@@ -20,9 +21,7 @@ protected:
 // =============================================================================
 
 TEST_F(InterpretedValueTest, BandwidthInterpretedRead) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -39,9 +38,7 @@ TEST_F(InterpretedValueTest, BandwidthInterpretedRead) {
 }
 
 TEST_F(InterpretedValueTest, BandwidthInterpretedWrite) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -54,20 +51,18 @@ TEST_F(InterpretedValueTest, BandwidthInterpretedWrite) {
 }
 
 TEST_F(InterpretedValueTest, BandwidthRoundTrip) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
     // Test various frequencies for round-trip precision
     const double test_frequencies[] = {
-        0.0,              // DC
-        1'000'000.0,      // 1 MHz
-        10'000'000.0,     // 10 MHz
-        100'000'000.0,    // 100 MHz
-        1'000'000'000.0,  // 1 GHz
-        6'000'000'000.0   // 6 GHz
+        0.0,             // DC
+        1'000'000.0,     // 1 MHz
+        10'000'000.0,    // 10 MHz
+        100'000'000.0,   // 100 MHz
+        1'000'000'000.0, // 1 GHz
+        6'000'000'000.0  // 6 GHz
     };
 
     for (double freq : test_frequencies) {
@@ -78,9 +73,7 @@ TEST_F(InterpretedValueTest, BandwidthRoundTrip) {
 }
 
 TEST_F(InterpretedValueTest, BandwidthOperatorDereference) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -95,16 +88,14 @@ TEST_F(InterpretedValueTest, BandwidthOperatorDereference) {
 }
 
 TEST_F(InterpretedValueTest, BandwidthConversionPrecision) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
     // Test Q52.12 conversion accuracy
 
     // Test 1: Exact value (divisible by 4096)
-    double exact_hz = 4096.0 * 1000.0;  // 4'096'000 Hz
+    double exact_hz = 4096.0 * 1000.0; // 4'096'000 Hz
     get(packet, field::bandwidth).set_value(exact_hz);
     EXPECT_DOUBLE_EQ(get(packet, field::bandwidth).value(), exact_hz);
 
@@ -117,9 +108,7 @@ TEST_F(InterpretedValueTest, BandwidthConversionPrecision) {
 }
 
 TEST_F(InterpretedValueTest, BandwidthEdgeCases) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -141,9 +130,7 @@ TEST_F(InterpretedValueTest, BandwidthEdgeCases) {
 // =============================================================================
 
 TEST_F(InterpretedValueTest, SampleRateInterpretedRead) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::SAMPLE_RATE, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::SAMPLE_RATE, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -160,9 +147,7 @@ TEST_F(InterpretedValueTest, SampleRateInterpretedRead) {
 }
 
 TEST_F(InterpretedValueTest, SampleRateInterpretedWrite) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::SAMPLE_RATE, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::SAMPLE_RATE, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -175,21 +160,19 @@ TEST_F(InterpretedValueTest, SampleRateInterpretedWrite) {
 }
 
 TEST_F(InterpretedValueTest, SampleRateRoundTrip) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::SAMPLE_RATE, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::SAMPLE_RATE, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
     // Test various sample rates for round-trip precision
     const double test_rates[] = {
-        0.0,              // DC
-        1'000'000.0,      // 1 MSPS
-        10'000'000.0,     // 10 MSPS
-        50'000'000.0,     // 50 MSPS
-        100'000'000.0,    // 100 MSPS
-        1'000'000'000.0,  // 1 GSPS
-        3'000'000'000.0   // 3 GSPS
+        0.0,             // DC
+        1'000'000.0,     // 1 MSPS
+        10'000'000.0,    // 10 MSPS
+        50'000'000.0,    // 50 MSPS
+        100'000'000.0,   // 100 MSPS
+        1'000'000'000.0, // 1 GSPS
+        3'000'000'000.0  // 3 GSPS
     };
 
     for (double rate : test_rates) {
@@ -200,9 +183,7 @@ TEST_F(InterpretedValueTest, SampleRateRoundTrip) {
 }
 
 TEST_F(InterpretedValueTest, SampleRateOperatorDereference) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::SAMPLE_RATE, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::SAMPLE_RATE, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -217,16 +198,14 @@ TEST_F(InterpretedValueTest, SampleRateOperatorDereference) {
 }
 
 TEST_F(InterpretedValueTest, SampleRateConversionPrecision) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::SAMPLE_RATE, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::SAMPLE_RATE, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
     // Test Q52.12 conversion accuracy
 
     // Test 1: Exact value (divisible by 4096)
-    double exact_hz = 4096.0 * 1000.0;  // 4'096'000 Hz
+    double exact_hz = 4096.0 * 1000.0; // 4'096'000 Hz
     get(packet, field::sample_rate).set_value(exact_hz);
     EXPECT_DOUBLE_EQ(get(packet, field::sample_rate).value(), exact_hz);
 
@@ -239,23 +218,21 @@ TEST_F(InterpretedValueTest, SampleRateConversionPrecision) {
 }
 
 TEST_F(InterpretedValueTest, SampleRateTypicalADCRates) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::SAMPLE_RATE, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::SAMPLE_RATE, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
     // Test common ADC sample rates
     const double adc_rates[] = {
-        48'000.0,         // Audio: 48 kHz
-        192'000.0,        // High-res audio: 192 kHz
-        2'400'000.0,      // 2.4 MSPS
-        10'000'000.0,     // 10 MSPS
-        100'000'000.0,    // 100 MSPS
-        250'000'000.0,    // 250 MSPS
-        500'000'000.0,    // 500 MSPS
-        1'000'000'000.0,  // 1 GSPS
-        2'500'000'000.0   // 2.5 GSPS
+        48'000.0,        // Audio: 48 kHz
+        192'000.0,       // High-res audio: 192 kHz
+        2'400'000.0,     // 2.4 MSPS
+        10'000'000.0,    // 10 MSPS
+        100'000'000.0,   // 100 MSPS
+        250'000'000.0,   // 250 MSPS
+        500'000'000.0,   // 500 MSPS
+        1'000'000'000.0, // 1 GSPS
+        2'500'000'000.0  // 2.5 GSPS
     };
 
     for (double rate : adc_rates) {
@@ -266,9 +243,7 @@ TEST_F(InterpretedValueTest, SampleRateTypicalADCRates) {
 }
 
 TEST_F(InterpretedValueTest, SampleRateEdgeCases) {
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::SAMPLE_RATE, 0, 0, 0>;
+    using TestContext = ContextPacket<true, NoTimeStamp, NoClassId, cif0::SAMPLE_RATE, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
@@ -287,7 +262,7 @@ TEST_F(InterpretedValueTest, SampleRateEdgeCases) {
     // Very low sample rate (1 Hz - theoretical minimum)
     get(packet, field::sample_rate).set_value(1.0);
     double retrieved = get(packet, field::sample_rate).value();
-    EXPECT_NEAR(retrieved, 1.0, 0.25);  // Within Q52.12 resolution
+    EXPECT_NEAR(retrieved, 1.0, 0.25); // Within Q52.12 resolution
 }
 
 // =============================================================================
@@ -296,17 +271,15 @@ TEST_F(InterpretedValueTest, SampleRateEdgeCases) {
 
 TEST_F(InterpretedValueTest, BandwidthAndSampleRateTogether) {
     // Typical use case: both bandwidth and sample rate in same packet
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH | cif0::SAMPLE_RATE,
-        0, 0, 0>;
+    using TestContext =
+        ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH | cif0::SAMPLE_RATE, 0, 0, 0>;
 
     TestContext packet(buffer.data());
 
     // Set bandwidth and sample rate
     // Typical: sample rate >= bandwidth (Nyquist)
-    get(packet, field::bandwidth).set_value(20'000'000.0);    // 20 MHz bandwidth
-    get(packet, field::sample_rate).set_value(25'000'000.0);  // 25 MSPS (1.25x oversampling)
+    get(packet, field::bandwidth).set_value(20'000'000.0);   // 20 MHz bandwidth
+    get(packet, field::sample_rate).set_value(25'000'000.0); // 25 MSPS (1.25x oversampling)
 
     // Verify both fields
     EXPECT_NEAR(get(packet, field::bandwidth).value(), 20'000'000.0, 1.0);
@@ -320,9 +293,8 @@ TEST_F(InterpretedValueTest, BandwidthAndSampleRateTogether) {
 
 TEST_F(InterpretedValueTest, RuntimeParserIntegration) {
     // Build packet with compile-time type
-    using TestContext = ContextPacket<
-        true, NoTimeStamp, NoClassId,
-        cif0::BANDWIDTH | cif0::SAMPLE_RATE, 0, 0, 0>;
+    using TestContext =
+        ContextPacket<true, NoTimeStamp, NoClassId, cif0::BANDWIDTH | cif0::SAMPLE_RATE, 0, 0, 0>;
 
     TestContext tx_packet(buffer.data());
 
@@ -332,7 +304,7 @@ TEST_F(InterpretedValueTest, RuntimeParserIntegration) {
 
     // Parse with runtime view
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.error(), validation_error::none);
+    EXPECT_EQ(view.error(), ValidationError::none);
 
     // Verify values accessible from runtime parser
     auto bw = get(view, field::bandwidth);

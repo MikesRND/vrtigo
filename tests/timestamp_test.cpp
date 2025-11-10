@@ -1,15 +1,16 @@
-#include <gtest/gtest.h>
-#include <vrtio.hpp>
 #include <chrono>
 #include <thread>
+
+#include <gtest/gtest.h>
+#include <vrtio.hpp>
 
 using namespace vrtio;
 
 // Test fixture for TimeStamp tests
 class TimeStampTest : public ::testing::Test {
 protected:
-    static constexpr uint32_t test_seconds = 1699000000;  // Example timestamp
-    static constexpr uint64_t test_picoseconds = 500'000'000'000ULL;  // 500 microseconds
+    static constexpr uint32_t test_seconds = 1699000000;             // Example timestamp
+    static constexpr uint64_t test_picoseconds = 500'000'000'000ULL; // 500 microseconds
 };
 
 // Construction tests
@@ -30,8 +31,8 @@ TEST_F(TimeStampTest, NormalizationOnConstruction) {
     uint64_t excess_picos = 1'500'000'000'000ULL;
     TimeStampUTC ts(100, excess_picos);
 
-    EXPECT_EQ(ts.seconds(), 101);  // Should add 1 second
-    EXPECT_EQ(ts.fractional(), 500'000'000'000ULL);  // Remaining 500 microseconds
+    EXPECT_EQ(ts.seconds(), 101);                   // Should add 1 second
+    EXPECT_EQ(ts.fractional(), 500'000'000'000ULL); // Remaining 500 microseconds
 }
 
 // Factory method tests
@@ -53,10 +54,10 @@ TEST_F(TimeStampTest, Now) {
     auto after = std::chrono::system_clock::now();
 
     // Convert bounds to seconds
-    auto before_sec = std::chrono::duration_cast<std::chrono::seconds>(
-        before.time_since_epoch()).count();
-    auto after_sec = std::chrono::duration_cast<std::chrono::seconds>(
-        after.time_since_epoch()).count();
+    auto before_sec =
+        std::chrono::duration_cast<std::chrono::seconds>(before.time_since_epoch()).count();
+    auto after_sec =
+        std::chrono::duration_cast<std::chrono::seconds>(after.time_since_epoch()).count();
 
     // Timestamp should be between before and after
     EXPECT_GE(ts.seconds(), static_cast<uint32_t>(before_sec));
@@ -112,8 +113,8 @@ TEST_F(TimeStampTest, LessThan) {
     TimeStampUTC ts2(100, 600);
     TimeStampUTC ts3(101, 400);
 
-    EXPECT_LT(ts1, ts2);  // Same seconds, different picoseconds
-    EXPECT_LT(ts1, ts3);  // Different seconds
+    EXPECT_LT(ts1, ts2); // Same seconds, different picoseconds
+    EXPECT_LT(ts1, ts3); // Different seconds
     EXPECT_LT(ts2, ts3);
 }
 
@@ -122,53 +123,54 @@ TEST_F(TimeStampTest, GreaterThan) {
     TimeStampUTC ts2(100, 500);
     TimeStampUTC ts3(99, 700);
 
-    EXPECT_GT(ts1, ts2);  // Same seconds, different picoseconds
-    EXPECT_GT(ts1, ts3);  // Different seconds
+    EXPECT_GT(ts1, ts2); // Same seconds, different picoseconds
+    EXPECT_GT(ts1, ts3); // Different seconds
 }
 
 // Arithmetic operation tests
 TEST_F(TimeStampTest, AdditionWithDuration) {
-    TimeStampUTC ts(100, 500'000'000'000ULL);  // 100 seconds + 500 microseconds
+    TimeStampUTC ts(100, 500'000'000'000ULL); // 100 seconds + 500 microseconds
 
     // Add 1 millisecond (1,000,000 nanoseconds = 1,000,000,000 picoseconds)
     auto result = ts + std::chrono::milliseconds(1);
 
     EXPECT_EQ(result.seconds(), 100);
-    EXPECT_EQ(result.fractional(), 501'000'000'000ULL);  // 501 microseconds
+    EXPECT_EQ(result.fractional(), 501'000'000'000ULL); // 501 microseconds
 }
 
 TEST_F(TimeStampTest, AdditionWithOverflow) {
-    TimeStampUTC ts(100, 999'000'000'000ULL);  // 100 seconds + 999 milliseconds
+    TimeStampUTC ts(100, 999'000'000'000ULL); // 100 seconds + 999 milliseconds
 
     // Add 2 milliseconds, should overflow to next second
     auto result = ts + std::chrono::milliseconds(2);
 
     EXPECT_EQ(result.seconds(), 101);
-    EXPECT_EQ(result.fractional(), 1'000'000'000ULL);  // 1 millisecond
+    EXPECT_EQ(result.fractional(), 1'000'000'000ULL); // 1 millisecond
 }
 
 TEST_F(TimeStampTest, SubtractionWithDuration) {
-    TimeStampUTC ts(100, 500'000'000'000ULL);  // 100 seconds + 500 milliseconds
+    TimeStampUTC ts(100, 500'000'000'000ULL); // 100 seconds + 500 milliseconds
 
     // Subtract 100 microseconds (100,000,000 picoseconds)
     auto result = ts - std::chrono::microseconds(100);
 
     EXPECT_EQ(result.seconds(), 100);
-    EXPECT_EQ(result.fractional(), 499'900'000'000ULL);  // 499.9 milliseconds
+    EXPECT_EQ(result.fractional(), 499'900'000'000ULL); // 499.9 milliseconds
 }
 
 TEST_F(TimeStampTest, SubtractionWithBorrow) {
-    TimeStampUTC ts(100, 100'000'000ULL);  // 100 seconds + 100 microseconds (100,000,000 picoseconds)
+    TimeStampUTC ts(100,
+                    100'000'000ULL); // 100 seconds + 100 microseconds (100,000,000 picoseconds)
 
     // Subtract 200 microseconds (200,000,000 picoseconds), should borrow from seconds
     auto result = ts - std::chrono::microseconds(200);
 
     EXPECT_EQ(result.seconds(), 99);
-    EXPECT_EQ(result.fractional(), 999'900'000'000ULL);  // 999.9 milliseconds
+    EXPECT_EQ(result.fractional(), 999'900'000'000ULL); // 999.9 milliseconds
 }
 
 TEST_F(TimeStampTest, SubtractionUnderflow) {
-    TimeStampUTC ts(1, 0);  // 1 second
+    TimeStampUTC ts(1, 0); // 1 second
 
     // Subtract 2 seconds, should clamp to zero
     auto result = ts - std::chrono::seconds(2);
@@ -178,33 +180,34 @@ TEST_F(TimeStampTest, SubtractionUnderflow) {
 }
 
 TEST_F(TimeStampTest, DifferenceBetweenTimestamps) {
-    TimeStampUTC ts1(100, 500'000'000'000ULL);  // 100 seconds + 0.5 seconds
-    TimeStampUTC ts2(101, 200'000'000'000ULL);  // 101 seconds + 0.2 seconds
+    TimeStampUTC ts1(100, 500'000'000'000ULL); // 100 seconds + 0.5 seconds
+    TimeStampUTC ts2(101, 200'000'000'000ULL); // 101 seconds + 0.2 seconds
 
     auto diff = ts2 - ts1;
 
     // Difference should be 0.7 seconds = 700,000,000 nanoseconds
     // (101.2 - 100.5 = 0.7 seconds)
-    EXPECT_EQ(diff.count(), 700'000'000);  // in nanoseconds
+    EXPECT_EQ(diff.count(), 700'000'000); // in nanoseconds
 }
 
 // Test large timestamp differences that would have caused overflow in old implementation
 TEST_F(TimeStampTest, LargeTimestampDifferences) {
     // Test 150 days difference (> 106 days which was the old overflow threshold)
-    uint32_t days_150_seconds = 150 * 24 * 3600;  // 12,960,000 seconds
+    uint32_t days_150_seconds = 150 * 24 * 3600; // 12,960,000 seconds
     TimeStampUTC ts1(1000000000, 100'000'000'000ULL);
     TimeStampUTC ts2(1000000000 + days_150_seconds, 200'000'000'000ULL);
 
     auto diff = ts2 - ts1;
 
     // Expected: 150 days + 0.1 seconds in nanoseconds
-    int64_t expected_nanos = static_cast<int64_t>(days_150_seconds) * 1'000'000'000LL + 100'000'000LL;
+    int64_t expected_nanos =
+        static_cast<int64_t>(days_150_seconds) * 1'000'000'000LL + 100'000'000LL;
     EXPECT_EQ(diff.count(), expected_nanos);
 }
 
 TEST_F(TimeStampTest, YearLongTimestampDifference) {
     // Test 1 year difference
-    uint32_t year_seconds = 365 * 24 * 3600;  // 31,536,000 seconds
+    uint32_t year_seconds = 365 * 24 * 3600; // 31,536,000 seconds
     TimeStampUTC ts1(500000000, 0);
     TimeStampUTC ts2(500000000 + year_seconds, 0);
 
@@ -217,9 +220,9 @@ TEST_F(TimeStampTest, YearLongTimestampDifference) {
 
 TEST_F(TimeStampTest, DecadeLongTimestampDifference) {
     // Test 10 year difference
-    uint32_t decade_seconds = 10 * 365 * 24 * 3600;  // ~315,360,000 seconds
-    TimeStampUTC ts1(100000000, 999'999'999'999ULL);  // With max picoseconds
-    TimeStampUTC ts2(100000000 + decade_seconds, 1'000'000'000ULL);  // Small picoseconds
+    uint32_t decade_seconds = 10 * 365 * 24 * 3600;                 // ~315,360,000 seconds
+    TimeStampUTC ts1(100000000, 999'999'999'999ULL);                // With max picoseconds
+    TimeStampUTC ts2(100000000 + decade_seconds, 1'000'000'000ULL); // Small picoseconds
 
     auto diff = ts2 - ts1;
 
@@ -230,14 +233,15 @@ TEST_F(TimeStampTest, DecadeLongTimestampDifference) {
 
 TEST_F(TimeStampTest, NegativeLargeTimestampDifference) {
     // Test large negative difference (ts1 > ts2)
-    uint32_t days_200_seconds = 200 * 24 * 3600;  // 17,280,000 seconds
+    uint32_t days_200_seconds = 200 * 24 * 3600; // 17,280,000 seconds
     TimeStampUTC ts1(2000000000, 500'000'000'000ULL);
     TimeStampUTC ts2(2000000000 - days_200_seconds, 400'000'000'000ULL);
 
     auto diff = ts2 - ts1;
 
     // Expected: -200 days - 0.1 seconds in nanoseconds
-    int64_t expected_nanos = -static_cast<int64_t>(days_200_seconds) * 1'000'000'000LL - 100'000'000LL;
+    int64_t expected_nanos =
+        -static_cast<int64_t>(days_200_seconds) * 1'000'000'000LL - 100'000'000LL;
     EXPECT_EQ(diff.count(), expected_nanos);
 }
 
@@ -247,7 +251,7 @@ TEST_F(TimeStampTest, MaxSafeTimestampDifference) {
     // Note: uint32_t max is ~136 years, so test with that limit instead
 
     TimeStampUTC ts1(0, 0);
-    TimeStampUTC ts2(UINT32_MAX, 0);  // Maximum possible seconds (~136 years)
+    TimeStampUTC ts2(UINT32_MAX, 0); // Maximum possible seconds (~136 years)
 
     auto diff = ts2 - ts1;
 
@@ -258,11 +262,7 @@ TEST_F(TimeStampTest, MaxSafeTimestampDifference) {
 
 // Integration with SignalPacket tests
 TEST_F(TimeStampTest, PacketIntegration) {
-    using PacketType = SignalDataPacket<
-        TimeStampUTC,
-        vrtio::Trailer::None,
-        256
-    >;
+    using PacketType = SignalDataPacket<TimeStampUTC, vrtio::Trailer::None, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
     PacketType packet(buffer.data());
@@ -278,20 +278,14 @@ TEST_F(TimeStampTest, PacketIntegration) {
 }
 
 TEST_F(TimeStampTest, BuilderIntegration) {
-    using PacketType = SignalDataPacket<
-        TimeStampUTC,
-        vrtio::Trailer::None,
-        256
-    >;
+    using PacketType = SignalDataPacket<TimeStampUTC, vrtio::Trailer::None, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
     TimeStampUTC ts(test_seconds, test_picoseconds);
 
-    auto packet = PacketBuilder<PacketType>(buffer.data())
-        .stream_id(0x12345678)
-        .timestamp(ts)
-        .build();
+    auto packet =
+        PacketBuilder<PacketType>(buffer.data()).stream_id(0x12345678).timestamp(ts).build();
 
     auto read_ts = packet.getTimeStamp();
     EXPECT_EQ(read_ts.seconds(), test_seconds);
@@ -321,23 +315,20 @@ TEST_F(TimeStampTest, NonUTCTimestampsNotImplemented) {
 TEST_F(TimeStampTest, GPSTimestampPacketStructure) {
     // GPS timestamps can be used to configure packet structure
     // even though the timestamp type itself is not fully implemented
-    using GPSPacket = SignalDataPacket<
-        TimeStamp<tsi_type::gps, tsf_type::real_time>,
-        vrtio::Trailer::None,
-        256
-    >;
+    using GPSPacket =
+        SignalDataPacket<TimeStamp<TsiType::gps, TsfType::real_time>, vrtio::Trailer::None, 256>;
 
     // This correctly sets TSI=2, TSF=2 in the packet header
-    static_assert(GPSPacket::tsi_type_v == tsi_type::gps);
-    static_assert(GPSPacket::tsf_type_v == tsf_type::real_time);
+    static_assert(GPSPacket::tsi_type_v == TsiType::gps);
+    static_assert(GPSPacket::tsf_type_v == TsfType::real_time);
 
     alignas(4) std::array<uint8_t, GPSPacket::size_bytes> buffer{};
     GPSPacket packet(buffer.data());
 
     // Use typed timestamp methods for GPS values
-    uint32_t gps_seconds = 1234567890;  // GPS seconds since Jan 6, 1980
+    uint32_t gps_seconds = 1234567890; // GPS seconds since Jan 6, 1980
     uint64_t gps_picoseconds = 500'000'000'000ULL;
-    using GPSTimeStamp = TimeStamp<tsi_type::gps, tsf_type::real_time>;
+    using GPSTimeStamp = TimeStamp<TsiType::gps, TsfType::real_time>;
     GPSTimeStamp gps_ts(gps_seconds, gps_picoseconds);
     packet.setTimeStamp(gps_ts);
 
@@ -358,64 +349,64 @@ TEST_F(TimeStampTest, GPSTimestampPacketStructure) {
 
 // Negative duration arithmetic tests (testing the signed/unsigned fix)
 TEST_F(TimeStampTest, AddSmallNegativeDuration) {
-    TimeStampUTC ts(100, 500'000'000'000ULL);  // 100.5 seconds
+    TimeStampUTC ts(100, 500'000'000'000ULL); // 100.5 seconds
 
     // Add -1 nanosecond (should subtract properly, not wrap to huge positive)
     auto result = ts + std::chrono::nanoseconds(-1);
 
     EXPECT_EQ(result.seconds(), 100);
-    EXPECT_EQ(result.fractional(), 499'999'999'000ULL);  // 1 nanosecond less
+    EXPECT_EQ(result.fractional(), 499'999'999'000ULL); // 1 nanosecond less
 }
 
 TEST_F(TimeStampTest, SubtractNegativeDuration) {
-    TimeStampUTC ts(100, 500'000'000'000ULL);  // 100.5 seconds
+    TimeStampUTC ts(100, 500'000'000'000ULL); // 100.5 seconds
 
     // Subtract -1 millisecond (double negative = addition)
     auto result = ts - std::chrono::milliseconds(-1);
 
     EXPECT_EQ(result.seconds(), 100);
-    EXPECT_EQ(result.fractional(), 501'000'000'000ULL);  // Added 1 millisecond
+    EXPECT_EQ(result.fractional(), 501'000'000'000ULL); // Added 1 millisecond
 }
 
 TEST_F(TimeStampTest, AddLargeNegativeDuration) {
-    TimeStampUTC ts(1000, 200'000'000'000ULL);  // 1000.2 seconds
+    TimeStampUTC ts(1000, 200'000'000'000ULL); // 1000.2 seconds
 
     // Add -10 seconds
     auto result = ts + std::chrono::seconds(-10);
 
     EXPECT_EQ(result.seconds(), 990);
-    EXPECT_EQ(result.fractional(), 200'000'000'000ULL);  // Picoseconds unchanged
+    EXPECT_EQ(result.fractional(), 200'000'000'000ULL); // Picoseconds unchanged
 }
 
 TEST_F(TimeStampTest, MixedPositiveNegativeOperations) {
-    TimeStampUTC ts(500, 0);  // 500 seconds exactly
+    TimeStampUTC ts(500, 0); // 500 seconds exactly
 
     // Add 5 seconds then subtract 3 seconds
     ts += std::chrono::seconds(5);
     ts -= std::chrono::seconds(3);
 
-    EXPECT_EQ(ts.seconds(), 502);  // 500 + 5 - 3 = 502
+    EXPECT_EQ(ts.seconds(), 502); // 500 + 5 - 3 = 502
     EXPECT_EQ(ts.fractional(), 0);
 
     // Now add negative duration
     ts += std::chrono::seconds(-2);
 
-    EXPECT_EQ(ts.seconds(), 500);  // Back to 500
+    EXPECT_EQ(ts.seconds(), 500); // Back to 500
     EXPECT_EQ(ts.fractional(), 0);
 }
 
 TEST_F(TimeStampTest, NegativeDurationWithBorrow) {
-    TimeStampUTC ts(100, 100'000'000ULL);  // 100 seconds + 100 microseconds
+    TimeStampUTC ts(100, 100'000'000ULL); // 100 seconds + 100 microseconds
 
     // Add -500 microseconds (should borrow from seconds)
     auto result = ts + std::chrono::microseconds(-500);
 
     EXPECT_EQ(result.seconds(), 99);
-    EXPECT_EQ(result.fractional(), 999'600'000'000ULL);  // Borrowed and subtracted
+    EXPECT_EQ(result.fractional(), 999'600'000'000ULL); // Borrowed and subtracted
 }
 
 TEST_F(TimeStampTest, LargeNegativeDurationNearZero) {
-    TimeStampUTC ts(5, 0);  // 5 seconds
+    TimeStampUTC ts(5, 0); // 5 seconds
 
     // Add -10 seconds (should clamp to zero, not underflow)
     auto result = ts + std::chrono::seconds(-10);
@@ -431,35 +422,35 @@ TEST_F(TimeStampTest, CompoundAssignmentNegativeDuration) {
     ts += std::chrono::milliseconds(-500);
 
     EXPECT_EQ(ts.seconds(), 999);
-    EXPECT_EQ(ts.fractional(), 500'000'000'000ULL);  // 0.5 seconds
+    EXPECT_EQ(ts.fractional(), 500'000'000'000ULL); // 0.5 seconds
 
     // Another compound assignment
-    ts -= std::chrono::milliseconds(-250);  // Double negative = addition
+    ts -= std::chrono::milliseconds(-250); // Double negative = addition
 
     EXPECT_EQ(ts.seconds(), 999);
-    EXPECT_EQ(ts.fractional(), 750'000'000'000ULL);  // 0.75 seconds
+    EXPECT_EQ(ts.fractional(), 750'000'000'000ULL); // 0.75 seconds
 }
 
 TEST_F(TimeStampTest, VerySmallNegativeDurations) {
-    TimeStampUTC ts(100, 1000);  // 100 seconds + 1000 picoseconds
+    TimeStampUTC ts(100, 1000); // 100 seconds + 1000 picoseconds
 
     // Subtract 1 nanosecond (1000 picoseconds)
     ts -= std::chrono::nanoseconds(1);
 
     EXPECT_EQ(ts.seconds(), 100);
-    EXPECT_EQ(ts.fractional(), 0);  // Exactly zero picoseconds
+    EXPECT_EQ(ts.fractional(), 0); // Exactly zero picoseconds
 
     // Subtract another nanosecond (should borrow)
     ts -= std::chrono::nanoseconds(1);
 
     EXPECT_EQ(ts.seconds(), 99);
-    EXPECT_EQ(ts.fractional(), 999'999'999'000ULL);  // Borrowed from seconds
+    EXPECT_EQ(ts.fractional(), 999'999'999'000ULL); // Borrowed from seconds
 }
 
 // Precision tests
 TEST_F(TimeStampTest, PicosecondPrecision) {
     // Test that we maintain picosecond precision
-    TimeStampUTC ts(100, 123'456'789'012ULL);  // Exact picoseconds
+    TimeStampUTC ts(100, 123'456'789'012ULL); // Exact picoseconds
 
     EXPECT_EQ(ts.fractional(), 123'456'789'012ULL);
 
@@ -469,13 +460,13 @@ TEST_F(TimeStampTest, PicosecondPrecision) {
 
     // Should preserve nanosecond precision (123,456,789 nanoseconds)
     EXPECT_EQ(ts2.seconds(), 100);
-    EXPECT_EQ(ts2.fractional(), 123'456'789'000ULL);  // Lost the 12 picoseconds
+    EXPECT_EQ(ts2.fractional(), 123'456'789'000ULL); // Lost the 12 picoseconds
 }
 
 // Epoch boundary tests (testing the fromChrono bounds checking)
 TEST_F(TimeStampTest, PreEpochTimeClampedToZero) {
     // Create a time point before Unix epoch (1970-01-01)
-    auto pre_epoch = std::chrono::system_clock::from_time_t(-1);  // 1969-12-31 23:59:59
+    auto pre_epoch = std::chrono::system_clock::from_time_t(-1); // 1969-12-31 23:59:59
 
     auto ts = TimeStampUTC::fromChrono(pre_epoch);
 
@@ -486,7 +477,7 @@ TEST_F(TimeStampTest, PreEpochTimeClampedToZero) {
 
 TEST_F(TimeStampTest, FarPreEpochTimeClampedToZero) {
     // Create a time point far before Unix epoch
-    auto far_pre_epoch = std::chrono::system_clock::from_time_t(-31536000);  // 1969-01-01
+    auto far_pre_epoch = std::chrono::system_clock::from_time_t(-31536000); // 1969-01-01
 
     auto ts = TimeStampUTC::fromChrono(far_pre_epoch);
 
@@ -499,8 +490,7 @@ TEST_F(TimeStampTest, PostMaxTimeClampedToMax) {
     // Create a time point after max uint32_t seconds (year ~2106)
     // UINT32_MAX seconds = 4294967295 = Feb 7, 2106 06:28:15 UTC
     auto max_time = std::chrono::system_clock::time_point(
-        std::chrono::seconds(static_cast<int64_t>(UINT32_MAX) + 1)
-    );
+        std::chrono::seconds(static_cast<int64_t>(UINT32_MAX) + 1));
 
     auto ts = TimeStampUTC::fromChrono(max_time);
 
@@ -512,8 +502,7 @@ TEST_F(TimeStampTest, PostMaxTimeClampedToMax) {
 TEST_F(TimeStampTest, FarFutureTimeClampedToMax) {
     // Create a time point far in the future (year ~2200)
     auto far_future = std::chrono::system_clock::time_point(
-        std::chrono::seconds(static_cast<int64_t>(UINT32_MAX) * 2)
-    );
+        std::chrono::seconds(static_cast<int64_t>(UINT32_MAX) * 2));
 
     auto ts = TimeStampUTC::fromChrono(far_future);
 
@@ -525,8 +514,7 @@ TEST_F(TimeStampTest, FarFutureTimeClampedToMax) {
 TEST_F(TimeStampTest, ExactMaxTime) {
     // Test exactly at UINT32_MAX seconds
     auto exact_max = std::chrono::system_clock::time_point(
-        std::chrono::seconds(static_cast<int64_t>(UINT32_MAX))
-    );
+        std::chrono::seconds(static_cast<int64_t>(UINT32_MAX)));
 
     auto ts = TimeStampUTC::fromChrono(exact_max);
 
@@ -537,7 +525,7 @@ TEST_F(TimeStampTest, ExactMaxTime) {
 
 TEST_F(TimeStampTest, NearEpochBoundary) {
     // Test time just after epoch start
-    auto just_after_epoch = std::chrono::system_clock::from_time_t(1);  // 1 second after epoch
+    auto just_after_epoch = std::chrono::system_clock::from_time_t(1); // 1 second after epoch
 
     auto ts = TimeStampUTC::fromChrono(just_after_epoch);
 
@@ -547,7 +535,7 @@ TEST_F(TimeStampTest, NearEpochBoundary) {
 
 TEST_F(TimeStampTest, NormalRangeTime) {
     // Test a normal time in the valid range (year 2023)
-    auto normal_time = std::chrono::system_clock::from_time_t(1672531200);  // Jan 1, 2023
+    auto normal_time = std::chrono::system_clock::from_time_t(1672531200); // Jan 1, 2023
 
     auto ts = TimeStampUTC::fromChrono(normal_time);
 
@@ -590,7 +578,7 @@ TEST_F(TimeStampTest, NormalizeOverflowProtection) {
 
 TEST_F(TimeStampTest, NormalizeExtremeOverflow) {
     // Test with extreme picoseconds value that would add many seconds
-    uint64_t huge_picos = 10'000'000'000'000ULL;  // 10 seconds worth
+    uint64_t huge_picos = 10'000'000'000'000ULL; // 10 seconds worth
 
     TimeStampUTC ts(UINT32_MAX - 2, huge_picos);
 
@@ -602,7 +590,7 @@ TEST_F(TimeStampTest, NormalizeExtremeOverflow) {
 TEST_F(TimeStampTest, TotalPicosecondsOverflowProtection) {
     // Test totalPicoseconds() with timestamp that would overflow uint64_t
     // Max safe seconds is ~18,446,744 (~213 days)
-    uint32_t large_seconds = 20'000'000;  // > 213 days, would overflow
+    uint32_t large_seconds = 20'000'000; // > 213 days, would overflow
 
     TimeStampUTC ts(large_seconds, 500'000'000'000ULL);
 
@@ -620,7 +608,7 @@ TEST_F(TimeStampTest, TotalPicosecondsNearMaxSeconds) {
 
 TEST_F(TimeStampTest, TotalPicosecondsJustBelowOverflow) {
     // Test just below the overflow threshold (~213 days)
-    uint32_t safe_seconds = 18'000'000;  // < 18,446,744 (max safe)
+    uint32_t safe_seconds = 18'000'000; // < 18,446,744 (max safe)
 
     TimeStampUTC ts(safe_seconds, 0);
 
@@ -642,7 +630,7 @@ TEST_F(TimeStampTest, ArithmeticWithNearMaxTimestamp) {
 
 TEST_F(TimeStampTest, ArithmeticCausesNormalizationOverflow) {
     // Test arithmetic that causes normalization to trigger overflow protection
-    TimeStampUTC ts(UINT32_MAX, 100'000'000'000ULL);  // Already at max seconds
+    TimeStampUTC ts(UINT32_MAX, 100'000'000'000ULL); // Already at max seconds
 
     // Add 1.5 seconds worth of nanoseconds - would cause overflow
     ts += std::chrono::nanoseconds(1'500'000'000);
@@ -659,8 +647,7 @@ TEST_F(TimeStampTest, AddVeryLargeDuration) {
 
     // Add 150 days worth of nanoseconds
     auto large_duration = std::chrono::nanoseconds(
-        std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::hours(150 * 24)).count()
-    );
+        std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::hours(150 * 24)).count());
     ts += large_duration;
 
     // Should have added 150 days = 12,960,000 seconds
@@ -670,12 +657,11 @@ TEST_F(TimeStampTest, AddVeryLargeDuration) {
 
 TEST_F(TimeStampTest, SubtractVeryLargeDuration) {
     // Test subtracting a duration > 106 days
-    TimeStampUTC ts(20'000'000, 0);  // Start with a large timestamp
+    TimeStampUTC ts(20'000'000, 0); // Start with a large timestamp
 
     // Subtract 150 days
     auto large_duration = std::chrono::nanoseconds(
-        std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::hours(150 * 24)).count()
-    );
+        std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::hours(150 * 24)).count());
     ts -= large_duration;
 
     // Should have subtracted 12,960,000 seconds
@@ -685,7 +671,7 @@ TEST_F(TimeStampTest, SubtractVeryLargeDuration) {
 
 TEST_F(TimeStampTest, SubtractNanosecondMin) {
     // Test subtracting nanoseconds::min() (special case for UB avoidance)
-    TimeStampUTC ts(1'000'000'000, 0);  // Start with a billion seconds
+    TimeStampUTC ts(1'000'000'000, 0); // Start with a billion seconds
 
     // Subtract nanoseconds::min() (~-292 years)
     ts -= std::chrono::nanoseconds::min();
@@ -713,16 +699,16 @@ TEST_F(TimeStampTest, AddNanosecondMax) {
 
 TEST_F(TimeStampTest, MultiMonthSpanArithmetic) {
     // Test arithmetic with multi-month spans (user-visible use case)
-    TimeStampUTC ts1 = TimeStampUTC::fromUTCSeconds(1700000000);  // Nov 2023
-    TimeStampUTC ts2 = TimeStampUTC::fromUTCSeconds(1710000000);  // Mar 2024
+    TimeStampUTC ts1 = TimeStampUTC::fromUTCSeconds(1700000000); // Nov 2023
+    TimeStampUTC ts2 = TimeStampUTC::fromUTCSeconds(1710000000); // Mar 2024
 
     // Calculate difference (about 115 days)
     auto diff = ts2 - ts1;
 
     // Should handle the large difference correctly
     auto days = std::chrono::duration_cast<std::chrono::hours>(diff).count() / 24;
-    EXPECT_GT(days, 100);  // Should be > 100 days
-    EXPECT_LT(days, 120);  // Should be < 120 days
+    EXPECT_GT(days, 100); // Should be > 100 days
+    EXPECT_LT(days, 120); // Should be < 120 days
 
     // Add the difference back to ts1
     auto ts3 = ts1 + diff;
@@ -732,7 +718,7 @@ TEST_F(TimeStampTest, MultiMonthSpanArithmetic) {
 
 TEST_F(TimeStampTest, YearSpanArithmetic) {
     // Test arithmetic spanning a full year
-    TimeStampUTC ts(1700000000, 0);  // Nov 2023
+    TimeStampUTC ts(1700000000, 0); // Nov 2023
 
     // Add 365 days
     auto year_duration = std::chrono::hours(365 * 24);
@@ -748,37 +734,37 @@ TEST_F(TimeStampTest, YearSpanArithmetic) {
 // ==============================================================================
 
 TEST_F(TimeStampTest, GPSTimestampConstruction) {
-    using GPSTimeStamp = TimeStamp<tsi_type::gps, tsf_type::real_time>;
+    using GPSTimeStamp = TimeStamp<TsiType::gps, TsfType::real_time>;
     GPSTimeStamp ts(1234567890, 500'000'000'000ULL);
 
     EXPECT_EQ(ts.seconds(), 1234567890);
     EXPECT_EQ(ts.fractional(), 500'000'000'000ULL);
-    EXPECT_EQ(ts.tsiType(), tsi_type::gps);
-    EXPECT_EQ(ts.tsfType(), tsf_type::real_time);
+    EXPECT_EQ(ts.tsiType(), TsiType::gps);
+    EXPECT_EQ(ts.tsfType(), TsfType::real_time);
 }
 
 TEST_F(TimeStampTest, TAITimestampConstruction) {
-    using TAITimeStamp = TimeStamp<tsi_type::other, tsf_type::real_time>;
+    using TAITimeStamp = TimeStamp<TsiType::other, TsfType::real_time>;
     TAITimeStamp ts(1234567890, 500'000'000'000ULL);
 
     EXPECT_EQ(ts.seconds(), 1234567890);
     EXPECT_EQ(ts.fractional(), 500'000'000'000ULL);
-    EXPECT_EQ(ts.tsiType(), tsi_type::other);
-    EXPECT_EQ(ts.tsfType(), tsf_type::real_time);
+    EXPECT_EQ(ts.tsiType(), TsiType::other);
+    EXPECT_EQ(ts.tsfType(), TsfType::real_time);
 }
 
 TEST_F(TimeStampTest, SampleCountTimestampConstruction) {
-    using SampleCountTimeStamp = TimeStamp<tsi_type::none, tsf_type::sample_count>;
+    using SampleCountTimeStamp = TimeStamp<TsiType::none, TsfType::sample_count>;
     SampleCountTimeStamp ts(1000, 123456789);
 
     EXPECT_EQ(ts.seconds(), 1000);
     EXPECT_EQ(ts.fractional(), 123456789);
-    EXPECT_EQ(ts.tsiType(), tsi_type::none);
-    EXPECT_EQ(ts.tsfType(), tsf_type::sample_count);
+    EXPECT_EQ(ts.tsiType(), TsiType::none);
+    EXPECT_EQ(ts.tsfType(), TsfType::sample_count);
 }
 
 TEST_F(TimeStampTest, GPSTimestampComparison) {
-    using GPSTimeStamp = TimeStamp<tsi_type::gps, tsf_type::real_time>;
+    using GPSTimeStamp = TimeStamp<TsiType::gps, TsfType::real_time>;
     GPSTimeStamp ts1(100, 500);
     GPSTimeStamp ts2(100, 500);
     GPSTimeStamp ts3(100, 600);
@@ -791,7 +777,7 @@ TEST_F(TimeStampTest, GPSTimestampComparison) {
 }
 
 TEST_F(TimeStampTest, NonUTCFromComponents) {
-    using GPSTimeStamp = TimeStamp<tsi_type::gps, tsf_type::real_time>;
+    using GPSTimeStamp = TimeStamp<TsiType::gps, TsfType::real_time>;
     auto gps = GPSTimeStamp::fromComponents(12345, 678'000'000'000ULL);
 
     EXPECT_EQ(gps.seconds(), 12345);
@@ -803,7 +789,7 @@ TEST_F(TimeStampTest, NonUTCFromComponents) {
 // ==============================================================================
 
 TEST_F(TimeStampTest, GPSDefaultConstruction) {
-    using GPSTimeStamp = TimeStamp<tsi_type::gps, tsf_type::real_time>;
+    using GPSTimeStamp = TimeStamp<TsiType::gps, TsfType::real_time>;
     GPSTimeStamp ts;
 
     EXPECT_EQ(ts.seconds(), 0);
@@ -811,7 +797,7 @@ TEST_F(TimeStampTest, GPSDefaultConstruction) {
 }
 
 TEST_F(TimeStampTest, TAIDefaultConstruction) {
-    using TAITimeStamp = TimeStamp<tsi_type::other, tsf_type::real_time>;
+    using TAITimeStamp = TimeStamp<TsiType::other, TsfType::real_time>;
     TAITimeStamp ts;
 
     EXPECT_EQ(ts.seconds(), 0);
@@ -819,7 +805,7 @@ TEST_F(TimeStampTest, TAIDefaultConstruction) {
 }
 
 TEST_F(TimeStampTest, SampleCountDefaultConstruction) {
-    using SampleCountTimeStamp = TimeStamp<tsi_type::none, tsf_type::sample_count>;
+    using SampleCountTimeStamp = TimeStamp<TsiType::none, TsfType::sample_count>;
     SampleCountTimeStamp ts;
 
     EXPECT_EQ(ts.seconds(), 0);
@@ -831,31 +817,31 @@ TEST_F(TimeStampTest, SampleCountDefaultConstruction) {
 // ==============================================================================
 
 TEST_F(TimeStampTest, MultiSecondBorrow) {
-    TimeStampUTC ts(10, 100'000'000'000ULL);  // 10s + 0.1s
+    TimeStampUTC ts(10, 100'000'000'000ULL); // 10s + 0.1s
 
     // Subtract 2.5 seconds worth of picoseconds
-    ts -= std::chrono::nanoseconds(2'500'000'000);  // 2.5 seconds
+    ts -= std::chrono::nanoseconds(2'500'000'000); // 2.5 seconds
 
     EXPECT_EQ(ts.seconds(), 7);
-    EXPECT_EQ(ts.fractional(), 600'000'000'000ULL);  // 0.6 seconds (10.1 - 2.5 = 7.6)
+    EXPECT_EQ(ts.fractional(), 600'000'000'000ULL); // 0.6 seconds (10.1 - 2.5 = 7.6)
 }
 
 TEST_F(TimeStampTest, MultiSecondBorrowUnderflow) {
-    TimeStampUTC ts(3, 200'000'000'000ULL);  // 3s + 0.2s
-    ts -= std::chrono::nanoseconds(5'000'000'000);  // 5 seconds
+    TimeStampUTC ts(3, 200'000'000'000ULL);        // 3s + 0.2s
+    ts -= std::chrono::nanoseconds(5'000'000'000); // 5 seconds
 
-    EXPECT_EQ(ts.seconds(), 0);  // Clamped to zero
+    EXPECT_EQ(ts.seconds(), 0); // Clamped to zero
     EXPECT_EQ(ts.fractional(), 0);
 }
 
 TEST_F(TimeStampTest, ThreeSecondBorrow) {
-    TimeStampUTC ts(5, 900'000'000'000ULL);  // 5.9 seconds
+    TimeStampUTC ts(5, 900'000'000'000ULL); // 5.9 seconds
 
     // Subtract 3.2 seconds requiring 3-second borrow
     ts -= std::chrono::nanoseconds(3'200'000'000);
 
     EXPECT_EQ(ts.seconds(), 2);
-    EXPECT_EQ(ts.fractional(), 700'000'000'000ULL);  // 0.7 seconds
+    EXPECT_EQ(ts.fractional(), 700'000'000'000ULL); // 0.7 seconds
 }
 
 // ==============================================================================
@@ -873,7 +859,7 @@ TEST_F(TimeStampTest, ArithmeticOverflowUsesSentinel) {
 
 TEST_F(TimeStampTest, NormalizationOverflowUsesSentinel) {
     // Constructor normalization should trigger overflow
-    uint64_t huge_picos = 10'000'000'000'000ULL;  // 10 seconds worth
+    uint64_t huge_picos = 10'000'000'000'000ULL; // 10 seconds worth
     TimeStampUTC ts(UINT32_MAX - 2, huge_picos);
 
     EXPECT_EQ(ts.seconds(), UINT32_MAX);
@@ -883,8 +869,7 @@ TEST_F(TimeStampTest, NormalizationOverflowUsesSentinel) {
 TEST_F(TimeStampTest, FromChronoOverflowUsesSentinel) {
     // Create time after year 2106 (> UINT32_MAX seconds)
     auto far_future = std::chrono::system_clock::time_point(
-        std::chrono::seconds(static_cast<int64_t>(UINT32_MAX) + 1000)
-    );
+        std::chrono::seconds(static_cast<int64_t>(UINT32_MAX) + 1000));
 
     auto ts = TimeStampUTC::fromChrono(far_future);
 
@@ -897,30 +882,30 @@ TEST_F(TimeStampTest, FromChronoOverflowUsesSentinel) {
 // ==============================================================================
 
 TEST_F(TimeStampTest, SampleCountDoesNotNormalize) {
-    using SampleCountTimeStamp = TimeStamp<tsi_type::none, tsf_type::sample_count>;
+    using SampleCountTimeStamp = TimeStamp<TsiType::none, TsfType::sample_count>;
 
     // Sample count should NOT normalize even with huge fractional values
-    uint64_t huge_sample_count = 5'000'000'000'000ULL;  // Far exceeds 1 second worth
+    uint64_t huge_sample_count = 5'000'000'000'000ULL; // Far exceeds 1 second worth
     SampleCountTimeStamp ts(100, huge_sample_count);
 
     // Should NOT normalize - values stay as-is
     EXPECT_EQ(ts.seconds(), 100);
-    EXPECT_EQ(ts.fractional(), huge_sample_count);  // Unchanged!
+    EXPECT_EQ(ts.fractional(), huge_sample_count); // Unchanged!
 }
 
 TEST_F(TimeStampTest, GPSRealTimeNormalizes) {
-    using GPSTimeStamp = TimeStamp<tsi_type::gps, tsf_type::real_time>;
+    using GPSTimeStamp = TimeStamp<TsiType::gps, TsfType::real_time>;
 
     // GPS with real_time TSF should normalize just like UTC
-    uint64_t excess_picos = 2'500'000'000'000ULL;  // 2.5 seconds
+    uint64_t excess_picos = 2'500'000'000'000ULL; // 2.5 seconds
     GPSTimeStamp ts(100, excess_picos);
 
-    EXPECT_EQ(ts.seconds(), 102);  // Should add 2 seconds
-    EXPECT_EQ(ts.fractional(), 500'000'000'000ULL);  // Remaining 0.5 seconds
+    EXPECT_EQ(ts.seconds(), 102);                   // Should add 2 seconds
+    EXPECT_EQ(ts.fractional(), 500'000'000'000ULL); // Remaining 0.5 seconds
 }
 
 TEST_F(TimeStampTest, FreeRunningDoesNotNormalize) {
-    using FreeRunningTimeStamp = TimeStamp<tsi_type::none, tsf_type::free_running>;
+    using FreeRunningTimeStamp = TimeStamp<TsiType::none, TsfType::free_running>;
 
     uint64_t large_fractional = 10'000'000'000'000ULL;
     FreeRunningTimeStamp ts(50, large_fractional);
@@ -931,14 +916,14 @@ TEST_F(TimeStampTest, FreeRunningDoesNotNormalize) {
 }
 
 TEST_F(TimeStampTest, TSFNoneDoesNotNormalize) {
-    using NoTSFTimeStamp = TimeStamp<tsi_type::utc, tsf_type::none>;
+    using NoTSFTimeStamp = TimeStamp<TsiType::utc, TsfType::none>;
 
-    // Even with UTC TSI, tsf_type::none should not normalize
+    // Even with UTC TSI, TsfType::none should not normalize
     uint64_t arbitrary_value = 3'000'000'000'000ULL;
     NoTSFTimeStamp ts(200, arbitrary_value);
 
     EXPECT_EQ(ts.seconds(), 200);
-    EXPECT_EQ(ts.fractional(), arbitrary_value);  // No normalization
+    EXPECT_EQ(ts.fractional(), arbitrary_value); // No normalization
 }
 
 // ==============================================================================
@@ -952,14 +937,14 @@ TEST_F(TimeStampTest, MaxFractionalConstantAccessible) {
 }
 
 TEST_F(TimeStampTest, NonUTCTypeTraits) {
-    using GPSTimeStamp = TimeStamp<tsi_type::gps, tsf_type::real_time>;
-    using TAITimeStamp = TimeStamp<tsi_type::other, tsf_type::real_time>;
+    using GPSTimeStamp = TimeStamp<TsiType::gps, TsfType::real_time>;
+    using TAITimeStamp = TimeStamp<TsiType::other, TsfType::real_time>;
 
     GPSTimeStamp gps;
     TAITimeStamp tai;
 
-    EXPECT_EQ(gps.tsiType(), tsi_type::gps);
-    EXPECT_EQ(gps.tsfType(), tsf_type::real_time);
-    EXPECT_EQ(tai.tsiType(), tsi_type::other);
-    EXPECT_EQ(tai.tsfType(), tsf_type::real_time);
+    EXPECT_EQ(gps.tsiType(), TsiType::gps);
+    EXPECT_EQ(gps.tsfType(), TsfType::real_time);
+    EXPECT_EQ(tai.tsiType(), TsiType::other);
+    EXPECT_EQ(tai.tsfType(), TsfType::real_time);
 }

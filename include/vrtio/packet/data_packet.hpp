@@ -1,40 +1,35 @@
 #pragma once
 
-#include "../core/types.hpp"
-#include "../core/endian.hpp"
-#include "../core/header.hpp"
-#include "../core/concepts.hpp"
-#include "../core/trailer.hpp"
-#include "../core/trailer_view.hpp"
-#include "../core/timestamp.hpp"
-#include "../core/timestamp_traits.hpp"
-#include "../core/detail/header_decode.hpp"
-#include "../core/detail/buffer_io.hpp"
-#include "../core/detail/header_init.hpp"
-#include <cstring>
-#include <cstdio>
 #include <span>
 #include <stdexcept>
 
+#include <cstdio>
+#include <cstring>
+
+#include "../core/concepts.hpp"
+#include "../core/detail/buffer_io.hpp"
+#include "../core/detail/header_decode.hpp"
+#include "../core/detail/header_init.hpp"
+#include "../core/endian.hpp"
+#include "../core/header.hpp"
+#include "../core/timestamp.hpp"
+#include "../core/timestamp_traits.hpp"
+#include "../core/trailer.hpp"
+#include "../core/trailer_view.hpp"
+#include "../core/types.hpp"
+
 namespace vrtio {
 
-template<
-    PacketType Type,
-    typename TimeStampType = NoTimeStamp,
-    Trailer HasTrailer = Trailer::None,
-    size_t PayloadWords = 0
->
-    requires (Type == PacketType::SignalDataNoId ||
-              Type == PacketType::SignalData ||
-              Type == PacketType::ExtensionDataNoId ||
-              Type == PacketType::ExtensionData) &&
-             ValidPayloadWords<PayloadWords> &&
-             ValidTimestampType<TimeStampType>
+template <PacketType Type, typename TimeStampType = NoTimeStamp, Trailer HasTrailer = Trailer::None,
+          size_t PayloadWords = 0>
+    requires(Type == PacketType::SignalDataNoId || Type == PacketType::SignalData ||
+             Type == PacketType::ExtensionDataNoId || Type == PacketType::ExtensionData) &&
+            ValidPayloadWords<PayloadWords> && ValidTimestampType<TimeStampType>
 class DataPacket {
 private:
     // Extract TSI and TSF from TimeStampType
-    static constexpr tsi_type TSI = TimestampTraits<TimeStampType>::tsi;
-    static constexpr tsf_type TSF = TimestampTraits<TimeStampType>::tsf;
+    static constexpr TsiType TSI = TimestampTraits<TimeStampType>::tsi;
+    static constexpr TsfType TSF = TimestampTraits<TimeStampType>::tsf;
 
 public:
     // Timestamp type alias
@@ -42,26 +37,25 @@ public:
 
     // Compile-time packet configuration
     static constexpr PacketType packet_type_v = Type;
-    static constexpr tsi_type tsi_type_v = TSI;
-    static constexpr tsf_type tsf_type_v = TSF;
+    static constexpr TsiType tsi_type_v = TSI;
+    static constexpr TsfType tsf_type_v = TSF;
     static constexpr bool has_trailer = (HasTrailer == Trailer::Included);
     static constexpr size_t payload_words = PayloadWords;
 
     // Derived constants
-    static constexpr bool has_stream_id = (Type == PacketType::SignalData ||
-                                           Type == PacketType::ExtensionData);
+    static constexpr bool has_stream_id =
+        (Type == PacketType::SignalData || Type == PacketType::ExtensionData);
     static constexpr bool has_timestamp = TimestampTraits<TimeStampType>::has_timestamp;
 
     // Size calculation (in 32-bit words)
     static constexpr size_t header_words = 1;
     static constexpr size_t stream_id_words = has_stream_id ? 1 : 0;
-    static constexpr size_t tsi_words = (TSI != tsi_type::none) ? 1 : 0;
-    static constexpr size_t tsf_words = (TSF != tsf_type::none) ? 2 : 0;
+    static constexpr size_t tsi_words = (TSI != TsiType::none) ? 1 : 0;
+    static constexpr size_t tsf_words = (TSF != TsfType::none) ? 2 : 0;
     static constexpr size_t trailer_words = (HasTrailer == Trailer::Included) ? 1 : 0;
 
     static constexpr size_t total_words =
-        header_words + stream_id_words + tsi_words +
-        tsf_words + PayloadWords + trailer_words;
+        header_words + stream_id_words + tsi_words + tsf_words + PayloadWords + trailer_words;
 
     // Compile-time check: ensure total packet size fits in 16-bit size field
     static_assert(total_words <= max_packet_words,
@@ -91,11 +85,10 @@ public:
     //
     // Correct pattern:
     //   DataPacket packet(untrusted_buffer, false);
-    //   if (packet.validate(buffer_size) == validation_error::none) {
+    //   if (packet.validate(buffer_size) == ValidationError::none) {
     //       auto id = packet.stream_id();  // Safe after validation
     //   }
-    explicit DataPacket(uint8_t* buffer, bool init = true) noexcept
-        : buffer_(buffer) {
+    explicit DataPacket(uint8_t* buffer, bool init = true) noexcept : buffer_(buffer) {
         if (init) {
             init_header();
         }
@@ -120,17 +113,16 @@ public:
     // NOTE: Values > 15 will be silently truncated to 4 bits.
     // In debug builds, this will trigger an assertion for values > 15.
     void set_packet_count(uint8_t count) noexcept {
-        #ifndef NDEBUG
+#ifndef NDEBUG
         if (count > 15) {
             // Debug build: warn about truncation
             // This is a logic error - packet count should be in range 0-15
             std::fprintf(stderr,
-                "WARNING: packet_count value %u exceeds 4-bit limit (15). "
-                "Value will be truncated to %u.\n",
-                static_cast<unsigned>(count),
-                static_cast<unsigned>(count & 0x0F));
+                         "WARNING: packet_count value %u exceeds 4-bit limit (15). "
+                         "Value will be truncated to %u.\n",
+                         static_cast<unsigned>(count), static_cast<unsigned>(count & 0x0F));
         }
-        #endif
+#endif
 
         uint32_t header = detail::read_u32(buffer_, header_offset * vrt_word_size);
         header = (header & 0xFFF0FFFF) | ((static_cast<uint32_t>(count) & 0x0F) << 16);
@@ -143,11 +135,15 @@ public:
 
     // Stream ID accessors (only if has_stream_id)
 
-    uint32_t stream_id() const noexcept requires(has_stream_id) {
+    uint32_t stream_id() const noexcept
+        requires(has_stream_id)
+    {
         return detail::read_u32(buffer_, stream_id_offset * vrt_word_size);
     }
 
-    void set_stream_id(uint32_t id) noexcept requires(has_stream_id) {
+    void set_stream_id(uint32_t id) noexcept
+        requires(has_stream_id)
+    {
         detail::write_u32(buffer_, stream_id_offset * vrt_word_size, id);
     }
 
@@ -159,11 +155,12 @@ public:
      * @return TimeStampType object containing both integer and fractional parts
      */
     TimeStampType getTimeStamp() const noexcept
-        requires(HasTimestamp<TimeStampType>) {
-        uint32_t tsi_val = (TSI != tsi_type::none)
-            ? detail::read_u32(buffer_, tsi_offset * vrt_word_size) : 0;
-        uint64_t tsf_val = (TSF != tsf_type::none)
-            ? detail::read_u64(buffer_, tsf_offset * vrt_word_size) : 0;
+        requires(HasTimestamp<TimeStampType>)
+    {
+        uint32_t tsi_val =
+            (TSI != TsiType::none) ? detail::read_u32(buffer_, tsi_offset * vrt_word_size) : 0;
+        uint64_t tsf_val =
+            (TSF != TsfType::none) ? detail::read_u64(buffer_, tsf_offset * vrt_word_size) : 0;
         return TimeStampType::fromComponents(tsi_val, tsf_val);
     }
 
@@ -173,39 +170,40 @@ public:
      * @param ts TimeStampType object to set
      */
     void setTimeStamp(const TimeStampType& ts) noexcept
-        requires(HasTimestamp<TimeStampType>) {
-        if constexpr (TSI != tsi_type::none) {
+        requires(HasTimestamp<TimeStampType>)
+    {
+        if constexpr (TSI != TsiType::none) {
             detail::write_u32(buffer_, tsi_offset * vrt_word_size, ts.seconds());
         }
-        if constexpr (TSF != tsf_type::none) {
+        if constexpr (TSF != TsfType::none) {
             detail::write_u64(buffer_, tsf_offset * vrt_word_size, ts.fractional());
         }
     }
 
     // Trailer view access
 
-    TrailerView trailer() noexcept requires(HasTrailer == Trailer::Included) {
+    TrailerView trailer() noexcept
+        requires(HasTrailer == Trailer::Included)
+    {
         return TrailerView(buffer_ + trailer_offset * vrt_word_size);
     }
 
-    ConstTrailerView trailer() const noexcept requires(HasTrailer == Trailer::Included) {
+    ConstTrailerView trailer() const noexcept
+        requires(HasTrailer == Trailer::Included)
+    {
         return ConstTrailerView(buffer_ + trailer_offset * vrt_word_size);
     }
 
     // Payload access
 
     std::span<uint8_t, payload_size_bytes> payload() noexcept {
-        return std::span<uint8_t, payload_size_bytes>(
-            buffer_ + payload_offset * vrt_word_size,
-            payload_size_bytes
-        );
+        return std::span<uint8_t, payload_size_bytes>(buffer_ + payload_offset * vrt_word_size,
+                                                      payload_size_bytes);
     }
 
     std::span<const uint8_t, payload_size_bytes> payload() const noexcept {
         return std::span<const uint8_t, payload_size_bytes>(
-            buffer_ + payload_offset * vrt_word_size,
-            payload_size_bytes
-        );
+            buffer_ + payload_offset * vrt_word_size, payload_size_bytes);
     }
 
     void set_payload(const uint8_t* data, size_t size) noexcept {
@@ -229,11 +227,11 @@ public:
     // CRITICAL: You MUST call this method when parsing untrusted data before
     // accessing any packet fields.
     //
-    // Returns: validation_error::none on success, or specific error code
-    validation_error validate(size_t buffer_size) const noexcept {
+    // Returns: ValidationError::none on success, or specific error code
+    ValidationError validate(size_t buffer_size) const noexcept {
         // Check 1: Buffer must be at least as large as our packet
         if (buffer_size < size_bytes) {
-            return validation_error::buffer_too_small;
+            return ValidationError::buffer_too_small;
         }
 
         // Read and decode header using shared utility
@@ -242,48 +240,48 @@ public:
 
         // Check 2: Packet type field (bits 31-28)
         if (decoded.type != Type) {
-            return validation_error::packet_type_mismatch;
+            return ValidationError::packet_type_mismatch;
         }
 
         // Check 3: Trailer bit (bit 26) - use type-aware field
         if (decoded.trailer_included != (HasTrailer == Trailer::Included)) {
-            return validation_error::trailer_bit_mismatch;
+            return ValidationError::trailer_bit_mismatch;
         }
 
         // Check 4: TSI field (bits 23-22)
         if (decoded.tsi != TSI) {
-            return validation_error::tsi_mismatch;
+            return ValidationError::tsi_mismatch;
         }
 
         // Check 5: TSF field (bits 21-20)
         if (decoded.tsf != TSF) {
-            return validation_error::tsf_mismatch;
+            return ValidationError::tsf_mismatch;
         }
 
         // Check 6: Size field (bits 15-0)
         if (decoded.size_words != total_words) {
-            return validation_error::size_field_mismatch;
+            return ValidationError::size_field_mismatch;
         }
 
-        return validation_error::none;
+        return ValidationError::none;
     }
 
 private:
-    uint8_t* buffer_;  // View over user-provided memory
+    uint8_t* buffer_; // View over user-provided memory
 
     // Initialize header with packet metadata
     void init_header() noexcept {
         // Build header using shared helper
         uint32_t header = detail::build_header(
-            static_cast<uint8_t>(Type),              // Packet type
-            false,                                    // Class ID indicator (not supported for data packets)
-            HasTrailer == Trailer::Included,         // Bit 26: Trailer indicator
-            false,                                    // Bit 25: Nd0 indicator (V49.0 compatible mode)
-            false,                                    // Bit 24: Spectrum/Time (not used for signal/extension data)
-            TSI,                                      // TSI field
-            TSF,                                      // TSF field
-            0,                                        // Packet count (initialized to 0)
-            total_words                               // Packet size in words
+            static_cast<uint8_t>(Type),      // Packet type
+            false,                           // Class ID indicator (not supported for data packets)
+            HasTrailer == Trailer::Included, // Bit 26: Trailer indicator
+            false,                           // Bit 25: Nd0 indicator (V49.0 compatible mode)
+            false,      // Bit 24: Spectrum/Time (not used for signal/extension data)
+            TSI,        // TSI field
+            TSF,        // TSF field
+            0,          // Packet count (initialized to 0)
+            total_words // Packet size in words
         );
 
         detail::write_u32(buffer_, header_offset * vrt_word_size, header);
@@ -293,33 +291,25 @@ private:
 // User-facing type aliases for convenient usage
 
 // Specific aliases that line up with PacketType enum names
-template<
-    typename TimeStampType = NoTimeStamp,
-    Trailer HasTrailer = Trailer::None,
-    size_t PayloadWords = 0
->
-using SignalDataPacket = DataPacket<PacketType::SignalData, TimeStampType, HasTrailer, PayloadWords>;
+template <typename TimeStampType = NoTimeStamp, Trailer HasTrailer = Trailer::None,
+          size_t PayloadWords = 0>
+using SignalDataPacket =
+    DataPacket<PacketType::SignalData, TimeStampType, HasTrailer, PayloadWords>;
 
-template<
-    typename TimeStampType = NoTimeStamp,
-    Trailer HasTrailer = Trailer::None,
-    size_t PayloadWords = 0
->
-using SignalDataPacketNoId = DataPacket<PacketType::SignalDataNoId, TimeStampType, HasTrailer, PayloadWords>;
+template <typename TimeStampType = NoTimeStamp, Trailer HasTrailer = Trailer::None,
+          size_t PayloadWords = 0>
+using SignalDataPacketNoId =
+    DataPacket<PacketType::SignalDataNoId, TimeStampType, HasTrailer, PayloadWords>;
 
-template<
-    typename TimeStampType = NoTimeStamp,
-    Trailer HasTrailer = Trailer::None,
-    size_t PayloadWords = 0
->
-using ExtensionDataPacket = DataPacket<PacketType::ExtensionData, TimeStampType, HasTrailer, PayloadWords>;
+template <typename TimeStampType = NoTimeStamp, Trailer HasTrailer = Trailer::None,
+          size_t PayloadWords = 0>
+using ExtensionDataPacket =
+    DataPacket<PacketType::ExtensionData, TimeStampType, HasTrailer, PayloadWords>;
 
-template<
-    typename TimeStampType = NoTimeStamp,
-    Trailer HasTrailer = Trailer::None,
-    size_t PayloadWords = 0
->
-using ExtensionDataPacketNoId = DataPacket<PacketType::ExtensionDataNoId, TimeStampType, HasTrailer, PayloadWords>;
+template <typename TimeStampType = NoTimeStamp, Trailer HasTrailer = Trailer::None,
+          size_t PayloadWords = 0>
+using ExtensionDataPacketNoId =
+    DataPacket<PacketType::ExtensionDataNoId, TimeStampType, HasTrailer, PayloadWords>;
 
 // Deprecated legacy alias retained for source compatibility. Will be removed in a future release.
-}  // namespace vrtio
+} // namespace vrtio

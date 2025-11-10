@@ -7,7 +7,20 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Tier 1: Fast validation - REQUIRED status check
+  # Tier 1: Fast validation - REQUIRED status checks
+  format-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-16
+
+      - name: Check Formatting
+        run: ./scripts/ci/format-check.sh
+
   quick-check:
     runs-on: ubuntu-24.04
     steps:
@@ -29,6 +42,27 @@ jobs:
           CXX: g++-13
 
   # Tier 2: Core coverage - Advisory checks
+  static-analysis:
+    needs: quick-check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-16 clang-tidy-16
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: tidy-${{ runner.os }}-clang16-${{ hashFiles('CMakeLists.txt', 'include/**', 'tests/**') }}
+
+      - name: Run clang-tidy
+        run: ./scripts/ci/clang-tidy.sh build
+        env:
+          CXX: clang++-16
+
   debug-build:
     needs: quick-check
     runs-on: ubuntu-24.04

@@ -1,9 +1,10 @@
 #pragma once
 
-#include "endian.hpp"
-#include "trailer.hpp"
 #include <cstdint>
 #include <cstring>
+
+#include "endian.hpp"
+#include "trailer.hpp"
 
 namespace vrtio {
 
@@ -15,8 +16,7 @@ namespace vrtio {
  */
 class ConstTrailerView {
 public:
-    explicit ConstTrailerView(const uint8_t* word_ptr) noexcept
-        : word_ptr_(word_ptr) {}
+    explicit ConstTrailerView(const uint8_t* word_ptr) noexcept : word_ptr_(word_ptr) {}
 
     uint32_t raw() const noexcept {
         uint32_t value;
@@ -24,17 +24,13 @@ public:
         return detail::network_to_host32(value);
     }
 
-    uint8_t context_packets() const noexcept {
-        return trailer::get_context_packets(raw());
-    }
+    uint8_t context_packets() const noexcept { return trailer::get_context_packets(raw()); }
 
     bool reference_lock() const noexcept {
         return trailer::get_bit<trailer::reference_lock_bit>(raw());
     }
 
-    bool agc_mgc() const noexcept {
-        return trailer::get_bit<trailer::agc_mgc_bit>(raw());
-    }
+    bool agc_mgc() const noexcept { return trailer::get_bit<trailer::agc_mgc_bit>(raw()); }
 
     bool detected_signal() const noexcept {
         return trailer::get_bit<trailer::detected_signal_bit>(raw());
@@ -44,21 +40,15 @@ public:
         return trailer::get_bit<trailer::spectral_inversion_bit>(raw());
     }
 
-    bool over_range() const noexcept {
-        return trailer::get_bit<trailer::over_range_bit>(raw());
-    }
+    bool over_range() const noexcept { return trailer::get_bit<trailer::over_range_bit>(raw()); }
 
-    bool sample_loss() const noexcept {
-        return trailer::get_bit<trailer::sample_loss_bit>(raw());
-    }
+    bool sample_loss() const noexcept { return trailer::get_bit<trailer::sample_loss_bit>(raw()); }
 
     bool calibrated_time() const noexcept {
         return trailer::get_bit<trailer::calibrated_time_bit>(raw());
     }
 
-    bool valid_data() const noexcept {
-        return trailer::get_bit<trailer::valid_data_bit>(raw());
-    }
+    bool valid_data() const noexcept { return trailer::get_bit<trailer::valid_data_bit>(raw()); }
 
     bool reference_point() const noexcept {
         return trailer::get_bit<trailer::reference_point_bit>(raw());
@@ -68,9 +58,7 @@ public:
         return trailer::get_bit<trailer::signal_detected_bit>(raw());
     }
 
-    bool has_errors() const noexcept {
-        return trailer::has_errors(raw());
-    }
+    bool has_errors() const noexcept { return trailer::has_errors(raw()); }
 
 protected:
     const uint8_t* data_ptr() const noexcept { return word_ptr_; }
@@ -85,7 +73,8 @@ private:
 class TrailerView : public ConstTrailerView {
 public:
     explicit TrailerView(uint8_t* word_ptr) noexcept
-        : ConstTrailerView(word_ptr), word_ptr_mut_(word_ptr) {}
+        : ConstTrailerView(word_ptr),
+          word_ptr_mut_(word_ptr) {}
 
     void set_raw(uint32_t value) noexcept {
         value = detail::host_to_network32(value);
@@ -162,7 +151,7 @@ public:
     }
 
 private:
-    template<typename Fn>
+    template <typename Fn>
     void modify(Fn&& fn) noexcept {
         auto value = raw();
         value = fn(value);
@@ -193,8 +182,8 @@ public:
     }
 
     constexpr TrailerBuilder& context_packets(uint8_t count) noexcept {
-        value_ = trailer::set_field<trailer::context_packets_shift,
-                                    trailer::context_packets_mask>(value_, count);
+        value_ = trailer::set_field<trailer::context_packets_shift, trailer::context_packets_mask>(
+            value_, count);
         return *this;
     }
 
@@ -264,4 +253,4 @@ private:
     uint32_t value_ = 0;
 };
 
-}  // namespace vrtio
+} // namespace vrtio

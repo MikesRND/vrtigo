@@ -1,13 +1,15 @@
 #pragma once
 
-#include "../core/types.hpp"
-#include "../core/cif.hpp"
-#include "../core/endian.hpp"
-#include "../core/detail/header_decode.hpp"
-#include "../core/detail/variable_field_dispatch.hpp"
 #include <optional>
 #include <span>
+
 #include <cstring>
+
+#include "../core/cif.hpp"
+#include "../core/detail/header_decode.hpp"
+#include "../core/detail/variable_field_dispatch.hpp"
+#include "../core/endian.hpp"
+#include "../core/types.hpp"
 
 namespace vrtio {
 
@@ -38,7 +40,7 @@ class ContextPacketView {
 private:
     const uint8_t* buffer_;
     size_t buffer_size_;
-    validation_error error_;
+    ValidationError error_;
 
     struct ParsedStructure {
         // Header fields
@@ -46,8 +48,8 @@ private:
         uint8_t packet_type = 0;
         bool has_stream_id = false;
         bool has_class_id = false;
-        tsi_type tsi = tsi_type::none;
-        tsf_type tsf = tsf_type::none;
+        TsiType tsi = TsiType::none;
+        TsfType tsf = TsfType::none;
 
         // CIF words
         uint32_t cif0 = 0;
@@ -71,9 +73,9 @@ private:
         size_t calculated_size_words = 0;
     } structure_;
 
-    validation_error validate_internal() noexcept {
+    ValidationError validate_internal() noexcept {
         if (!buffer_ || buffer_size_ < 4) {
-            return validation_error::buffer_too_small;
+            return ValidationError::buffer_too_small;
         }
 
         // 1. Read and decode header using shared utility
@@ -94,53 +96,53 @@ private:
 
         // 3. Validate packet type (must be context: 4 or 5)
         if (decoded.type != PacketType::Context && decoded.type != PacketType::ExtensionContext) {
-            return validation_error::invalid_packet_type;
+            return ValidationError::invalid_packet_type;
         }
 
         // 4. Validate reserved bit 26 is 0 for Context packets
         // Per VITA 49.2 Table 5.1.1.1-1, bit 26 is Reserved for Context packets (must be 0)
         if (decoded.bit_26) {
-            return validation_error::unsupported_field;
+            return ValidationError::unsupported_field;
         }
 
         // 5. Initial buffer size check
         size_t required_bytes = structure_.packet_size_words * 4;
         if (buffer_size_ < required_bytes) {
-            return validation_error::buffer_too_small;
+            return ValidationError::buffer_too_small;
         }
 
         // 6. Calculate position after header fields
-        size_t offset_words = 1;  // Header
+        size_t offset_words = 1; // Header
 
         if (structure_.has_stream_id) {
             if ((offset_words + 1) * 4 > buffer_size_) {
-                return validation_error::buffer_too_small;
+                return ValidationError::buffer_too_small;
             }
-            offset_words++;  // Skip stream ID
+            offset_words++; // Skip stream ID
         }
 
         if (structure_.has_class_id) {
             if ((offset_words + 2) * 4 > buffer_size_) {
-                return validation_error::buffer_too_small;
+                return ValidationError::buffer_too_small;
             }
-            offset_words += 2;  // Skip 64-bit class ID
+            offset_words += 2; // Skip 64-bit class ID
         }
 
         // Skip timestamp fields based on TSI/TSF
-        size_t tsi_words = (structure_.tsi != tsi_type::none) ? 1 : 0;
-        size_t tsf_words = (structure_.tsf != tsf_type::none) ? 2 : 0;
+        size_t tsi_words = (structure_.tsi != TsiType::none) ? 1 : 0;
+        size_t tsf_words = (structure_.tsf != TsfType::none) ? 2 : 0;
         offset_words += tsi_words + tsf_words;
 
         // 7. Read CIF words
         if ((offset_words + 1) * 4 > buffer_size_) {
-            return validation_error::buffer_too_small;
+            return ValidationError::buffer_too_small;
         }
         structure_.cif0 = cif::read_u32_safe(buffer_, offset_words * 4);
         offset_words++;
 
         if (structure_.cif0 & (1U << cif::CIF1_ENABLE_BIT)) {
             if ((offset_words + 1) * 4 > buffer_size_) {
-                return validation_error::buffer_too_small;
+                return ValidationError::buffer_too_small;
             }
             structure_.cif1 = cif::read_u32_safe(buffer_, offset_words * 4);
             offset_words++;
@@ -148,7 +150,7 @@ private:
 
         if (structure_.cif0 & (1U << cif::CIF2_ENABLE_BIT)) {
             if ((offset_words + 1) * 4 > buffer_size_) {
-                return validation_error::buffer_too_small;
+                return ValidationError::buffer_too_small;
             }
             structure_.cif2 = cif::read_u32_safe(buffer_, offset_words * 4);
             offset_words++;
@@ -156,7 +158,7 @@ private:
 
         if (structure_.cif0 & (1U << cif::CIF3_ENABLE_BIT)) {
             if ((offset_words + 1) * 4 > buffer_size_) {
-                return validation_error::buffer_too_small;
+                return ValidationError::buffer_too_small;
             }
             structure_.cif3 = cif::read_u32_safe(buffer_, offset_words * 4);
             offset_words++;
@@ -165,27 +167,27 @@ private:
         // COMPLETE validation: reject ANY unsupported bits
         // CIF0_SUPPORTED_MASK now includes the CIF1/CIF2 enable bits (1 and 2)
         if (structure_.cif0 & ~cif::CIF0_SUPPORTED_MASK) {
-            return validation_error::unsupported_field;
+            return ValidationError::unsupported_field;
         }
 
         // Check CIF1 if present
         if (structure_.cif0 & (1U << cif::CIF1_ENABLE_BIT)) {
             if (structure_.cif1 & ~cif::CIF1_SUPPORTED_MASK) {
-                return validation_error::unsupported_field;
+                return ValidationError::unsupported_field;
             }
         }
 
         // Check CIF2 if present
         if (structure_.cif0 & (1U << cif::CIF2_ENABLE_BIT)) {
             if (structure_.cif2 & ~cif::CIF2_SUPPORTED_MASK) {
-                return validation_error::unsupported_field;
+                return ValidationError::unsupported_field;
             }
         }
 
         // Check CIF3 if present
         if (structure_.cif0 & (1U << cif::CIF3_ENABLE_BIT)) {
             if (structure_.cif3 & ~cif::CIF3_SUPPORTED_MASK) {
-                return validation_error::unsupported_field;
+                return ValidationError::unsupported_field;
             }
         }
 
@@ -197,7 +199,8 @@ private:
 
         // Process all fixed fields first (from MSB to LSB)
         for (int bit = 31; bit >= 0; bit--) {
-            if (bit == cif::GPS_ASCII_BIT || bit == cif::CONTEXT_ASSOC_BIT) continue;  // Skip variable fields for now
+            if (bit == cif::GPS_ASCII_BIT || bit == cif::CONTEXT_ASSOC_BIT)
+                continue; // Skip variable fields for now
 
             if (structure_.cif0 & (1U << bit)) {
                 context_fields_words += cif::CIF0_FIELDS[bit].size_words;
@@ -211,15 +214,15 @@ private:
 
             // Read the length from the buffer
             if ((offset_words + context_fields_words + 1) * 4 > buffer_size_) {
-                return validation_error::buffer_too_small;
+                return ValidationError::buffer_too_small;
             }
-            structure_.gps_ascii.size_words = cif::read_gps_ascii_length_words(
-                buffer_, structure_.gps_ascii.offset_bytes);
+            structure_.gps_ascii.size_words =
+                cif::read_gps_ascii_length_words(buffer_, structure_.gps_ascii.offset_bytes);
 
             // Check entire field fits in buffer!
-            if ((offset_words + context_fields_words + structure_.gps_ascii.size_words) * 4
-                > buffer_size_) {
-                return validation_error::buffer_too_small;
+            if ((offset_words + context_fields_words + structure_.gps_ascii.size_words) * 4 >
+                buffer_size_) {
+                return ValidationError::buffer_too_small;
             }
 
             context_fields_words += structure_.gps_ascii.size_words;
@@ -231,7 +234,7 @@ private:
 
             // Check counts word is present
             if ((offset_words + context_fields_words + 1) * 4 > buffer_size_) {
-                return validation_error::buffer_too_small;
+                return ValidationError::buffer_too_small;
             }
 
             // Read length with CORRECTED format
@@ -239,9 +242,9 @@ private:
                 buffer_, structure_.context_assoc.offset_bytes);
 
             // Check entire field fits!
-            if ((offset_words + context_fields_words + structure_.context_assoc.size_words) * 4
-                > buffer_size_) {
-                return validation_error::buffer_too_small;
+            if ((offset_words + context_fields_words + structure_.context_assoc.size_words) * 4 >
+                buffer_size_) {
+                return ValidationError::buffer_too_small;
             }
 
             context_fields_words += structure_.context_assoc.size_words;
@@ -280,10 +283,10 @@ private:
 
         // 10. Final validation: calculated size must match header
         if (structure_.calculated_size_words != structure_.packet_size_words) {
-            return validation_error::size_field_mismatch;
+            return ValidationError::size_field_mismatch;
         }
 
-        return validation_error::none;
+        return ValidationError::none;
     }
 
 public:
@@ -293,25 +296,23 @@ public:
      * @param buffer_size Size of buffer in bytes
      */
     explicit ContextPacketView(const uint8_t* buffer, size_t buffer_size) noexcept
-        : buffer_(buffer), buffer_size_(buffer_size), error_(validation_error::none) {
+        : buffer_(buffer),
+          buffer_size_(buffer_size),
+          error_(ValidationError::none) {
         error_ = validate_internal();
     }
 
     /**
      * Get validation error
-     * @return validation_error::none if packet is valid, otherwise specific error
+     * @return ValidationError::none if packet is valid, otherwise specific error
      */
-    validation_error error() const noexcept {
-        return error_;
-    }
+    ValidationError error() const noexcept { return error_; }
 
     /**
      * Check if packet is valid
      * @return true if validation passed
      */
-    bool is_valid() const noexcept {
-        return error_ == validation_error::none;
-    }
+    bool is_valid() const noexcept { return error_ == ValidationError::none; }
 
     // Query methods
 
@@ -329,7 +330,7 @@ public:
         if (!is_valid() || !structure_.has_stream_id) {
             return std::nullopt;
         }
-        return cif::read_u32_safe(buffer_, 4);  // Right after header
+        return cif::read_u32_safe(buffer_, 4); // Right after header
     }
 
     // Class ID accessor
@@ -344,7 +345,7 @@ public:
             return std::nullopt;
         }
 
-        size_t offset = 4;  // After header
+        size_t offset = 4; // After header
         if (structure_.has_stream_id) {
             offset += 4;
         }
@@ -355,7 +356,7 @@ public:
         ClassIdValue result;
         result.oui = (word0 >> 8) & 0xFFFFFF;
         result.icc = word0 & 0xFF;
-        result.pcc = word1;  // Full 32 bits
+        result.pcc = word1; // Full 32 bits
 
         return result;
     }
@@ -364,32 +365,24 @@ public:
     // Use get(view, field::field_name) for all CIF field access, including:
     //   - get(view, field::controller_uuid) - instead of controller_uuid()
     //   - get(view, field::gps_ascii) - instead of has_gps_ascii() / gps_ascii_data()
-    //   - get(view, field::context_association_lists) - instead of has_context_association() / context_association_data()
+    //   - get(view, field::context_association_lists) - instead of has_context_association() /
+    //   context_association_data()
     //   - has(view, field::field_name) - for presence checks instead of has_cifN_field<>()
     //
-    // This provides a uniform API with FieldProxy for raw access (.raw_bytes()) and future interpreted access (.value()).
+    // This provides a uniform API with FieldProxy for raw access (.raw_bytes()) and future
+    // interpreted access (.value()).
 
     // Size queries
-    size_t packet_size_bytes() const noexcept {
-        return structure_.packet_size_words * 4;
-    }
+    size_t packet_size_bytes() const noexcept { return structure_.packet_size_words * 4; }
 
-    size_t packet_size_words() const noexcept {
-        return structure_.packet_size_words;
-    }
+    size_t packet_size_words() const noexcept { return structure_.packet_size_words; }
 
     // Field access API support - expose buffer and offsets
-    const uint8_t* context_buffer() const noexcept {
-        return buffer_;
-    }
+    const uint8_t* context_buffer() const noexcept { return buffer_; }
 
-    size_t context_base_offset() const noexcept {
-        return structure_.context_base_bytes;
-    }
+    size_t context_base_offset() const noexcept { return structure_.context_base_bytes; }
 
-    size_t buffer_size() const noexcept {
-        return buffer_size_;
-    }
+    size_t buffer_size() const noexcept { return buffer_size_; }
 };
 
-}  // namespace vrtio
+} // namespace vrtio

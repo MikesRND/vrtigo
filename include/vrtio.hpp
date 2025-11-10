@@ -24,18 +24,18 @@
 // - Unified field access API (get/set/has)
 
 // Core types and utilities
-#include "vrtio/core/types.hpp"
-#include "vrtio/core/header.hpp"
-#include "vrtio/core/endian.hpp"
-#include "vrtio/core/concepts.hpp"
-#include "vrtio/core/class_id.hpp"
 #include "vrtio/core/cif.hpp"
+#include "vrtio/core/class_id.hpp"
+#include "vrtio/core/concepts.hpp"
+#include "vrtio/core/endian.hpp"
+#include "vrtio/core/header.hpp"
+#include "vrtio/core/types.hpp"
 
 // Packet implementation
-#include "vrtio/packet/data_packet.hpp"
 #include "vrtio/packet/builder.hpp"
-#include "vrtio/packet/context_packet_view.hpp"
 #include "vrtio/packet/context_packet.hpp"
+#include "vrtio/packet/context_packet_view.hpp"
+#include "vrtio/packet/data_packet.hpp"
 
 // Field access API (get, set, has for context packet fields)
 #include "vrtio/fields.hpp"

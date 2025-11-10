@@ -1,6 +1,7 @@
-#include <vrtio/fields.hpp>
 #include <iostream>
+
 #include <cassert>
+#include <vrtio/fields.hpp>
 
 using namespace vrtio;
 using namespace vrtio::field;
@@ -13,15 +14,15 @@ using namespace vrtio::field;
 
 int main() {
     // Test packet with multiple fields
-    using TestPacket = ContextPacket<
-        true,                    // HasStreamId
-        NoTimeStamp,             // TimeStampType
-        NoClassId,               // ClassIdType
-        (1U << 29) | (1U << 21) | (1U << 23),  // CIF0: bandwidth, sample_rate, gain
-        0,                       // CIF1
-        0,                       // CIF2
-        false                    // HasTrailer
-    >;
+    using TestPacket =
+        ContextPacket<true,                                 // HasStreamId
+                      NoTimeStamp,                          // TimeStampType
+                      NoClassId,                            // ClassIdType
+                      (1U << 29) | (1U << 21) | (1U << 23), // CIF0: bandwidth, sample_rate, gain
+                      0,                                    // CIF1
+                      0,                                    // CIF2
+                      false                                 // HasTrailer
+                      >;
 
     uint8_t buffer[1024] = {};
     TestPacket packet(buffer);
@@ -30,9 +31,9 @@ int main() {
     // Test set_value() and value() via proxy (interpreted values)
     // =======================================================================
 
-    get(packet, bandwidth).set_value(1'000'000.0);      // 1 MHz
-    get(packet, sample_rate).set_value(2'000'000.0);    // 2 MSPS
-    get(packet, gain).set_raw_value(42U);               // Gain has no interpreted support
+    get(packet, bandwidth).set_value(1'000'000.0);   // 1 MHz
+    get(packet, sample_rate).set_value(2'000'000.0); // 2 MSPS
+    get(packet, gain).set_raw_value(42U);            // Gain has no interpreted support
 
     // =======================================================================
     // Test get() function

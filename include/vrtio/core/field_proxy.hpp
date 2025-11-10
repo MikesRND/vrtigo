@@ -1,13 +1,15 @@
 #pragma once
 
-#include "detail/field_traits.hpp"
-#include <cstddef>
-#include <cstdint>
 #include <optional>
 #include <span>
 #include <type_traits>
-#include <cstring>
+
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+
+#include "detail/field_traits.hpp"
 
 namespace vrtio {
 
@@ -31,17 +33,17 @@ namespace vrtio {
  *       double hz = bw.value();               // Interpreted Hz (if supported)
  *   }
  */
-template<typename FieldTag, typename Packet>
+template <typename FieldTag, typename Packet>
 class FieldProxy {
 public:
     using packet_type = Packet;
     using field_tag = FieldTag;
 
 private:
-    Packet* packet_;          // Non-owning pointer to packet
-    size_t offset_bytes_;     // Cached field offset in bytes
-    size_t size_bytes_;       // Field size in bytes
-    bool present_;            // Cached presence check
+    Packet* packet_;      // Non-owning pointer to packet
+    size_t offset_bytes_; // Cached field offset in bytes
+    size_t size_bytes_;   // Field size in bytes
+    bool present_;        // Cached presence check
 
 public:
     /**
@@ -52,11 +54,10 @@ public:
      * @param present Whether field is present in packet
      */
     constexpr FieldProxy(Packet& packet, size_t offset, size_t size, bool present) noexcept
-        : packet_(&packet)
-        , offset_bytes_(offset)
-        , size_bytes_(size)
-        , present_(present)
-    {}
+        : packet_(&packet),
+          offset_bytes_(offset),
+          size_bytes_(size),
+          present_(present) {}
 
     // Copyable and movable (holds non-owning pointer)
     FieldProxy(const FieldProxy&) = default;
@@ -68,17 +69,13 @@ public:
      * Check if field is present in packet
      * @return true if field present, false otherwise
      */
-    [[nodiscard]] constexpr bool has_value() const noexcept {
-        return present_;
-    }
+    [[nodiscard]] constexpr bool has_value() const noexcept { return present_; }
 
     /**
      * Convert to bool for presence checking
      * Allows: if (auto field = get(...)) { ... }
      */
-    [[nodiscard]] constexpr explicit operator bool() const noexcept {
-        return present_;
-    }
+    [[nodiscard]] constexpr explicit operator bool() const noexcept { return present_; }
 
     /**
      * Get raw on-wire byte representation of field
@@ -112,10 +109,12 @@ public:
      *       ContextPacket (compile-time) DOES have this method.
      */
     void set_raw_bytes(std::span<const uint8_t> bytes) noexcept
-        requires requires(Packet& p) { { p.mutable_context_buffer() } -> std::same_as<uint8_t*>; }
+        requires requires(Packet& p) {
+            { p.mutable_context_buffer() } -> std::same_as<uint8_t*>;
+        }
     {
         if (!present_ || !packet_ || bytes.size() != size_bytes_) {
-            return;  // Size mismatch or field not present
+            return; // Size mismatch or field not present
         }
 
         // Get mutable packet buffer
@@ -127,17 +126,13 @@ public:
      * Get field offset in bytes
      * @return Cached offset from packet start
      */
-    [[nodiscard]] constexpr size_t offset() const noexcept {
-        return offset_bytes_;
-    }
+    [[nodiscard]] constexpr size_t offset() const noexcept { return offset_bytes_; }
 
     /**
      * Get field size in bytes
      * @return Field size
      */
-    [[nodiscard]] constexpr size_t size() const noexcept {
-        return size_bytes_;
-    }
+    [[nodiscard]] constexpr size_t size() const noexcept { return size_bytes_; }
 
     /**
      * Get structured on-wire field value (FieldTraits::value_type)
@@ -150,9 +145,8 @@ public:
      *
      * Precondition: has_value() must be true (checked by assertion in debug builds)
      */
-    [[nodiscard]] auto raw_value() const noexcept
-        -> typename detail::FieldTraits<FieldTag::cif, FieldTag::bit>::value_type
-    {
+    [[nodiscard]] auto raw_value() const noexcept ->
+        typename detail::FieldTraits<FieldTag::cif, FieldTag::bit>::value_type {
         assert(present_ && "FieldProxy::raw_value() called on field that is not present");
         assert(packet_ && "FieldProxy::raw_value() called on invalid proxy");
 
@@ -172,9 +166,11 @@ public:
      * Note: Only available for fixed-size fields with FieldTraits::write() defined.
      *       Variable-length fields are read-only.
      */
-    void set_raw_value(const typename detail::FieldTraits<FieldTag::cif, FieldTag::bit>::value_type& v) noexcept
-        requires requires(Packet& p) { { p.mutable_context_buffer() } -> std::same_as<uint8_t*>; }
-              && detail::FixedFieldTrait<detail::FieldTraits<FieldTag::cif, FieldTag::bit>>
+    void set_raw_value(
+        const typename detail::FieldTraits<FieldTag::cif, FieldTag::bit>::value_type& v) noexcept
+        requires requires(Packet& p) {
+            { p.mutable_context_buffer() } -> std::same_as<uint8_t*>;
+        } && detail::FixedFieldTrait<detail::FieldTraits<FieldTag::cif, FieldTag::bit>>
     {
         if (!present_ || !packet_) {
             return;
@@ -198,8 +194,7 @@ public:
      * Compile-time error: If called on a field without interpreted support,
      *                     you'll get a helpful error message. Use .raw_value() instead.
      */
-    [[nodiscard]] auto value() const noexcept
-        -> detail::interpreted_type_or_dummy_t<FieldTag>
+    [[nodiscard]] auto value() const noexcept -> detail::interpreted_type_or_dummy_t<FieldTag>
         requires detail::HasInterpretedAccess<FieldTag>
     {
         assert(present_ && "FieldProxy::value() called on field that is not present");
@@ -212,15 +207,15 @@ public:
     /**
      * Diagnostic fallback: Helpful error when .value() called without interpreted support
      */
-    template<typename T = void>
+    template <typename T = void>
     auto value() const noexcept -> void
-        requires (!detail::HasInterpretedAccess<FieldTag>)
+        requires(!detail::HasInterpretedAccess<FieldTag>)
     {
         static_assert(detail::always_false<T>,
-            "Field does not have interpreted support. "
-            "Use .raw_value() to access the on-wire format, "
-            "or add interpreted_type/to_interpreted()/from_interpreted() "
-            "to the FieldTraits specialization to enable .value().");
+                      "Field does not have interpreted support. "
+                      "Use .raw_value() to access the on-wire format, "
+                      "or add interpreted_type/to_interpreted()/from_interpreted() "
+                      "to the FieldTraits specialization to enable .value().");
     }
 
     /**
@@ -234,9 +229,10 @@ public:
      * Note: Only available for fixed-size fields with interpreted support.
      */
     void set_value(const detail::interpreted_type_or_dummy_t<FieldTag>& v) noexcept
-        requires detail::HasInterpretedAccess<FieldTag>
-              && requires(Packet& p) { { p.mutable_context_buffer() } -> std::same_as<uint8_t*>; }
-              && detail::FixedFieldTrait<detail::FieldTraits<FieldTag::cif, FieldTag::bit>>
+        requires detail::HasInterpretedAccess<FieldTag> &&
+                 requires(Packet& p) {
+                     { p.mutable_context_buffer() } -> std::same_as<uint8_t*>;
+                 } && detail::FixedFieldTrait<detail::FieldTraits<FieldTag::cif, FieldTag::bit>>
     {
         if (!present_ || !packet_) {
             return;
@@ -249,15 +245,15 @@ public:
     /**
      * Diagnostic fallback: Helpful error when .set_value() called without interpreted support
      */
-    template<typename T = void>
+    template <typename T = void>
     void set_value(const auto&) const noexcept
-        requires (!detail::HasInterpretedAccess<FieldTag>)
+        requires(!detail::HasInterpretedAccess<FieldTag>)
     {
         static_assert(detail::always_false<T>,
-            "Field does not have interpreted support. "
-            "Use .set_raw_value() to write the on-wire format, "
-            "or add interpreted_type/to_interpreted()/from_interpreted() "
-            "to the FieldTraits specialization to enable .set_value().");
+                      "Field does not have interpreted support. "
+                      "Use .set_raw_value() to write the on-wire format, "
+                      "or add interpreted_type/to_interpreted()/from_interpreted() "
+                      "to the FieldTraits specialization to enable .set_value().");
     }
 
     /**
@@ -270,8 +266,7 @@ public:
      *
      * Usage: if (auto bw = get(pkt, field::bandwidth)) { std::cout << *bw << " Hz\n"; }
      */
-    [[nodiscard]] auto operator*() const noexcept
-        -> detail::interpreted_type_or_dummy_t<FieldTag>
+    [[nodiscard]] auto operator*() const noexcept -> detail::interpreted_type_or_dummy_t<FieldTag>
         requires detail::HasInterpretedAccess<FieldTag>
     {
         return value();
@@ -280,13 +275,13 @@ public:
     /**
      * Diagnostic fallback: Helpful error when operator* called without interpreted support
      */
-    template<typename T = void>
+    template <typename T = void>
     auto operator*() const noexcept -> void
-        requires (!detail::HasInterpretedAccess<FieldTag>)
+        requires(!detail::HasInterpretedAccess<FieldTag>)
     {
         static_assert(detail::always_false<T>,
-            "Cannot dereference field proxy without interpreted support. "
-            "Use .raw_value() instead, or add interpreted support to enable operator*.");
+                      "Cannot dereference field proxy without interpreted support. "
+                      "Use .raw_value() instead, or add interpreted support to enable operator*.");
     }
 };
 

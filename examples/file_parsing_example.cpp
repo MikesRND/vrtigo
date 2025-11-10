@@ -1,6 +1,7 @@
-#include <vrtio/vrtio_io.hpp>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
+
+#include <vrtio/vrtio_io.hpp>
 
 using namespace vrtio;
 
@@ -12,7 +13,7 @@ using namespace vrtio;
  */
 class PacketProcessor {
 private:
-    size_t packet_num_ = 0;  // Internal packet counter
+    size_t packet_num_ = 0; // Internal packet counter
 
 public:
     /**
@@ -22,8 +23,7 @@ public:
      * @param info Packet metadata (type, size, offset, header)
      * @return true to continue processing, false to stop
      */
-    bool operator()(std::span<const uint8_t> /*packet*/,
-                    const VRTFileReader<>::ReadResult& info) {
+    bool operator()(std::span<const uint8_t> /*packet*/, const VRTFileReader<>::ReadResult& info) {
         packet_num_++;
 
         std::cout << "Packet " << packet_num_ << ":\n";
@@ -33,7 +33,8 @@ public:
 
         // Decode header for more details
         auto decoded = detail::decode_header(info.header);
-        std::cout << "  Stream ID: " << (detail::has_stream_id_field(decoded.type) ? "Yes" : "No") << "\n";
+        std::cout << "  Stream ID: " << (detail::has_stream_id_field(decoded.type) ? "Yes" : "No")
+                  << "\n";
         std::cout << "  Class ID: " << (decoded.has_class_id ? "Yes" : "No") << "\n";
         // Trailer only applies to Signal/Extension Data packets
         std::cout << "  Trailer: " << (decoded.trailer_included ? "Yes" : "No") << "\n";
@@ -43,7 +44,7 @@ public:
         std::cout << "\n";
 
         // Process up to 30 packets (could also return true to process all)
-        return packet_num_ < 30; 
+        return packet_num_ < 30;
     }
 };
 

@@ -1,13 +1,10 @@
 #include "context_test_fixture.hpp"
 
 TEST_F(ContextPacketTest, TimestampInitialization) {
-    using TestContext = ContextPacket<
-        true,                   // Has stream ID
-        TimeStampUTC,          // UTC timestamp
-        NoClassId,
-        0, 0, 0,               // No context fields
-        false
-    >;
+    using TestContext = ContextPacket<true,               // Has stream ID
+                                      TimeStampUTC,       // UTC timestamp
+                                      NoClassId, 0, 0, 0, // No context fields
+                                      false>;
 
     TestContext packet(buffer.data());
 
@@ -18,13 +15,7 @@ TEST_F(ContextPacketTest, TimestampInitialization) {
 }
 
 TEST_F(ContextPacketTest, TimestampIntegerAccess) {
-    using TestContext = ContextPacket<
-        true,
-        TimeStampUTC,
-        NoClassId,
-        0, 0, 0,
-        false
-    >;
+    using TestContext = ContextPacket<true, TimeStampUTC, NoClassId, 0, 0, 0, false>;
 
     TestContext packet(buffer.data());
 
@@ -37,13 +28,7 @@ TEST_F(ContextPacketTest, TimestampIntegerAccess) {
 }
 
 TEST_F(ContextPacketTest, TimestampFractionalAccess) {
-    using TestContext = ContextPacket<
-        true,
-        TimeStampUTC,
-        NoClassId,
-        0, 0, 0,
-        false
-    >;
+    using TestContext = ContextPacket<true, TimeStampUTC, NoClassId, 0, 0, 0, false>;
 
     TestContext packet(buffer.data());
 
@@ -57,13 +42,7 @@ TEST_F(ContextPacketTest, TimestampFractionalAccess) {
 }
 
 TEST_F(ContextPacketTest, UnifiedTimestampAccess) {
-    using TestContext = ContextPacket<
-        true,
-        TimeStampUTC,
-        NoClassId,
-        0, 0, 0,
-        false
-    >;
+    using TestContext = ContextPacket<true, TimeStampUTC, NoClassId, 0, 0, 0, false>;
 
     TestContext packet(buffer.data());
 
@@ -81,13 +60,9 @@ TEST_F(ContextPacketTest, UnifiedTimestampAccess) {
 
 TEST_F(ContextPacketTest, TimestampWithClassId) {
     using TestClassId = ClassId<0x123456, 0xABCDEF00>;
-    using TestContext = ContextPacket<
-        true,
-        TimeStampUTC,
-        TestClassId,           // Has class ID (8 bytes)
-        0, 0, 0,
-        false
-    >;
+    using TestContext = ContextPacket<true, TimeStampUTC,
+                                      TestClassId, // Has class ID (8 bytes)
+                                      0, 0, 0, false>;
 
     TestContext packet(buffer.data());
 
@@ -107,13 +82,7 @@ TEST_F(ContextPacketTest, TimestampWithClassId) {
 
 TEST_F(ContextPacketTest, TimestampWithContextFields) {
     constexpr uint32_t cif0_mask = cif0::BANDWIDTH | cif0::SAMPLE_RATE;
-    using TestContext = ContextPacket<
-        true,
-        TimeStampUTC,
-        NoClassId,
-        cif0_mask, 0, 0,
-        false
-    >;
+    using TestContext = ContextPacket<true, TimeStampUTC, NoClassId, cif0_mask, 0, 0, false>;
 
     TestContext packet(buffer.data());
 
@@ -121,8 +90,8 @@ TEST_F(ContextPacketTest, TimestampWithContextFields) {
     packet.set_stream_id(0x12345678);
     TimeStampUTC ts(1600000000, 123456789012ULL);
     packet.setTimeStamp(ts);
-    get(packet, field::bandwidth).set_value(20'000'000.0);      // 20 MHz
-    get(packet, field::sample_rate).set_value(10'000'000.0);    // 10 MSPS
+    get(packet, field::bandwidth).set_value(20'000'000.0);   // 20 MHz
+    get(packet, field::sample_rate).set_value(10'000'000.0); // 10 MSPS
 
     // Verify all fields
     EXPECT_EQ(packet.stream_id(), 0x12345678);
@@ -134,13 +103,8 @@ TEST_F(ContextPacketTest, TimestampWithContextFields) {
 }
 
 TEST_F(ContextPacketTest, TimestampNoStreamId) {
-    using TestContext = ContextPacket<
-        false,                  // No stream ID
-        TimeStampUTC,
-        NoClassId,
-        0, 0, 0,
-        false
-    >;
+    using TestContext = ContextPacket<false, // No stream ID
+                                      TimeStampUTC, NoClassId, 0, 0, 0, false>;
 
     TestContext packet(buffer.data());
 
@@ -152,4 +116,3 @@ TEST_F(ContextPacketTest, TimestampNoStreamId) {
     EXPECT_EQ(read_ts.seconds(), 987654321);
     EXPECT_EQ(read_ts.fractional(), 111111111111ULL);
 }
-
