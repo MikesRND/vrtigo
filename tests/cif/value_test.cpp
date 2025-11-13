@@ -29,10 +29,10 @@ TEST_F(InterpretedValueTest, BandwidthInterpretedRead) {
     // Set bandwidth to Q52.12 encoding for 100 MHz
     // 100 MHz = 100'000'000 Hz
     // Q52.12: 100'000'000 * 4096 = 409'600'000'000
-    get(packet, bandwidth).set_raw_value(409'600'000'000ULL);
+    packet[bandwidth].set_raw_value(409'600'000'000ULL);
 
     // Read interpreted value
-    double hz = get(packet, bandwidth).value();
+    double hz = packet[bandwidth].value();
 
     // Should be within 1 Hz of 100 MHz
     EXPECT_NEAR(hz, 100'000'000.0, 1.0);
@@ -44,11 +44,11 @@ TEST_F(InterpretedValueTest, BandwidthInterpretedWrite) {
     TestContext packet(buffer.data());
 
     // Write interpreted value (50 MHz)
-    get(packet, bandwidth).set_value(50'000'000.0);
+    packet[bandwidth].set_value(50'000'000.0);
 
     // Verify raw value is correct Q52.12 encoding
     // 50 MHz * 4096 = 204'800'000'000
-    EXPECT_EQ(get(packet, bandwidth).raw_value(), 204'800'000'000ULL);
+    EXPECT_EQ(packet[bandwidth].raw_value(), 204'800'000'000ULL);
 }
 
 TEST_F(InterpretedValueTest, BandwidthRoundTrip) {
@@ -67,8 +67,8 @@ TEST_F(InterpretedValueTest, BandwidthRoundTrip) {
     };
 
     for (double freq : test_frequencies) {
-        get(packet, bandwidth).set_value(freq);
-        double retrieved = get(packet, bandwidth).value();
+        packet[bandwidth].set_value(freq);
+        double retrieved = packet[bandwidth].value();
         EXPECT_NEAR(retrieved, freq, 1.0) << "Failed for frequency: " << freq;
     }
 }
@@ -79,10 +79,10 @@ TEST_F(InterpretedValueTest, BandwidthOperatorDereference) {
     TestContext packet(buffer.data());
 
     // Set to 200 MHz
-    get(packet, bandwidth).set_value(200'000'000.0);
+    packet[bandwidth].set_value(200'000'000.0);
 
     // operator* should return interpreted value
-    auto bw_proxy = get(packet, bandwidth);
+    auto bw_proxy = packet[bandwidth];
     double hz = *bw_proxy;
 
     EXPECT_NEAR(hz, 200'000'000.0, 1.0);
@@ -97,13 +97,13 @@ TEST_F(InterpretedValueTest, BandwidthConversionPrecision) {
 
     // Test 1: Exact value (divisible by 4096)
     double exact_hz = 4096.0 * 1000.0; // 4'096'000 Hz
-    get(packet, bandwidth).set_value(exact_hz);
-    EXPECT_DOUBLE_EQ(get(packet, bandwidth).value(), exact_hz);
+    packet[bandwidth].set_value(exact_hz);
+    EXPECT_DOUBLE_EQ(packet[bandwidth].value(), exact_hz);
 
     // Test 2: Non-exact value (rounding)
     double inexact_hz = 1'234'567.89;
-    get(packet, bandwidth).set_value(inexact_hz);
-    double retrieved = get(packet, bandwidth).value();
+    packet[bandwidth].set_value(inexact_hz);
+    double retrieved = packet[bandwidth].value();
     // Should be within Q52.12 resolution (~0.244 Hz)
     EXPECT_NEAR(retrieved, inexact_hz, 0.25);
 }
@@ -114,16 +114,16 @@ TEST_F(InterpretedValueTest, BandwidthEdgeCases) {
     TestContext packet(buffer.data());
 
     // Zero value
-    get(packet, bandwidth).set_value(0.0);
-    EXPECT_EQ(get(packet, bandwidth).raw_value(), 0ULL);
-    EXPECT_DOUBLE_EQ(get(packet, bandwidth).value(), 0.0);
+    packet[bandwidth].set_value(0.0);
+    EXPECT_EQ(packet[bandwidth].raw_value(), 0ULL);
+    EXPECT_DOUBLE_EQ(packet[bandwidth].value(), 0.0);
 
     // Maximum Q52.12 value
     uint64_t max_q52_12 = 0xFFFFFFFFFFFFFFFFULL;
-    get(packet, bandwidth).set_raw_value(max_q52_12);
-    EXPECT_EQ(get(packet, bandwidth).raw_value(), max_q52_12);
+    packet[bandwidth].set_raw_value(max_q52_12);
+    EXPECT_EQ(packet[bandwidth].raw_value(), max_q52_12);
     double expected_hz = static_cast<double>(max_q52_12) / 4096.0;
-    EXPECT_NEAR(get(packet, bandwidth).value(), expected_hz, 1.0);
+    EXPECT_NEAR(packet[bandwidth].value(), expected_hz, 1.0);
 }
 
 // =============================================================================
@@ -138,10 +138,10 @@ TEST_F(InterpretedValueTest, SampleRateInterpretedRead) {
     // Set sample rate to Q52.12 encoding for 50 MHz (50 MSPS)
     // 50 MHz = 50'000'000 Hz
     // Q52.12: 50'000'000 * 4096 = 204'800'000'000
-    get(packet, sample_rate).set_raw_value(204'800'000'000ULL);
+    packet[sample_rate].set_raw_value(204'800'000'000ULL);
 
     // Read interpreted value
-    double hz = get(packet, sample_rate).value();
+    double hz = packet[sample_rate].value();
 
     // Should be within 1 Hz of 50 MHz
     EXPECT_NEAR(hz, 50'000'000.0, 1.0);
@@ -153,11 +153,11 @@ TEST_F(InterpretedValueTest, SampleRateInterpretedWrite) {
     TestContext packet(buffer.data());
 
     // Write interpreted value (25 MSPS)
-    get(packet, sample_rate).set_value(25'000'000.0);
+    packet[sample_rate].set_value(25'000'000.0);
 
     // Verify raw value is correct Q52.12 encoding
     // 25 MHz * 4096 = 102'400'000'000
-    EXPECT_EQ(get(packet, sample_rate).raw_value(), 102'400'000'000ULL);
+    EXPECT_EQ(packet[sample_rate].raw_value(), 102'400'000'000ULL);
 }
 
 TEST_F(InterpretedValueTest, SampleRateRoundTrip) {
@@ -177,8 +177,8 @@ TEST_F(InterpretedValueTest, SampleRateRoundTrip) {
     };
 
     for (double rate : test_rates) {
-        get(packet, sample_rate).set_value(rate);
-        double retrieved = get(packet, sample_rate).value();
+        packet[sample_rate].set_value(rate);
+        double retrieved = packet[sample_rate].value();
         EXPECT_NEAR(retrieved, rate, 1.0) << "Failed for sample rate: " << rate;
     }
 }
@@ -189,10 +189,10 @@ TEST_F(InterpretedValueTest, SampleRateOperatorDereference) {
     TestContext packet(buffer.data());
 
     // Set to 125 MSPS
-    get(packet, sample_rate).set_value(125'000'000.0);
+    packet[sample_rate].set_value(125'000'000.0);
 
     // operator* should return interpreted value
-    auto sr_proxy = get(packet, sample_rate);
+    auto sr_proxy = packet[sample_rate];
     double hz = *sr_proxy;
 
     EXPECT_NEAR(hz, 125'000'000.0, 1.0);
@@ -207,13 +207,13 @@ TEST_F(InterpretedValueTest, SampleRateConversionPrecision) {
 
     // Test 1: Exact value (divisible by 4096)
     double exact_hz = 4096.0 * 1000.0; // 4'096'000 Hz
-    get(packet, sample_rate).set_value(exact_hz);
-    EXPECT_DOUBLE_EQ(get(packet, sample_rate).value(), exact_hz);
+    packet[sample_rate].set_value(exact_hz);
+    EXPECT_DOUBLE_EQ(packet[sample_rate].value(), exact_hz);
 
     // Test 2: Non-exact value (rounding)
     double inexact_hz = 12'345'678.9;
-    get(packet, sample_rate).set_value(inexact_hz);
-    double retrieved = get(packet, sample_rate).value();
+    packet[sample_rate].set_value(inexact_hz);
+    double retrieved = packet[sample_rate].value();
     // Should be within Q52.12 resolution (~0.244 Hz)
     EXPECT_NEAR(retrieved, inexact_hz, 0.25);
 }
@@ -237,8 +237,8 @@ TEST_F(InterpretedValueTest, SampleRateTypicalADCRates) {
     };
 
     for (double rate : adc_rates) {
-        get(packet, sample_rate).set_value(rate);
-        double retrieved = get(packet, sample_rate).value();
+        packet[sample_rate].set_value(rate);
+        double retrieved = packet[sample_rate].value();
         EXPECT_NEAR(retrieved, rate, 1.0) << "Failed for ADC rate: " << rate;
     }
 }
@@ -249,20 +249,20 @@ TEST_F(InterpretedValueTest, SampleRateEdgeCases) {
     TestContext packet(buffer.data());
 
     // Zero value (stopped ADC)
-    get(packet, sample_rate).set_value(0.0);
-    EXPECT_EQ(get(packet, sample_rate).raw_value(), 0ULL);
-    EXPECT_DOUBLE_EQ(get(packet, sample_rate).value(), 0.0);
+    packet[sample_rate].set_value(0.0);
+    EXPECT_EQ(packet[sample_rate].raw_value(), 0ULL);
+    EXPECT_DOUBLE_EQ(packet[sample_rate].value(), 0.0);
 
     // Maximum Q52.12 value
     uint64_t max_q52_12 = 0xFFFFFFFFFFFFFFFFULL;
-    get(packet, sample_rate).set_raw_value(max_q52_12);
-    EXPECT_EQ(get(packet, sample_rate).raw_value(), max_q52_12);
+    packet[sample_rate].set_raw_value(max_q52_12);
+    EXPECT_EQ(packet[sample_rate].raw_value(), max_q52_12);
     double expected_hz = static_cast<double>(max_q52_12) / 4096.0;
-    EXPECT_NEAR(get(packet, sample_rate).value(), expected_hz, 1.0);
+    EXPECT_NEAR(packet[sample_rate].value(), expected_hz, 1.0);
 
     // Very low sample rate (1 Hz - theoretical minimum)
-    get(packet, sample_rate).set_value(1.0);
-    double retrieved = get(packet, sample_rate).value();
+    packet[sample_rate].set_value(1.0);
+    double retrieved = packet[sample_rate].value();
     EXPECT_NEAR(retrieved, 1.0, 0.25); // Within Q52.12 resolution
 }
 
@@ -278,16 +278,16 @@ TEST_F(InterpretedValueTest, BandwidthAndSampleRateTogether) {
 
     // Set bandwidth and sample rate
     // Typical: sample rate >= bandwidth (Nyquist)
-    get(packet, bandwidth).set_value(20'000'000.0);   // 20 MHz bandwidth
-    get(packet, sample_rate).set_value(25'000'000.0); // 25 MSPS (1.25x oversampling)
+    packet[bandwidth].set_value(20'000'000.0);   // 20 MHz bandwidth
+    packet[sample_rate].set_value(25'000'000.0); // 25 MSPS (1.25x oversampling)
 
     // Verify both fields
-    EXPECT_NEAR(get(packet, bandwidth).value(), 20'000'000.0, 1.0);
-    EXPECT_NEAR(get(packet, sample_rate).value(), 25'000'000.0, 1.0);
+    EXPECT_NEAR(packet[bandwidth].value(), 20'000'000.0, 1.0);
+    EXPECT_NEAR(packet[sample_rate].value(), 25'000'000.0, 1.0);
 
     // Verify sample rate >= bandwidth (typical constraint)
-    double bw = get(packet, bandwidth).value();
-    double sr = get(packet, sample_rate).value();
+    double bw = packet[bandwidth].value();
+    double sr = packet[sample_rate].value();
     EXPECT_GE(sr, bw) << "Sample rate should be >= bandwidth";
 }
 
@@ -298,19 +298,19 @@ TEST_F(InterpretedValueTest, RuntimeParserIntegration) {
     TestContext tx_packet(buffer.data());
 
     tx_packet.set_stream_id(0xDEADBEEF);
-    get(tx_packet, bandwidth).set_value(75'000'000.0);   // 75 MHz
-    get(tx_packet, sample_rate).set_value(80'000'000.0); // 80 MSPS
+    tx_packet[bandwidth].set_value(75'000'000.0);   // 75 MHz
+    tx_packet[sample_rate].set_value(80'000'000.0); // 80 MSPS
 
     // Parse with runtime view
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
     EXPECT_EQ(view.error(), ValidationError::none);
 
     // Verify values accessible from runtime parser
-    auto bw = get(view, bandwidth);
+    auto bw = view[bandwidth];
     ASSERT_TRUE(bw.has_value());
     EXPECT_NEAR(bw.value(), 75'000'000.0, 1.0);
 
-    auto sr = get(view, sample_rate);
+    auto sr = view[sample_rate];
     ASSERT_TRUE(sr.has_value());
     EXPECT_NEAR(sr.value(), 80'000'000.0, 1.0);
 

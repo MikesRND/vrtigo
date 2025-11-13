@@ -1,17 +1,13 @@
 #include <array>
 
 #include <gtest/gtest.h>
-#include <vrtio/core/timestamp.hpp>
-#include <vrtio/core/trailer_view.hpp>
-#include <vrtio/packet/builder.hpp>
-#include <vrtio/packet/data_packet.hpp>
-#include <vrtio/packet/data_packet_view.hpp>
+#include <vrtio.hpp>
 
 using namespace vrtio;
 
 // Test basic signal packet without stream ID
 TEST(SignalPacketViewTest, BasicPacketNoStream) {
-    using PacketType = SignalDataPacketNoId<NoTimeStamp,
+    using PacketType = SignalDataPacketNoId<vrtio::NoClassId, NoTimeStamp,
                                             vrtio::Trailer::None, // no trailer
                                             64                    // 64 words payload
                                             >;
@@ -35,7 +31,7 @@ TEST(SignalPacketViewTest, BasicPacketNoStream) {
 
 // Test signal packet with stream ID
 TEST(SignalPacketViewTest, PacketWithStreamID) {
-    using PacketType = SignalDataPacket<NoTimeStamp, vrtio::Trailer::None, 64>;
+    using PacketType = SignalDataPacket<vrtio::NoClassId, NoTimeStamp, vrtio::Trailer::None, 64>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
 
@@ -56,7 +52,7 @@ TEST(SignalPacketViewTest, PacketWithStreamID) {
 
 // Test signal packet with timestamps
 TEST(SignalPacketViewTest, PacketWithTimestamps) {
-    using PacketType = SignalDataPacket<TimeStampUTC, vrtio::Trailer::None, 64>;
+    using PacketType = SignalDataPacket<vrtio::NoClassId, TimeStampUTC, vrtio::Trailer::None, 64>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
 
@@ -84,7 +80,7 @@ TEST(SignalPacketViewTest, PacketWithTimestamps) {
 
 // Test signal packet with trailer
 TEST(SignalPacketViewTest, PacketWithTrailer) {
-    using PacketType = SignalDataPacket<NoTimeStamp,
+    using PacketType = SignalDataPacket<vrtio::NoClassId, NoTimeStamp,
                                         vrtio::Trailer::Included, // has trailer
                                         64>;
 
@@ -108,7 +104,7 @@ TEST(SignalPacketViewTest, PacketWithTrailer) {
 
 // Test full-featured packet (stream ID + timestamps + trailer)
 TEST(SignalPacketViewTest, FullFeaturedPacket) {
-    using PacketType = SignalDataPacket<TimeStampUTC,
+    using PacketType = SignalDataPacket<vrtio::NoClassId, TimeStampUTC,
                                         vrtio::Trailer::Included, // has trailer
                                         128                       // larger payload
                                         >;
@@ -143,7 +139,7 @@ TEST(SignalPacketViewTest, FullFeaturedPacket) {
 
 // Test payload access
 TEST(SignalPacketViewTest, PayloadAccess) {
-    using PacketType = SignalDataPacketNoId<NoTimeStamp, vrtio::Trailer::None,
+    using PacketType = SignalDataPacketNoId<vrtio::NoClassId, NoTimeStamp, vrtio::Trailer::None,
                                             16 // 16 words = 64 bytes
                                             >;
 
@@ -174,7 +170,8 @@ TEST(SignalPacketViewTest, PayloadAccess) {
 
 // Test validation: buffer too small
 TEST(SignalPacketViewTest, ValidationBufferTooSmall) {
-    using PacketType = SignalDataPacketNoId<NoTimeStamp, vrtio::Trailer::None, 64>;
+    using PacketType =
+        SignalDataPacketNoId<vrtio::NoClassId, NoTimeStamp, vrtio::Trailer::None, 64>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
     PacketType packet(buffer.data());
@@ -218,8 +215,9 @@ TEST(SignalPacketViewTest, ValidationNullBuffer) {
 
 // Test round-trip: build → parse → verify
 TEST(SignalPacketViewTest, RoundTripBuildParse) {
-    using PacketType = SignalDataPacket<TimeStamp<TsiType::gps, TsfType::real_time>,
-                                        vrtio::Trailer::Included, 256>;
+    using PacketType =
+        SignalDataPacket<vrtio::NoClassId, TimeStamp<TsiType::gps, TsfType::real_time>,
+                         vrtio::Trailer::Included, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
 
@@ -268,29 +266,53 @@ TEST(SignalPacketViewTest, RoundTripBuildParse) {
     }
 }
 
-// Test validation: reject signal packets with class ID bit set
-// This is a security check - if we allowed class ID, the two class ID words
-// would shift all field offsets, causing stream_id/timestamp/payload/trailer
-// to be misinterpreted
-TEST(SignalPacketViewTest, ValidationRejectsClassIdBit) {
+// Test that signal packets can now have class IDs
+// Data packets (signal and extension) now support optional class ID fields,
+// and the parser correctly handles the offset calculations for all subsequent fields
+TEST(SignalPacketViewTest, ValidationAcceptsClassIdBit) {
     alignas(4) std::array<uint8_t, 64> buffer{};
 
     // Create a signal packet header with class ID bit set (bit 27)
     uint32_t header = (1U << 28) | // type=1 (signal_data_with_stream)
-                      (1U << 27) | // class ID bit SET (invalid for signal packets!)
-                      10;          // size=10 words
+                      (1U << 27) | // class ID bit SET (now supported!)
+                      12;          // size=12 words (header + stream_id + class_id(2) + payload)
     uint32_t header_be = detail::host_to_network32(header);
     std::memcpy(buffer.data(), &header_be, sizeof(header_be));
 
-    // Try to parse - should be rejected
+    // Add a stream ID (required for type-1 packets)
+    uint32_t stream_id = 0x12345678;
+    uint32_t stream_id_be = detail::host_to_network32(stream_id);
+    std::memcpy(buffer.data() + 4, &stream_id_be, sizeof(stream_id_be));
+
+    // Add class ID (2 words = 8 bytes)
+    // Word 1: [31:27] PBC=0 | [26:24] Reserved=0 | [23:0] OUI=0x123456
+    // Word 2: [31:16] ICC=0x5678 | [15:0] PCC=0xABCD
+    uint32_t class_id_word0 = 0x123456U;                 // PBC=0, Reserved=0, OUI=0x123456
+    uint32_t class_id_word1 = (0x5678U << 16) | 0xABCDU; // ICC=0x5678, PCC=0xABCD
+    uint32_t word0_be = detail::host_to_network32(class_id_word0);
+    uint32_t word1_be = detail::host_to_network32(class_id_word1);
+    std::memcpy(buffer.data() + 8, &word0_be, sizeof(word0_be));
+    std::memcpy(buffer.data() + 12, &word1_be, sizeof(word1_be));
+
+    // Parse packet - should be valid
     SignalPacketView view(buffer.data(), buffer.size());
 
-    EXPECT_FALSE(view.is_valid());
-    EXPECT_EQ(view.error(), ValidationError::unsupported_field);
+    EXPECT_TRUE(view.is_valid());
+    EXPECT_EQ(view.error(), ValidationError::none);
 
-    // Verify accessors return nullopt when invalid
-    EXPECT_FALSE(view.stream_id().has_value());
-    EXPECT_TRUE(view.payload().empty());
+    // Verify class ID is accessible
+    EXPECT_TRUE(view.has_class_id());
+    auto class_id = view.class_id();
+    ASSERT_TRUE(class_id.has_value());
+    EXPECT_EQ(class_id->oui(), 0x123456U);
+    EXPECT_EQ(class_id->icc(), 0x5678U);
+    EXPECT_EQ(class_id->pcc(), 0xABCDU);
+    EXPECT_EQ(class_id->pbc(), 0U);
+
+    // Verify stream ID is accessible
+    auto sid = view.stream_id();
+    ASSERT_TRUE(sid.has_value());
+    EXPECT_EQ(*sid, 0x12345678U);
 }
 
 // Test that bit 25 (Nd0) is independent of packet type

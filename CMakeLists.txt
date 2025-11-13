@@ -48,6 +48,14 @@ if(VRTIO_BUILD_BENCHMARKS)
     add_subdirectory(benchmarks)
 endif()
 
+# Custom target: Extract quickstart snippets to docs
+add_custom_target(quickstart ALL
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/extract_quickstart.sh
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Extracting quickstart code snippets to docs/quickstart.md"
+    VERBATIM
+)
+
 # Installation
 install(DIRECTORY include/vrtio
     DESTINATION include

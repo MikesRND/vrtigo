@@ -21,20 +21,20 @@ TEST_F(ContextPacketTest, NewCIF1Fields) {
     TestContext packet(buffer.data());
 
     // Set and verify Health Status (1 word)
-    get(packet, health_status).set_raw_value(0xABCDEF01);
-    EXPECT_EQ(get(packet, health_status).raw_value(), 0xABCDEF01);
+    packet[health_status].set_raw_value(0xABCDEF01);
+    EXPECT_EQ(packet[health_status].raw_value(), 0xABCDEF01);
 
     // Set and verify Phase Offset (1 word)
-    get(packet, phase_offset).set_raw_value(0x12345678);
-    EXPECT_EQ(get(packet, phase_offset).raw_value(), 0x12345678);
+    packet[phase_offset].set_raw_value(0x12345678);
+    EXPECT_EQ(packet[phase_offset].raw_value(), 0x12345678);
 
     // Set and verify Polarization (1 word)
-    get(packet, polarization).set_raw_value(0x87654321);
-    EXPECT_EQ(get(packet, polarization).raw_value(), 0x87654321);
+    packet[polarization].set_raw_value(0x87654321);
+    EXPECT_EQ(packet[polarization].raw_value(), 0x87654321);
 
     // Set and verify 3D Pointing Single (1 word)
-    get(packet, pointing_vector_3d_single).set_raw_value(0xFEDCBA98);
-    EXPECT_EQ(get(packet, pointing_vector_3d_single).raw_value(), 0xFEDCBA98);
+    packet[pointing_vector_3d_single].set_raw_value(0xFEDCBA98);
+    EXPECT_EQ(packet[pointing_vector_3d_single].raw_value(), 0xFEDCBA98);
 }
 
 TEST_F(ContextPacketTest, RuntimeParseCIF1) {
@@ -68,7 +68,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF1) {
     EXPECT_EQ(view.cif1(), cif1_mask);
 
     // Verify we can read back the Aux Frequency field using the accessor
-    auto aux_freq = get(view, aux_frequency);
+    auto aux_freq = view[aux_frequency];
     ASSERT_TRUE(aux_freq.has_value());
     EXPECT_EQ(aux_freq.raw_value(), expected_freq);
 }
@@ -85,12 +85,11 @@ TEST_F(ContextPacketTest, CompileTimeCIF1RuntimeParse) {
 
     TestContext tx_packet(buffer.data());
     tx_packet.set_stream_id(0xAABBCCDD);
-    get(tx_packet, aux_frequency).set_raw_value(15'000'000ULL); // 15 MHz
+    tx_packet[aux_frequency].set_raw_value(15'000'000ULL); // 15 MHz
 
     // Parse with runtime view
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
     EXPECT_EQ(view.error(), ValidationError::none);
-    EXPECT_TRUE(view.has_stream_id());
     EXPECT_EQ(view.stream_id().value(), 0xAABBCCDD);
     // CIF0 should have CIF1 enable bit set
     EXPECT_EQ(view.cif0() & (1U << cif::CIF1_ENABLE_BIT), (1U << cif::CIF1_ENABLE_BIT));

@@ -5,11 +5,11 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-#include <vrtio/vrtio_io.hpp>
+#include <vrtio/vrtio_utils.hpp>
 
 #include "test_utils.hpp"
 
-using namespace vrtio::io;
+using namespace vrtio::utils::fileio;
 using namespace vrtio::detail;
 using vrtio::ContextPacketView;
 using vrtio::PacketType;
@@ -27,7 +27,7 @@ const auto sine_wave_file = test_data_dir / "VITA49SineWaveData.bin";
 TEST(FileReaderTest, OpenValidFile) {
     ASSERT_TRUE(std::filesystem::exists(sample_data_file));
 
-    VRTFileReader<> reader(sample_data_file.c_str());
+    RawVRTFileReader<> reader(sample_data_file.c_str());
 
     EXPECT_TRUE(reader.is_open());
     EXPECT_GT(reader.size(), 0);
@@ -36,7 +36,7 @@ TEST(FileReaderTest, OpenValidFile) {
 }
 
 TEST(FileReaderTest, ReadFirstPacket) {
-    VRTFileReader<> reader(sample_data_file.c_str());
+    RawVRTFileReader<> reader(sample_data_file.c_str());
 
     auto packet = reader.read_next_span();
 
@@ -50,7 +50,7 @@ TEST(FileReaderTest, ReadFirstPacket) {
 }
 
 TEST(FileReaderTest, ReadAllPackets) {
-    VRTFileReader<> reader(sample_data_file.c_str());
+    RawVRTFileReader<> reader(sample_data_file.c_str());
 
     size_t packet_count = 0;
     while (true) {
@@ -68,7 +68,7 @@ TEST(FileReaderTest, ReadAllPackets) {
 }
 
 TEST(FileReaderTest, RewindAndReread) {
-    VRTFileReader<> reader(sample_data_file.c_str());
+    RawVRTFileReader<> reader(sample_data_file.c_str());
 
     // Read first packet
     auto first_read = reader.read_next_span();
@@ -90,7 +90,7 @@ TEST(FileReaderTest, RewindAndReread) {
 }
 
 TEST(FileReaderTest, BufferResizing) {
-    VRTFileReader<> reader(sample_data_file.c_str());
+    RawVRTFileReader<> reader(sample_data_file.c_str());
 
     // Start with small buffer
     std::vector<uint8_t> small_buffer(16);
@@ -109,7 +109,7 @@ TEST(FileReaderTest, BufferResizing) {
 }
 
 TEST(FileReaderTest, SpanInterface) {
-    VRTFileReader<> reader(sample_data_file.c_str());
+    RawVRTFileReader<> reader(sample_data_file.c_str());
 
     // Read using span interface
     auto packet1 = reader.read_next_span();
@@ -138,7 +138,7 @@ TEST(FileReaderTest, SpanInterface) {
 // =============================================================================
 
 TEST(FileReaderTest, ParseSignalPackets) {
-    VRTFileReader<> reader(sample_data_file.c_str());
+    RawVRTFileReader<> reader(sample_data_file.c_str());
 
     bool found_signal = false;
     size_t count = 0;
@@ -163,7 +163,7 @@ TEST(FileReaderTest, ParseSignalPackets) {
 }
 
 TEST(FileReaderTest, ParseContextPackets) {
-    VRTFileReader<> reader(sample_data_file.c_str());
+    RawVRTFileReader<> reader(sample_data_file.c_str());
 
     bool found_context = false;
     size_t count = 0;
@@ -192,7 +192,7 @@ TEST(FileReaderTest, ParseContextPackets) {
 }
 
 TEST(FileReaderTest, MixedPacketStream) {
-    VRTFileReader<> reader(sample_data_file.c_str());
+    RawVRTFileReader<> reader(sample_data_file.c_str());
 
     std::map<PacketType, size_t> type_counts;
     size_t total = 0;
@@ -214,7 +214,7 @@ TEST(FileReaderTest, MixedPacketStream) {
 }
 
 TEST(FileReaderTest, ContextThenSignal) {
-    VRTFileReader<> reader(sample_data_file.c_str());
+    RawVRTFileReader<> reader(sample_data_file.c_str());
 
     // VRT streams typically start with context, then signal data
     std::vector<PacketType> types;
@@ -254,7 +254,7 @@ TEST(FileReaderTest, DetectTruncatedPacket) {
         dst.write(reinterpret_cast<char*>(data.data()), 20);
     }
 
-    VRTFileReader<> reader(temp_file.c_str());
+    RawVRTFileReader<> reader(temp_file.c_str());
 
     // Try to read - should either succeed with tiny packet or detect truncation
     auto packet = reader.read_next_span();
@@ -286,7 +286,7 @@ TEST(FileReaderTest, DetectInvalidPacketType) {
         file.write(reinterpret_cast<char*>(dummy.data()), 36);
     }
 
-    VRTFileReader<> reader(temp_file.c_str());
+    RawVRTFileReader<> reader(temp_file.c_str());
     auto packet = reader.read_next_span();
 
     EXPECT_TRUE(packet.empty());
@@ -308,7 +308,7 @@ TEST(FileReaderTest, DetectZeroSize) {
         file.write(reinterpret_cast<char*>(&bad_header), 4);
     }
 
-    VRTFileReader<> reader(temp_file.c_str());
+    RawVRTFileReader<> reader(temp_file.c_str());
     auto packet = reader.read_next_span();
 
     EXPECT_TRUE(packet.empty());
@@ -331,7 +331,7 @@ TEST(FileReaderTest, DetectSizeOverflow) {
     }
 
     // Use small MaxPacketWords to trigger overflow
-    VRTFileReader<100> reader(temp_file.c_str());
+    RawVRTFileReader<100> reader(temp_file.c_str());
     auto packet = reader.read_next_span();
 
     EXPECT_TRUE(packet.empty());
@@ -341,7 +341,7 @@ TEST(FileReaderTest, DetectSizeOverflow) {
 }
 
 TEST(FileReaderTest, BufferTooSmallHandling) {
-    VRTFileReader<> reader(sample_data_file.c_str());
+    RawVRTFileReader<> reader(sample_data_file.c_str());
 
     std::vector<uint8_t> tiny_buffer(4);
     auto result = reader.read_next(tiny_buffer.data(), tiny_buffer.size());
@@ -362,7 +362,7 @@ TEST(FileReaderTest, EmptyFile) {
         // Write nothing
     }
 
-    VRTFileReader<> reader(temp_file.c_str());
+    RawVRTFileReader<> reader(temp_file.c_str());
     auto packet = reader.read_next_span();
 
     EXPECT_TRUE(packet.empty());
@@ -382,7 +382,7 @@ TEST(FileReaderTest, CorruptedHeader) {
         file.write(reinterpret_cast<char*>(garbage.data()), garbage.size());
     }
 
-    VRTFileReader<> reader(temp_file.c_str());
+    RawVRTFileReader<> reader(temp_file.c_str());
     auto packet = reader.read_next_span();
 
     // Should detect some kind of error (likely invalid type or size)
@@ -399,7 +399,7 @@ TEST(FileReaderTest, CorruptedHeader) {
 // =============================================================================
 
 TEST(FileReaderTest, SampleDataFullParse) {
-    VRTFileReader<> reader(sample_data_file.c_str());
+    RawVRTFileReader<> reader(sample_data_file.c_str());
 
     size_t packet_count = 0;
     size_t total_bytes = 0;
@@ -429,7 +429,7 @@ TEST(FileReaderTest, SineWaveDataFullParse) {
         GTEST_SKIP() << "Sine wave test file not found";
     }
 
-    VRTFileReader<> reader(sine_wave_file.c_str());
+    RawVRTFileReader<> reader(sine_wave_file.c_str());
 
     size_t signal_packets = 0;
     double total_energy = 0.0;
@@ -488,18 +488,14 @@ TEST(FileReaderTest, CorruptedFileRecovery) {
         dst.write(reinterpret_cast<char*>(buffer.data()), 1000);
     }
 
-    VRTFileReader<> reader(temp_file.c_str());
+    RawVRTFileReader<> reader(temp_file.c_str());
 
     size_t valid_packets = 0;
-    size_t errors = 0;
 
     for (int i = 0; i < 10; ++i) {
         auto packet = reader.read_next_span();
 
         if (packet.empty()) {
-            if (!reader.last_error().is_eof()) {
-                errors++;
-            }
             break;
         } else {
             valid_packets++;
@@ -513,7 +509,7 @@ TEST(FileReaderTest, CorruptedFileRecovery) {
 }
 
 TEST(FileReaderTest, CallbackPatternUsage) {
-    VRTFileReader<> reader(sample_data_file.c_str());
+    RawVRTFileReader<> reader(sample_data_file.c_str());
 
     size_t callback_count = 0;
     size_t total_size = 0;
@@ -541,7 +537,7 @@ TEST(FileReaderTest, CallbackPatternUsage) {
 // =============================================================================
 
 TEST(FileReaderTest, LargeFileParsing) {
-    VRTFileReader<> reader(sample_data_file.c_str());
+    RawVRTFileReader<> reader(sample_data_file.c_str());
 
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -566,7 +562,7 @@ TEST(FileReaderTest, LargeFileParsing) {
 }
 
 TEST(FileReaderTest, ZeroAllocationVerify) {
-    VRTFileReader<> reader(sample_data_file.c_str());
+    RawVRTFileReader<> reader(sample_data_file.c_str());
 
     // This test verifies the API doesn't require heap allocation
     // (we can't actually measure allocations in C++, but we verify the design)

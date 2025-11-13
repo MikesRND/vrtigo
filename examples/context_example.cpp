@@ -52,21 +52,24 @@ void example_compile_time_context() {
 void example_with_class_id() {
     std::cout << "\n=== Context Packet with Class ID Example ===\n";
 
-    // Define a Class ID (OUI and PCC)
-    using MyClassId = ClassId<0x00FF00, 0xABCD1234>; // Example OUI and PCC
-
     // Note: Context packets always have Stream ID per spec
-    using ClassifiedContext = ContextPacket<NoTimeStamp, MyClassId, bandwidth>;
+    using ClassifiedContext = ContextPacket<NoTimeStamp, ClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, ClassifiedContext::size_bytes> buffer{};
     ClassifiedContext packet(buffer.data());
 
     packet.set_stream_id(0x87654321);
+
+    // Set Class ID: OUI=0x00FF00, ICC=0xABCD, PCC=0x1234
+    ClassIdValue cid(0x00FF00, 0xABCD, 0x1234);
+    packet.set_class_id(cid);
+
     packet[bandwidth].set_value(40'000'000.0); // 40 MHz
 
     std::cout << "Created classified context packet:\n";
     std::cout << "  Size: " << ClassifiedContext::size_bytes << " bytes\n";
-    std::cout << "  Has Class ID: Yes (OUI=0x00FF00, PCC=0xABCD1234)\n";
+    std::cout << "  Has Class ID: Yes (OUI=0x" << std::hex << cid.oui() << ", ICC=0x" << cid.icc()
+              << ", PCC=0x" << cid.pcc() << std::dec << ")\n";
     std::cout << "  Stream ID: 0x" << std::hex << packet.stream_id() << std::dec << "\n";
     std::cout << "  Bandwidth: " << packet[bandwidth].value() / 1'000'000.0 << " MHz\n";
 }
@@ -103,8 +106,8 @@ void example_runtime_parsing() {
     std::cout << "Successfully parsed context packet:\n";
 
     // Access fields
-    if (view.has_stream_id()) {
-        std::cout << "  Stream ID: 0x" << std::hex << view.stream_id().value() << std::dec << "\n";
+    if (auto sid = view.stream_id()) {
+        std::cout << "  Stream ID: 0x" << std::hex << sid.value() << std::dec << "\n";
     }
 
     std::cout << "  CIF0: 0x" << std::hex << view.cif0() << std::dec << "\n";

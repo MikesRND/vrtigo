@@ -20,7 +20,8 @@ protected:
 
 // Test 1: Valid packet should pass validation
 TEST_F(SecurityTest, ValidPacketPassesValidation) {
-    using PacketType = vrtio::SignalDataPacket<vrtio::TimeStampUTC, vrtio::Trailer::Included, 256>;
+    using PacketType = vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC,
+                                               vrtio::Trailer::Included, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
     PacketType packet(buffer.data());
@@ -34,7 +35,8 @@ TEST_F(SecurityTest, ValidPacketPassesValidation) {
 
 // Test 2: Buffer too small
 TEST_F(SecurityTest, BufferTooSmall) {
-    using PacketType = vrtio::SignalDataPacket<vrtio::NoTimeStamp, vrtio::Trailer::None, 128>;
+    using PacketType =
+        vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::NoTimeStamp, vrtio::Trailer::None, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
     PacketType packet(buffer.data());
@@ -47,7 +49,8 @@ TEST_F(SecurityTest, BufferTooSmall) {
 
 // Test 3: Wrong packet type
 TEST_F(SecurityTest, PacketTypeMismatch) {
-    using PacketType = vrtio::SignalDataPacket<vrtio::NoTimeStamp, vrtio::Trailer::None, 128>;
+    using PacketType =
+        vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::NoTimeStamp, vrtio::Trailer::None, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
     PacketType packet(buffer.data());
@@ -67,8 +70,9 @@ TEST_F(SecurityTest, PacketTypeMismatch) {
 
 // Test 4: Wrong TSI field
 TEST_F(SecurityTest, TSIMismatch) {
-    using PacketType = vrtio::SignalDataPacket<vrtio::TimeStampUTC, // TSI = 1, TSF = none
-                                               vrtio::Trailer::None, 128>;
+    using PacketType =
+        vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC, // TSI = 1, TSF = none
+                                vrtio::Trailer::None, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
     PacketType packet(buffer.data());
@@ -89,6 +93,7 @@ TEST_F(SecurityTest, TSIMismatch) {
 // Test 5: Wrong TSF field
 TEST_F(SecurityTest, TSFMismatch) {
     using PacketType = vrtio::SignalDataPacket<
+        vrtio::NoClassId,
         vrtio::TimeStamp<vrtio::TsiType::none, vrtio::TsfType::real_time>, // Unusual combo for
                                                                            // validation test
         vrtio::Trailer::None, 128>;
@@ -111,7 +116,7 @@ TEST_F(SecurityTest, TSFMismatch) {
 
 // Test 6: Wrong trailer bit
 TEST_F(SecurityTest, TrailerBitMismatch) {
-    using PacketType = vrtio::SignalDataPacket<vrtio::NoTimeStamp,
+    using PacketType = vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::NoTimeStamp,
                                                vrtio::Trailer::Included, // Has trailer
                                                128>;
 
@@ -125,7 +130,7 @@ TEST_F(SecurityTest, TrailerBitMismatch) {
 
 // Test 7: No trailer when expected
 TEST_F(SecurityTest, NoTrailerWhenExpected) {
-    using PacketType = vrtio::SignalDataPacketNoId<vrtio::NoTimeStamp,
+    using PacketType = vrtio::SignalDataPacketNoId<vrtio::NoClassId, vrtio::NoTimeStamp,
                                                    vrtio::Trailer::None, // No trailer
                                                    128>;
 
@@ -139,7 +144,8 @@ TEST_F(SecurityTest, NoTrailerWhenExpected) {
 
 // Test 8: Wrong size field
 TEST_F(SecurityTest, SizeFieldMismatch) {
-    using PacketType = vrtio::SignalDataPacket<vrtio::TimeStampUTC, vrtio::Trailer::None, 256>;
+    using PacketType =
+        vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC, vrtio::Trailer::None, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
     PacketType packet(buffer.data());
@@ -160,9 +166,10 @@ TEST_F(SecurityTest, SizeFieldMismatch) {
 
 // Test 9: Minimal packet validation
 TEST_F(SecurityTest, MinimalPacketValidation) {
-    using PacketType = vrtio::SignalDataPacketNoId<vrtio::NoTimeStamp, vrtio::Trailer::None,
-                                                   0 // Zero payload
-                                                   >;
+    using PacketType =
+        vrtio::SignalDataPacketNoId<vrtio::NoClassId, vrtio::NoTimeStamp, vrtio::Trailer::None,
+                                    0 // Zero payload
+                                    >;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
     PacketType packet(buffer.data());
@@ -173,9 +180,10 @@ TEST_F(SecurityTest, MinimalPacketValidation) {
 
 // Test 10: Maximum configuration validation
 TEST_F(SecurityTest, MaximumConfigurationValidation) {
-    using PacketType = vrtio::SignalDataPacket<vrtio::TimeStampUTC, vrtio::Trailer::Included,
-                                               1024 // Large payload
-                                               >;
+    using PacketType =
+        vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC, vrtio::Trailer::Included,
+                                1024 // Large payload
+                                >;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
     PacketType packet(buffer.data());
@@ -185,7 +193,8 @@ TEST_F(SecurityTest, MaximumConfigurationValidation) {
 
 // Test 11: Multiple validation errors (first error should be reported)
 TEST_F(SecurityTest, MultipleErrors) {
-    using PacketType = vrtio::SignalDataPacket<vrtio::TimeStampUTC, vrtio::Trailer::Included, 256>;
+    using PacketType = vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC,
+                                               vrtio::Trailer::Included, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
     PacketType packet(buffer.data());
@@ -220,7 +229,8 @@ TEST_F(SecurityTest, ErrorStringConversion) {
 
 // Test 13: Type 0 packet validation
 TEST_F(SecurityTest, Type0PacketValidation) {
-    using PacketType = vrtio::SignalDataPacketNoId<vrtio::TimeStampUTC, vrtio::Trailer::None, 256>;
+    using PacketType = vrtio::SignalDataPacketNoId<vrtio::NoClassId, vrtio::TimeStampUTC,
+                                                   vrtio::Trailer::None, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
     PacketType packet(buffer.data());
@@ -235,7 +245,7 @@ TEST_F(SecurityTest, Type0PacketValidation) {
 // Test 14: Parsing untrusted network data pattern
 TEST_F(SecurityTest, UntrustedNetworkDataPattern) {
     using PacketType =
-        vrtio::SignalDataPacket<vrtio::TimeStampUTC, vrtio::Trailer::None,
+        vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC, vrtio::Trailer::None,
                                 505 // Fits in 2048 byte buffer: (1+1+1+2+505)*4 = 2040 bytes
                                 >;
 
@@ -246,7 +256,7 @@ TEST_F(SecurityTest, UntrustedNetworkDataPattern) {
     PacketType tx_packet(network_buffer.data());
     tx_packet.set_stream_id(0x12345678);
     auto ts = vrtio::TimeStampUTC::fromComponents(1234567890, 999999999999ULL);
-    tx_packet.setTimeStamp(ts);
+    tx_packet.set_timestamp(ts);
 
     // Parse as untrusted data (typical usage pattern)
     PacketType rx_packet(network_buffer.data(), false);
@@ -258,7 +268,7 @@ TEST_F(SecurityTest, UntrustedNetworkDataPattern) {
     if (validation_result == vrtio::ValidationError::none) {
         // Safe to use packet data
         EXPECT_EQ(rx_packet.stream_id(), 0x12345678);
-        auto read_ts = rx_packet.getTimeStamp();
+        auto read_ts = rx_packet.timestamp();
         EXPECT_EQ(read_ts.seconds(), 1234567890);
         EXPECT_EQ(read_ts.fractional(), 999999999999ULL);
     }
@@ -266,7 +276,8 @@ TEST_F(SecurityTest, UntrustedNetworkDataPattern) {
 
 // Test 15: Defense against size field manipulation
 TEST_F(SecurityTest, SizeFieldManipulationDefense) {
-    using PacketType = vrtio::SignalDataPacket<vrtio::NoTimeStamp, vrtio::Trailer::None, 128>;
+    using PacketType =
+        vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::NoTimeStamp, vrtio::Trailer::None, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
     PacketType packet(buffer.data());

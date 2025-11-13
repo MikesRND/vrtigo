@@ -80,7 +80,6 @@ TEST_F(ContextPacketTest, CompileTimeCIF2RuntimeParse) {
     // Parse with runtime view
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
     EXPECT_EQ(view.error(), ValidationError::none);
-    EXPECT_TRUE(view.has_stream_id());
     EXPECT_EQ(view.stream_id().value(), 0xAABBCCDD);
     // CIF0 should have bit 2 set (CIF2 enable)
     EXPECT_EQ(view.cif0() & 0x04, 0x04);

@@ -21,21 +21,48 @@
 // - CIF0, CIF1, CIF2, CIF3 field support (70+ fields)
 // - Variable-length field handling (GPS ASCII, Context Association Lists)
 // - Full Class ID support with 24-bit OUI and 32-bit PCC
-// - Unified field access API (get/set/has)
+// - Unified field access API via operator[]
 
-// Core types and utilities
-#include "vrtio/core/cif.hpp"
-#include "vrtio/core/class_id.hpp"
-#include "vrtio/core/concepts.hpp"
-#include "vrtio/core/endian.hpp"
-#include "vrtio/core/header.hpp"
-#include "vrtio/core/types.hpp"
+// ====================
+// Public API
+// ====================
 
-// Packet implementation
-#include "vrtio/packet/builder.hpp"
-#include "vrtio/packet/context_packet.hpp"
-#include "vrtio/packet/context_packet_view.hpp"
-#include "vrtio/packet/data_packet.hpp"
+// Core types and enums (users need these for parameters and return values)
+#include "vrtio/types.hpp"
 
-// Field access API (get, set, has for context packet fields)
-#include "vrtio/fields.hpp"
+// Timestamp types (users instantiate these directly)
+#include "vrtio/timestamp.hpp"
+
+// ClassId types (users instantiate these directly)
+#include "vrtio/class_id.hpp"
+
+// Field tags for context packet field access
+#include "vrtio/field_tags.hpp"
+
+// ====================
+// Implementation
+// ====================
+
+// Packet implementations (exposed via this header but users don't include detail/ directly)
+#include "vrtio/detail/builder.hpp"
+#include "vrtio/detail/context_packet.hpp"
+#include "vrtio/detail/context_packet_view.hpp"
+#include "vrtio/detail/data_packet.hpp"
+#include "vrtio/detail/data_packet_view.hpp"
+
+// ====================
+// Convenience Aliases
+// ====================
+
+namespace vrtio {
+
+// Convenient aliases for common packet types
+template <typename ClassIdType, typename TimeStampType, Trailer TrailerType, size_t PayloadWords>
+using SignalDataPacket =
+    DataPacket<PacketType::SignalData, ClassIdType, TimeStampType, TrailerType, PayloadWords>;
+
+template <typename ClassIdType, typename TimeStampType, Trailer TrailerType, size_t PayloadWords>
+using ExtensionDataPacket =
+    DataPacket<PacketType::ExtensionData, ClassIdType, TimeStampType, TrailerType, PayloadWords>;
+
+} // namespace vrtio

@@ -16,3 +16,20 @@ set_target_properties(file_reader_test PROPERTIES
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF
 )
+
+# Enhanced reader tests
+add_executable(enhanced_reader_test enhanced_reader_test.cpp)
+target_link_libraries(enhanced_reader_test PRIVATE vrtio GTest::gtest_main)
+add_test(NAME enhanced_reader_test COMMAND enhanced_reader_test)
+
+# Pass test data directory to tests
+target_compile_definitions(enhanced_reader_test PRIVATE
+    TEST_DATA_DIR="${CMAKE_SOURCE_DIR}/tests/data"
+)
+
+# Set C++20 standard
+set_target_properties(enhanced_reader_test PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
+)
