@@ -14,9 +14,10 @@ int main() {
     std::cout << "vrtio version: " << vrtio::version_string << "\n\n";
 
     // Create a minimal packet to verify headers compile and link correctly
-    using MinimalPacket = vrtio::SignalDataPacketNoId<vrtio::NoTimeStamp, vrtio::Trailer::None,
-                                                      64 // 256 bytes payload
-                                                      >;
+    using MinimalPacket =
+        vrtio::SignalDataPacketNoId<vrtio::NoClassId, vrtio::NoTimeStamp, vrtio::Trailer::None,
+                                    64 // 256 bytes payload
+                                    >;
 
     std::cout << "Creating minimal packet...\n";
     std::cout << "  Packet size: " << MinimalPacket::size_bytes << " bytes\n";

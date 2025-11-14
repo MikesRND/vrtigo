@@ -19,33 +19,44 @@ public:
     /**
      * @brief Process a single packet
      *
-     * @param packet Raw packet data (unused in this example)
-     * @param info Packet metadata (type, size, offset, header)
+     * @param pkt Type-safe packet variant (DataPacketView or ContextPacketView)
      * @return true to continue processing, false to stop
      */
-    bool operator()(std::span<const uint8_t> /*packet*/, const VRTFileReader<>::ReadResult& info) {
+    bool operator()(const PacketVariant& pkt) {
         packet_num_++;
 
         std::cout << "Packet " << packet_num_ << ":\n";
-        std::cout << "  Type: " << static_cast<int>(info.type) << "\n";
-        std::cout << "  Size: " << info.packet_size_bytes << " bytes\n";
-        std::cout << "  Offset: 0x" << std::hex << info.file_offset << std::dec << "\n";
+        std::cout << "  Type: " << static_cast<int>(packet_type(pkt)) << "\n";
 
-        // Decode header for more details
-        auto decoded = detail::decode_header(info.header);
-        std::cout << "  Stream ID: " << (detail::has_stream_id_field(decoded.type) ? "Yes" : "No")
-                  << "\n";
-        std::cout << "  Class ID: " << (decoded.has_class_id ? "Yes" : "No") << "\n";
-        // Trailer only applies to Signal/Extension Data packets
-        std::cout << "  Trailer: " << (decoded.trailer_included ? "Yes" : "No") << "\n";
-        std::cout << "  TSI: " << static_cast<int>(decoded.tsi) << "\n";
-        std::cout << "  TSF: " << static_cast<int>(decoded.tsf) << "\n";
-        std::cout << "  Count: " << static_cast<int>(decoded.packet_count) << "\n";
+        // Use appropriate packet view based on packet type
+        if (is_data_packet(pkt)) {
+            const auto& view = std::get<DataPacketView>(pkt);
+            std::cout << "  Stream ID: " << (view.has_stream_id() ? "Yes" : "No") << "\n";
+            std::cout << "  Class ID: " << (view.has_class_id() ? "Yes" : "No") << "\n";
+            std::cout << "  Trailer: " << (view.has_trailer() ? "Yes" : "No") << "\n";
+            std::cout << "  TSI: " << static_cast<int>(view.tsi()) << "\n";
+            std::cout << "  TSF: " << static_cast<int>(view.tsf()) << "\n";
+            std::cout << "  Count: " << static_cast<int>(view.packet_count()) << "\n";
+        } else if (is_context_packet(pkt)) {
+            const auto& view = std::get<ContextPacketView>(pkt);
+            std::cout << "  Stream ID: " << (view.stream_id().has_value() ? "Yes" : "No") << "\n";
+            std::cout << "  Class ID: " << (view.class_id().has_value() ? "Yes" : "No") << "\n";
+            std::cout << "  Trailer: No\n"; // Context packets don't have trailers
+            // Context packets don't have TSI/TSF/Count in the same way as data packets
+            std::cout << "  TSI: N/A\n";
+            std::cout << "  TSF: N/A\n";
+            std::cout << "  Count: N/A\n";
+        } else {
+            // Invalid packet
+            std::cout << "  (Invalid packet)\n";
+        }
         std::cout << "\n";
 
         // Process up to 30 packets (could also return true to process all)
         return packet_num_ < 30;
     }
+
+    size_t count() const { return packet_num_; }
 };
 
 int main(int argc, char** argv) {
@@ -56,23 +67,22 @@ int main(int argc, char** argv) {
 
     const char* filepath = argv[1];
 
-    try {
-        // Open VRT file
-        VRTFileReader<> reader(filepath);
+    // Open VRT file
+    VRTFileReader<> reader(filepath);
 
-        std::cout << "File: " << filepath << "\n";
-        std::cout << "Size: " << reader.size() << " bytes\n\n";
-
-        // Parse all packets using functor with internal state
-        PacketProcessor processor;
-        reader.for_each_packet(processor);
-
-        std::cout << "Total packets read: " << reader.packets_read() << "\n";
-
-    } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << "\n";
+    if (!reader.is_open()) {
+        std::cerr << "Failed to open file: " << filepath << "\n";
         return 1;
     }
+
+    std::cout << "File: " << filepath << "\n";
+    std::cout << "Size: " << reader.size() << " bytes\n\n";
+
+    // Parse all packets using functor with internal state
+    PacketProcessor processor;
+    reader.for_each_validated_packet(processor);
+
+    std::cout << "Total packets read: " << processor.count() << "\n";
 
     return 0;
 }

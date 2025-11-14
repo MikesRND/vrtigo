@@ -1,0 +1,8 @@
+# Quickstart snippet ordering
+# Format: filename.cpp: Title
+# Lines starting with # are comments
+# Files not listed here will appear at the end in alphabetical order
+
+data_packet_test.cpp: Data Packet (Signal Samples)
+context_packet_test.cpp: Context Packet (Signal Metadata)
+file_reader_test.cpp: Reading VRT Files

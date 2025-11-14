@@ -2,18 +2,18 @@
 #include <iostream>
 #include <vector>
 
-#include <vrtio/core/trailer_view.hpp>
-#include <vrtio/packet/builder.hpp>
-#include <vrtio/packet/data_packet.hpp>
+#include <vrtio.hpp>
+#include <vrtio/detail/trailer_view.hpp>
 
 // Example demonstrating trailer field usage
 
 int main() {
     // Define a packet type with trailer enabled
-    using PacketType = vrtio::SignalDataPacket<vrtio::TimeStampUTC,      // Using UTC timestamps
-                                               vrtio::Trailer::Included, // Trailer included
-                                               128                       // Payload words
-                                               >;
+    using PacketType =
+        vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC, // Using UTC timestamps
+                                vrtio::Trailer::Included,              // Trailer included
+                                128                                    // Payload words
+                                >;
 
     std::cout << "=== VRTIO Trailer Fields Example ===\n\n";
 
@@ -36,7 +36,7 @@ int main() {
 
     std::cout << "Stream ID: 0x" << std::hex << std::setw(8) << std::setfill('0')
               << packet.stream_id() << std::dec << "\n";
-    std::cout << "Timestamp: " << packet.getTimeStamp().seconds() << "\n";
+    std::cout << "Timestamp: " << packet.timestamp().seconds() << "\n";
     std::cout << "Trailer raw value: 0x" << std::hex << std::setw(8) << std::setfill('0')
               << packet.trailer().raw() << std::dec << "\n";
     std::cout << "Valid data: " << (packet.trailer().valid_data() ? "Yes" : "No") << "\n";

@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <vrtio/core/detail/header_decode.hpp>
+#include <vrtio/detail/header_decode.hpp>
 
 using namespace vrtio;
 using namespace vrtio::detail;

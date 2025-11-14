@@ -3,15 +3,12 @@
 
 #include <cstring>
 #include <gtest/gtest.h>
-#include <vrtio/core/trailer.hpp>
-#include <vrtio/core/trailer_view.hpp>
-#include <vrtio/packet/builder.hpp>
-#include <vrtio/packet/data_packet.hpp>
+#include <vrtio.hpp>
 
 // Test fixture for trailer field manipulation
 class TrailerFieldTest : public ::testing::Test {
 protected:
-    using PacketType = vrtio::SignalDataPacket<vrtio::TimeStampUTC,
+    using PacketType = vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC,
                                                vrtio::Trailer::Included, // Trailer included
                                                128>;
 
@@ -268,7 +265,7 @@ TEST_F(TrailerFieldTest, BuilderIndividualFields) {
                       .build();
 
     EXPECT_EQ(packet.stream_id(), 0x12345678U);
-    auto read_ts = packet.getTimeStamp();
+    auto read_ts = packet.timestamp();
     EXPECT_EQ(read_ts.seconds(), 1000000U);
     EXPECT_TRUE(packet.trailer().valid_data());
     EXPECT_TRUE(packet.trailer().calibrated_time());
@@ -535,7 +532,7 @@ TEST_F(TrailerFieldTest, SerializationRoundtrip) {
 
     // Verify all fields match
     EXPECT_EQ(packet2.stream_id(), 0xABCDEF00U);
-    auto read_ts = packet2.getTimeStamp();
+    auto read_ts = packet2.timestamp();
     EXPECT_EQ(read_ts.seconds(), 999999U);
     EXPECT_TRUE(packet2.trailer().valid_data());
     EXPECT_TRUE(packet2.trailer().calibrated_time());

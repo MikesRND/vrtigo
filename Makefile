@@ -1,7 +1,7 @@
 # VRTIO Makefile - Convenience wrapper for CMake
 
 .PHONY: all build clean configure debug release examples help check
-.PHONY: test run list-tests list-examples format install uninstall
+.PHONY: test run list-tests list-examples format install uninstall quickstart
 .PHONY: quick-check ci-coverage ci-debug ci-clang ci-install-verify ci-local ci-full clean-all rebuild
 .PHONY: format-check format-fix format-diff tidy tidy-fix ci-format ci-tidy
 
@@ -45,6 +45,10 @@ build: configure
 # Build only examples
 examples: configure
 	@cmake --build $(BUILD_DIR) --target basic_usage trailer_example timestamp_example context_example file_parsing_example
+
+# Extract quickstart documentation
+quickstart: configure
+	@cmake --build $(BUILD_DIR) --target quickstart
 
 # Quick rebuild
 rebuild: clean build
@@ -249,6 +253,7 @@ help:
 	@echo "  make check            Same as 'test' (GNU standard)"
 	@echo "  make run              Run all examples (5 examples)"
 	@echo "  make examples         Build examples only"
+	@echo "  make quickstart       Extract quickstart docs to docs/quickstart.md"
 	@echo ""
 	@echo "  make clean            Remove build directory"
 	@echo "  make rebuild          Clean + build"

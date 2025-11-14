@@ -16,20 +16,17 @@ TEST_F(ContextPacketTest, BasicCompileTimePacket) {
 
     // Set fields
     packet.set_stream_id(0x12345678);
-    get(packet, bandwidth).set_value(20'000'000.0);   // 20 MHz
-    get(packet, sample_rate).set_value(10'000'000.0); // 10 MSPS
+    packet[bandwidth].set_value(20'000'000.0);   // 20 MHz
+    packet[sample_rate].set_value(10'000'000.0); // 10 MSPS
 
     // Verify fields
     EXPECT_EQ(packet.stream_id(), 0x12345678);
-    EXPECT_DOUBLE_EQ(get(packet, bandwidth).value(), 20'000'000.0);
-    EXPECT_DOUBLE_EQ(get(packet, sample_rate).value(), 10'000'000.0);
+    EXPECT_DOUBLE_EQ(packet[bandwidth].value(), 20'000'000.0);
+    EXPECT_DOUBLE_EQ(packet[sample_rate].value(), 10'000'000.0);
 }
 
 TEST_F(ContextPacketTest, PacketWithClassId) {
-    // Define a class ID
-    using TestClassId = ClassId<0x123456, 0xABCDEF00>;
-
-    using TestContext = ContextPacket<NoTimeStamp, TestClassId, bandwidth>;
+    using TestContext = ContextPacket<NoTimeStamp, ClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
@@ -38,10 +35,22 @@ TEST_F(ContextPacketTest, PacketWithClassId) {
               1 + 1 + 2 + 1 + 2); // header + stream + class_id + cif0 + bandwidth
 
     packet.set_stream_id(0x87654321);
-    get(packet, bandwidth).set_value(40'000'000.0); // 40 MHz
+
+    // Set class ID: OUI=0x123456, ICC=0x5678, PCC=0xABCD
+    ClassIdValue cid(0x123456, 0x5678, 0xABCD);
+    packet.set_class_id(cid);
+
+    packet[bandwidth].set_value(40'000'000.0); // 40 MHz
 
     EXPECT_EQ(packet.stream_id(), 0x87654321);
-    EXPECT_DOUBLE_EQ(get(packet, bandwidth).value(), 40'000'000.0);
+
+    // Verify class ID
+    auto read_cid = packet.class_id();
+    EXPECT_EQ(read_cid.oui(), 0x123456U);
+    EXPECT_EQ(read_cid.icc(), 0x5678U);
+    EXPECT_EQ(read_cid.pcc(), 0xABCDU);
+
+    EXPECT_DOUBLE_EQ(packet[bandwidth].value(), 40'000'000.0);
 }
 
 TEST_F(ContextPacketTest, RuntimeParserBasic) {
@@ -71,23 +80,22 @@ TEST_F(ContextPacketTest, RuntimeParserBasic) {
     EXPECT_EQ(view.error(), ValidationError::none);
 
     // Check parsed values
-    EXPECT_TRUE(view.has_stream_id());
     EXPECT_EQ(view.stream_id().value(), 0xAABBCCDD);
 
     EXPECT_EQ(view.cif0(), cif0_mask);
     EXPECT_EQ(view.cif1(), 0);
     EXPECT_EQ(view.cif2(), 0);
 
-    auto bw = get(view, bandwidth);
+    auto bw = view[bandwidth];
     EXPECT_TRUE(bw.has_value());
     EXPECT_EQ(bw.raw_value(), 25'000'000);
 
-    auto sr = get(view, sample_rate);
+    auto sr = view[sample_rate];
     EXPECT_TRUE(sr.has_value());
     EXPECT_EQ(sr.raw_value(), 12'500'000);
 
     // Field that's not present should return nullopt
-    EXPECT_FALSE(get(view, gain).has_value());
+    EXPECT_FALSE(view[gain].has_value());
 }
 
 TEST_F(ContextPacketTest, SizeFieldValidation) {

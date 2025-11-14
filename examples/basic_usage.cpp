@@ -3,7 +3,6 @@
 #include <array>
 #include <iostream>
 
-#include <ctime>
 #include <vrtio.hpp>
 
 int main() {
@@ -14,7 +13,8 @@ int main() {
     {
         std::cout << "Example 1: Creating a signal packet\n";
 
-        using Packet = vrtio::SignalDataPacket<vrtio::TimeStampUTC, vrtio::Trailer::None, 128>;
+        using Packet = vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC,
+                                               vrtio::Trailer::None, 128>;
         alignas(4) std::array<uint8_t, Packet::size_bytes> buffer;
 
         // Prepare payload data
@@ -24,7 +24,7 @@ int main() {
         }
 
         // Use builder pattern for convenient construction
-        auto ts = vrtio::TimeStampUTC::fromComponents(static_cast<uint32_t>(std::time(nullptr)), 0);
+        auto ts = vrtio::TimeStampUTC::now();
         auto packet = vrtio::PacketBuilder<Packet>(buffer.data())
                           .stream_id(0x12345678)
                           .timestamp(ts)
@@ -33,7 +33,7 @@ int main() {
                           .build();
 
         std::cout << "  Stream ID: 0x" << std::hex << packet.stream_id() << std::dec << "\n";
-        std::cout << "  Timestamp: " << packet.getTimeStamp().seconds() << "s\n";
+        std::cout << "  Timestamp: " << packet.timestamp().seconds() << "s\n";
         std::cout << "  Payload: " << packet.payload().size() << " bytes\n\n";
     }
 
@@ -41,7 +41,8 @@ int main() {
     {
         std::cout << "Example 2: Parsing data\n";
 
-        using Packet = vrtio::SignalDataPacket<vrtio::NoTimeStamp, vrtio::Trailer::None, 64>;
+        using Packet =
+            vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::NoTimeStamp, vrtio::Trailer::None, 64>;
         alignas(4) std::array<uint8_t, Packet::size_bytes> buffer;
 
         // Create test data

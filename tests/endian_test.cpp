@@ -1,7 +1,7 @@
 #include <cstdint>
 #include <cstring>
 #include <gtest/gtest.h>
-#include <vrtio/core/endian.hpp>
+#include <vrtio/detail/endian.hpp>
 
 // Test byte swapping functions
 TEST(EndianTest, ByteSwap16) {

@@ -1,7 +1,7 @@
 #include <iostream>
 
 #include <cassert>
-#include <vrtio/fields.hpp>
+#include <vrtio.hpp>
 
 using namespace vrtio;
 using namespace vrtio::field;

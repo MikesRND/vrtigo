@@ -27,8 +27,8 @@ TEST_F(ContextPacketTest, GPSASCIIVariableField) {
     ContextPacketView view(buffer.data(), 7 * 4);
     EXPECT_EQ(view.error(), ValidationError::none);
 
-    // Use new get() API instead of has_gps_ascii() / gps_ascii_data()
-    auto gps_proxy = get(view, gps_ascii);
+    // Use operator[] API instead of has_gps_ascii() / gps_ascii_data()
+    auto gps_proxy = view[gps_ascii];
     EXPECT_TRUE(gps_proxy.has_value());
     auto gps_data = gps_proxy.raw_bytes();
     EXPECT_EQ(gps_data.size(), 4 * 4); // 1 count + 3 data words (12 bytes)
@@ -72,8 +72,8 @@ TEST_F(ContextPacketTest, ContextAssociationLists) {
     ContextPacketView view(buffer.data(), 7 * 4);
     EXPECT_EQ(view.error(), ValidationError::none);
 
-    // Use new get() API instead of has_context_association() / context_association_data()
-    auto assoc_proxy = get(view, context_association_lists);
+    // Use operator[] API instead of has_context_association() / context_association_data()
+    auto assoc_proxy = view[context_association_lists];
     EXPECT_TRUE(assoc_proxy.has_value());
     auto assoc_data = assoc_proxy.raw_bytes();
     EXPECT_EQ(assoc_data.size(), 4 * 4); // 1 counts + 2 stream + 1 context

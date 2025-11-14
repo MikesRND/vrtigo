@@ -114,3 +114,8 @@ endif()
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cif)
     add_subdirectory(cif)
 endif()
+
+# Add quickstart documentation tests subdirectory
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/quickstart)
+    add_subdirectory(quickstart)
+endif()
