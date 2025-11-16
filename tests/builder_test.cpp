@@ -44,7 +44,7 @@ TEST_F(BuilderTest, FluentChaining) {
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
     // Single expression with all fields
-    auto trailer_cfg = vrtio::TrailerBuilder{}.clear().context_packets(1);
+    auto trailer_cfg = vrtio::TrailerBuilder{}.clear().context_packet_count(1);
 
     auto ts = vrtio::TimeStampUTC::from_components(1234567890, 500000000000ULL);
     auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
@@ -58,7 +58,8 @@ TEST_F(BuilderTest, FluentChaining) {
     EXPECT_EQ(packet.stream_id(), 0xABCDEF00);
     EXPECT_EQ(read_ts.seconds(), 1234567890);
     EXPECT_EQ(read_ts.fractional(), 500000000000ULL);
-    EXPECT_EQ(packet.trailer().raw(), 0x00000001);
+    // context_packet_count(1) sets count=1 (bit 0) and E bit=1 (bit 7) = 0x81
+    EXPECT_EQ(packet.trailer().raw(), 0x00000081);
     EXPECT_EQ(packet.packet_count(), 10);
 }
 
@@ -71,7 +72,7 @@ TEST_F(BuilderTest, TrailerBuilderValueObject) {
     auto trailer_cfg = vrtio::TrailerBuilder{}
                            .valid_data(true)
                            .calibrated_time(true)
-                           .context_packets(7)
+                           .context_packet_count(7)
                            .reference_lock(true);
 
     auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
@@ -82,7 +83,7 @@ TEST_F(BuilderTest, TrailerBuilderValueObject) {
 
     EXPECT_TRUE(packet.trailer().valid_data());
     EXPECT_TRUE(packet.trailer().calibrated_time());
-    EXPECT_EQ(packet.trailer().context_packets(), 7);
+    EXPECT_EQ(packet.trailer().context_packet_count(), 7);
     EXPECT_TRUE(packet.trailer().reference_lock());
 }
 
@@ -96,7 +97,7 @@ TEST_F(BuilderTest, TrailerBuilderChaining) {
                            .clear()
                            .valid_data(true)
                            .calibrated_time(true)
-                           .context_packets(3)
+                           .context_packet_count(3)
                            .over_range(true);
 
     auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
@@ -107,7 +108,7 @@ TEST_F(BuilderTest, TrailerBuilderChaining) {
 
     EXPECT_TRUE(packet.trailer().valid_data());
     EXPECT_TRUE(packet.trailer().calibrated_time());
-    EXPECT_EQ(packet.trailer().context_packets(), 3);
+    EXPECT_EQ(packet.trailer().context_packet_count(), 3);
     EXPECT_TRUE(packet.trailer().over_range());
     EXPECT_EQ(packet.packet_count(), 4);
 }

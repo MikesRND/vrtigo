@@ -4,18 +4,17 @@
 
 #include <cstring>
 
-#include "../../../detail/buffer_io.hpp"
-#include "../../../detail/context_packet_view.hpp"
-#include "../../../detail/data_packet_view.hpp"
-#include "../../../detail/header_decode.hpp"
-#include "../../../types.hpp"
-#include "../packet_variant.hpp"
+#include "../types.hpp"
+#include "buffer_io.hpp"
+#include "context_packet_view.hpp"
+#include "data_packet_view.hpp"
+#include "header_decode.hpp"
+#include "packet_variant.hpp"
 
-namespace vrtio::utils::fileio {
-namespace detail_packet_parsing {
+namespace vrtio::detail {
 
 /**
- * @brief Parse and validate a VRT packet from raw bytes
+ * @brief Parse and validate a VRT packet from raw bytes (internal implementation)
  *
  * This function:
  * 1. Validates minimum buffer size (at least 4 bytes for header)
@@ -29,15 +28,18 @@ namespace detail_packet_parsing {
  * - Context (4-5) -> ContextPacketView
  * - Command (6-7) -> InvalidPacket (not yet implemented)
  *
+ * @note This is an internal implementation. Users should use vrtio::parse_packet()
+ * from the public API instead.
+ *
  * @param bytes Raw packet bytes (must remain valid while using returned view)
  * @return PacketVariant containing validated view or error information
  */
-inline PacketVariant parse_and_validate_packet(std::span<const uint8_t> bytes) noexcept {
+inline PacketVariant parse_packet(std::span<const uint8_t> bytes) noexcept {
     // 1. Validate minimum buffer size
     if (bytes.size() < 4) {
         return InvalidPacket{ValidationError::buffer_too_small,
                              PacketType::signal_data_no_id, // Unknown yet
-                             vrtio::detail::DecodedHeader{}, bytes};
+                             DecodedHeader{}, bytes};
     }
 
     // 2. Decode header to determine packet type
@@ -49,15 +51,25 @@ inline PacketVariant parse_and_validate_packet(std::span<const uint8_t> bytes) n
 
     if (type_value <= 3) {
         // Signal Data (0-1) or Extension Data (2-3)
-        vrtio::DataPacketView view(bytes.data(), bytes.size());
+        DataPacketView view(bytes.data(), bytes.size());
         if (view.is_valid()) {
+            // Suppress false positive: GCC's optimizer incorrectly thinks padding bytes
+            // in DataPacketView::ParsedStructure might be uninitialized when copied
+            // into std::variant, despite structure_{} initialization in constructor.
+#if defined(__GNUC__) && !defined(__clang__)
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
             return view;
+#if defined(__GNUC__) && !defined(__clang__)
+    #pragma GCC diagnostic pop
+#endif
         } else {
             return InvalidPacket{view.error(), header.type, header, bytes};
         }
     } else if (type_value == 4 || type_value == 5) {
         // Context (4) or Extension Context (5)
-        vrtio::ContextPacketView view(bytes.data(), bytes.size());
+        ContextPacketView view(bytes.data(), bytes.size());
         if (view.is_valid()) {
             // Suppress false positive: GCC's optimizer incorrectly thinks padding bytes
             // in ContextPacketView::ParsedStructure might be uninitialized when copied
@@ -82,5 +94,4 @@ inline PacketVariant parse_and_validate_packet(std::span<const uint8_t> bytes) n
     }
 }
 
-} // namespace detail_packet_parsing
-} // namespace vrtio::utils::fileio
+} // namespace vrtio::detail

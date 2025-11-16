@@ -64,8 +64,8 @@ for system errors so they can integrate cleanly with host I/O abstractions.
 ### Context Packet Fields (CIF System)
 - FieldProxy caches offset, size, presence on creation
 - Three-level access hierarchy:
-  - `.raw_bytes()` - on-wire bytes as-is
-  - `.raw_value()` - structured format (Q52.12, etc.)
+  - `.bytes()` - on-wire bytes as-is
+  - `.encoded()` - structured format (Q52.12, etc.)
   - `.value()` - interpreted values (Hz, dBm) - optional
 - Lazy evaluation - field not read until proxy dereferenced
 - Works for both compile-time and runtime packets

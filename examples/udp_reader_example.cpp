@@ -34,7 +34,7 @@ public:
      * @param pkt Type-safe packet variant (DataPacketView, ContextPacketView, or InvalidPacket)
      * @return true to continue processing, false to stop
      */
-    bool operator()(const utils::fileio::PacketVariant& pkt) {
+    bool operator()(const vrtio::PacketVariant& pkt) {
         packet_count_++;
 
         // Check global flag for graceful shutdown
@@ -45,7 +45,7 @@ public:
         std::cout << "\n=== Packet " << packet_count_ << " ===\n";
 
         // Process based on packet type
-        if (utils::fileio::is_data_packet(pkt)) {
+        if (vrtio::is_data_packet(pkt)) {
             const auto& view = std::get<DataPacketView>(pkt);
             data_packet_count_++;
 
@@ -64,7 +64,7 @@ public:
             std::cout << "  Packet Count: " << static_cast<int>(view.packet_count()) << "\n";
             std::cout << "  Payload Size: " << view.payload().size() << " bytes\n";
 
-        } else if (utils::fileio::is_context_packet(pkt)) {
+        } else if (vrtio::is_context_packet(pkt)) {
             const auto& view = std::get<ContextPacketView>(pkt);
             context_packet_count_++;
 
@@ -84,7 +84,7 @@ public:
 
         } else {
             // Invalid packet
-            const auto& invalid = std::get<utils::fileio::InvalidPacket>(pkt);
+            const auto& invalid = std::get<vrtio::InvalidPacket>(pkt);
             invalid_packet_count_++;
 
             std::cout << "Type: INVALID PACKET\n";

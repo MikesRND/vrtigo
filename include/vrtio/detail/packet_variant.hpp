@@ -4,12 +4,12 @@
 #include <string>
 #include <variant>
 
-#include "../../detail/context_packet_view.hpp"
-#include "../../detail/data_packet_view.hpp"
-#include "../../detail/header_decode.hpp"
-#include "../../types.hpp"
+#include "../types.hpp"
+#include "context_packet_view.hpp"
+#include "data_packet_view.hpp"
+#include "header_decode.hpp"
 
-namespace vrtio::utils::fileio {
+namespace vrtio {
 
 /**
  * @brief Error result when a packet fails validation
@@ -33,15 +33,14 @@ struct InvalidPacket {
 /**
  * @brief Type-safe variant holding all possible validated packet views
  *
- * After reading a packet from a file, it will be parsed and validated,
- * then returned as one of:
+ * After parsing a packet, it will be validated and returned as one of:
  * - DataPacketView: Signal or Extension data packets (types 0-3)
  * - ContextPacketView: Context or Extension Context packets (types 4-5)
  * - InvalidPacket: Validation failed or unsupported packet type (types 6-7)
  */
-using PacketVariant = std::variant<vrtio::DataPacketView,    // Signal/Extension data packets
-                                   vrtio::ContextPacketView, // Context/Extension context packets
-                                   InvalidPacket // Validation failed or unsupported type
+using PacketVariant = std::variant<DataPacketView,    // Signal/Extension data packets
+                                   ContextPacketView, // Context/Extension context packets
+                                   InvalidPacket      // Validation failed or unsupported type
                                    >;
 
 /**
@@ -63,9 +62,9 @@ inline PacketType packet_type(const PacketVariant& pkt) noexcept {
         [](auto&& p) -> PacketType {
             using T = std::decay_t<decltype(p)>;
 
-            if constexpr (std::is_same_v<T, vrtio::DataPacketView>) {
+            if constexpr (std::is_same_v<T, DataPacketView>) {
                 return p.type();
-            } else if constexpr (std::is_same_v<T, vrtio::ContextPacketView>) {
+            } else if constexpr (std::is_same_v<T, ContextPacketView>) {
                 // ContextPacketView doesn't expose type(), so we need to infer it
                 // Context packets are always type 4 or 5
                 // We can't tell which without accessing internals, so default to 4
@@ -90,9 +89,9 @@ inline std::optional<uint32_t> stream_id(const PacketVariant& pkt) noexcept {
         [](auto&& p) -> std::optional<uint32_t> {
             using T = std::decay_t<decltype(p)>;
 
-            if constexpr (std::is_same_v<T, vrtio::DataPacketView>) {
+            if constexpr (std::is_same_v<T, DataPacketView>) {
                 return p.stream_id();
-            } else if constexpr (std::is_same_v<T, vrtio::ContextPacketView>) {
+            } else if constexpr (std::is_same_v<T, ContextPacketView>) {
                 return p.stream_id();
             }
 
@@ -107,7 +106,7 @@ inline std::optional<uint32_t> stream_id(const PacketVariant& pkt) noexcept {
  * @return true if the packet is a DataPacketView, false otherwise
  */
 inline bool is_data_packet(const PacketVariant& pkt) noexcept {
-    return std::holds_alternative<vrtio::DataPacketView>(pkt);
+    return std::holds_alternative<DataPacketView>(pkt);
 }
 
 /**
@@ -116,7 +115,7 @@ inline bool is_data_packet(const PacketVariant& pkt) noexcept {
  * @return true if the packet is a ContextPacketView, false otherwise
  */
 inline bool is_context_packet(const PacketVariant& pkt) noexcept {
-    return std::holds_alternative<vrtio::ContextPacketView>(pkt);
+    return std::holds_alternative<ContextPacketView>(pkt);
 }
 
-} // namespace vrtio::utils::fileio
+} // namespace vrtio

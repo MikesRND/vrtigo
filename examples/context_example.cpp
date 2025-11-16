@@ -34,7 +34,7 @@ void example_compile_time_context() {
     // Set signal parameters using interpreted values (Hz)
     packet[bandwidth].set_value(20'000'000.0);   // 20 MHz
     packet[sample_rate].set_value(10'000'000.0); // 10 MSPS
-    packet[gain].set_raw_value(0x00100000U);     // Gain value (raw format)
+    packet[gain].set_encoded(0x00100000U);       // Gain value (encoded format)
 
     // Device ID is 64-bit (OUI + device code)
     // For now we'll just set a simple value
@@ -45,7 +45,7 @@ void example_compile_time_context() {
     std::cout << "  Stream ID: 0x" << std::hex << packet.stream_id() << std::dec << "\n";
     std::cout << "  Bandwidth: " << packet[bandwidth].value() / 1'000'000.0 << " MHz\n";
     std::cout << "  Sample Rate: " << packet[sample_rate].value() / 1'000'000.0 << " MSPS\n";
-    std::cout << "  Gain: 0x" << std::hex << packet[gain].raw_value() << std::dec << "\n";
+    std::cout << "  Gain: 0x" << std::hex << packet[gain].encoded() << std::dec << "\n";
 }
 
 // Example 2: Creating a context packet with Class ID
@@ -170,7 +170,7 @@ void example_variable_fields() {
 
     // Use operator[] for GPS ASCII field
     if (auto gps_proxy = view[field::gps_ascii]) {
-        auto gps_data = gps_proxy.raw_bytes();
+        auto gps_data = gps_proxy.bytes();
         std::cout << "  GPS ASCII field size: " << gps_data.size() << " bytes\n";
 
         // Extract character count

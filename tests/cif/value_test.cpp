@@ -29,7 +29,7 @@ TEST_F(InterpretedValueTest, BandwidthInterpretedRead) {
     // Set bandwidth to Q52.12 encoding for 100 MHz
     // 100 MHz = 100'000'000 Hz
     // Q52.12: 100'000'000 * 4096 = 409'600'000'000
-    packet[bandwidth].set_raw_value(409'600'000'000ULL);
+    packet[bandwidth].set_encoded(409'600'000'000ULL);
 
     // Read interpreted value
     double hz = packet[bandwidth].value();
@@ -48,7 +48,7 @@ TEST_F(InterpretedValueTest, BandwidthInterpretedWrite) {
 
     // Verify raw value is correct Q52.12 encoding
     // 50 MHz * 4096 = 204'800'000'000
-    EXPECT_EQ(packet[bandwidth].raw_value(), 204'800'000'000ULL);
+    EXPECT_EQ(packet[bandwidth].encoded(), 204'800'000'000ULL);
 }
 
 TEST_F(InterpretedValueTest, BandwidthRoundTrip) {
@@ -115,13 +115,13 @@ TEST_F(InterpretedValueTest, BandwidthEdgeCases) {
 
     // Zero value
     packet[bandwidth].set_value(0.0);
-    EXPECT_EQ(packet[bandwidth].raw_value(), 0ULL);
+    EXPECT_EQ(packet[bandwidth].encoded(), 0ULL);
     EXPECT_DOUBLE_EQ(packet[bandwidth].value(), 0.0);
 
     // Maximum Q52.12 value
     uint64_t max_q52_12 = 0xFFFFFFFFFFFFFFFFULL;
-    packet[bandwidth].set_raw_value(max_q52_12);
-    EXPECT_EQ(packet[bandwidth].raw_value(), max_q52_12);
+    packet[bandwidth].set_encoded(max_q52_12);
+    EXPECT_EQ(packet[bandwidth].encoded(), max_q52_12);
     double expected_hz = static_cast<double>(max_q52_12) / 4096.0;
     EXPECT_NEAR(packet[bandwidth].value(), expected_hz, 1.0);
 }
@@ -138,7 +138,7 @@ TEST_F(InterpretedValueTest, SampleRateInterpretedRead) {
     // Set sample rate to Q52.12 encoding for 50 MHz (50 MSPS)
     // 50 MHz = 50'000'000 Hz
     // Q52.12: 50'000'000 * 4096 = 204'800'000'000
-    packet[sample_rate].set_raw_value(204'800'000'000ULL);
+    packet[sample_rate].set_encoded(204'800'000'000ULL);
 
     // Read interpreted value
     double hz = packet[sample_rate].value();
@@ -157,7 +157,7 @@ TEST_F(InterpretedValueTest, SampleRateInterpretedWrite) {
 
     // Verify raw value is correct Q52.12 encoding
     // 25 MHz * 4096 = 102'400'000'000
-    EXPECT_EQ(packet[sample_rate].raw_value(), 102'400'000'000ULL);
+    EXPECT_EQ(packet[sample_rate].encoded(), 102'400'000'000ULL);
 }
 
 TEST_F(InterpretedValueTest, SampleRateRoundTrip) {
@@ -250,13 +250,13 @@ TEST_F(InterpretedValueTest, SampleRateEdgeCases) {
 
     // Zero value (stopped ADC)
     packet[sample_rate].set_value(0.0);
-    EXPECT_EQ(packet[sample_rate].raw_value(), 0ULL);
+    EXPECT_EQ(packet[sample_rate].encoded(), 0ULL);
     EXPECT_DOUBLE_EQ(packet[sample_rate].value(), 0.0);
 
     // Maximum Q52.12 value
     uint64_t max_q52_12 = 0xFFFFFFFFFFFFFFFFULL;
-    packet[sample_rate].set_raw_value(max_q52_12);
-    EXPECT_EQ(packet[sample_rate].raw_value(), max_q52_12);
+    packet[sample_rate].set_encoded(max_q52_12);
+    EXPECT_EQ(packet[sample_rate].encoded(), max_q52_12);
     double expected_hz = static_cast<double>(max_q52_12) / 4096.0;
     EXPECT_NEAR(packet[sample_rate].value(), expected_hz, 1.0);
 

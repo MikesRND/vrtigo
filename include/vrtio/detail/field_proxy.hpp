@@ -18,8 +18,8 @@ namespace vrtio {
  *
  * Provides efficient access to packet fields by caching offset and presence.
  * Supports three levels of access:
- * - .raw_bytes() / .set_raw_bytes() - Literal on-wire bytes
- * - .raw_value() / .set_raw_value() - Structured wire format (uint32_t, FieldView, etc.)
+ * - .bytes() / .set_bytes() - Literal on-wire bytes
+ * - .encoded() / .set_encoded() - Structured wire format (uint32_t, FieldView, etc.)
  * - .value() / .set_value() - Interpreted values (Hz, dBm, etc.) - opt-in only
  *
  * @tparam FieldTag Field tag type (field::field_tag_t<CifWord, Bit>)
@@ -28,8 +28,8 @@ namespace vrtio {
  * Usage:
  *   auto bw = packet[field::bandwidth];
  *   if (bw) {
- *       auto bytes = bw.raw_bytes();          // Raw on-wire bytes
- *       uint64_t raw = bw.raw_value();        // Structured Q52.12 encoding
+ *       auto bytes = bw.bytes();              // Raw on-wire bytes
+ *       uint64_t enc = bw.encoded();          // Structured Q52.12 encoding
  *       double hz = bw.value();               // Interpreted Hz (if supported)
  *   }
  */
@@ -86,7 +86,7 @@ public:
      *
      * @return Span of const bytes (empty if field not present)
      */
-    [[nodiscard]] std::span<const uint8_t> raw_bytes() const noexcept {
+    [[nodiscard]] std::span<const uint8_t> bytes() const noexcept {
         if (!present_ || !packet_) {
             return {};
         }
@@ -108,7 +108,7 @@ public:
      *       ContextPacketView is read-only and will NOT have this method.
      *       ContextPacket (compile-time) DOES have this method.
      */
-    void set_raw_bytes(std::span<const uint8_t> bytes) noexcept
+    void set_bytes(std::span<const uint8_t> bytes) noexcept
         requires requires(Packet& p) {
             { p.mutable_context_buffer() } -> std::same_as<uint8_t*>;
         }
@@ -145,10 +145,10 @@ public:
      *
      * Precondition: has_value() must be true (checked by assertion in debug builds)
      */
-    [[nodiscard]] auto raw_value() const noexcept ->
+    [[nodiscard]] auto encoded() const noexcept ->
         typename detail::FieldTraits<FieldTag::cif, FieldTag::bit>::value_type {
-        assert(present_ && "FieldProxy::raw_value() called on field that is not present");
-        assert(packet_ && "FieldProxy::raw_value() called on invalid proxy");
+        assert(present_ && "FieldProxy::encoded() called on field that is not present");
+        assert(packet_ && "FieldProxy::encoded() called on invalid proxy");
 
         using Trait = detail::FieldTraits<FieldTag::cif, FieldTag::bit>;
         return Trait::read(packet_->context_buffer(), offset_bytes_);
@@ -166,7 +166,7 @@ public:
      * Note: Only available for fixed-size fields with FieldTraits::write() defined.
      *       Variable-length fields are read-only.
      */
-    void set_raw_value(
+    void set_encoded(
         const typename detail::FieldTraits<FieldTag::cif, FieldTag::bit>::value_type& v) noexcept
         requires requires(Packet& p) {
             { p.mutable_context_buffer() } -> std::same_as<uint8_t*>;
@@ -192,7 +192,7 @@ public:
      * Precondition: has_value() must be true (checked by assertion in debug builds)
      *
      * Compile-time error: If called on a field without interpreted support,
-     *                     you'll get a helpful error message. Use .raw_value() instead.
+     *                     you'll get a helpful error message. Use .encoded() instead.
      */
     [[nodiscard]] auto value() const noexcept -> detail::interpreted_type_or_dummy_t<FieldTag>
         requires detail::HasInterpretedAccess<FieldTag>
@@ -201,7 +201,7 @@ public:
         assert(packet_ && "FieldProxy::value() called on invalid proxy");
 
         using Trait = detail::FieldTraits<FieldTag::cif, FieldTag::bit>;
-        return Trait::to_interpreted(raw_value());
+        return Trait::to_interpreted(encoded());
     }
 
     /**
@@ -213,7 +213,7 @@ public:
     {
         static_assert(detail::always_false<T>,
                       "Field does not have interpreted support. "
-                      "Use .raw_value() to access the on-wire format, "
+                      "Use .encoded() to access the on-wire format, "
                       "or add interpreted_type/to_interpreted()/from_interpreted() "
                       "to the FieldTraits specialization to enable .value().");
     }
@@ -239,7 +239,7 @@ public:
         }
 
         using Trait = detail::FieldTraits<FieldTag::cif, FieldTag::bit>;
-        set_raw_value(Trait::from_interpreted(v));
+        set_encoded(Trait::from_interpreted(v));
     }
 
     /**
@@ -251,7 +251,7 @@ public:
     {
         static_assert(detail::always_false<T>,
                       "Field does not have interpreted support. "
-                      "Use .set_raw_value() to write the on-wire format, "
+                      "Use .set_encoded() to write the on-wire format, "
                       "or add interpreted_type/to_interpreted()/from_interpreted() "
                       "to the FieldTraits specialization to enable .set_value().");
     }
@@ -281,7 +281,7 @@ public:
     {
         static_assert(detail::always_false<T>,
                       "Cannot dereference field proxy without interpreted support. "
-                      "Use .raw_value() instead, or add interpreted support to enable operator*.");
+                      "Use .encoded() instead, or add interpreted support to enable operator*.");
     }
 };
 

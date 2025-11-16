@@ -4,8 +4,8 @@
 #pragma once
 
 #include "vrtio/detail/packet_concepts.hpp"
+#include "vrtio/detail/packet_variant.hpp"
 #include "vrtio/utils/detail/writer_concepts.hpp"
-#include "vrtio/utils/fileio/packet_variant.hpp"
 #include "vrtio/utils/fileio/raw_vrt_file_writer.hpp"
 #include "vrtio/utils/fileio/writer_status.hpp"
 

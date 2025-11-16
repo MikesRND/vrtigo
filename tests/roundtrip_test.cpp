@@ -44,15 +44,16 @@ TEST_F(RoundTripTest, MinimalPacket) {
     packet.set_packet_count(5);
     fill_test_payload(packet.payload());
 
-    // Verify packet size is correct
-    EXPECT_EQ(packet.packet_size_words(), PacketType::total_words);
+    // Verify packet header matches compile-time configuration
+    EXPECT_EQ(packet.validate(PacketType::size_bytes), vrtio::ValidationError::none);
 
     // Parse packet from same buffer (simulates network round-trip)
     PacketType received(buffer.data(), false);
 
+    ASSERT_EQ(received.validate(PacketType::size_bytes), vrtio::ValidationError::none);
+
     // Verify fields
     EXPECT_EQ(received.packet_count(), 5);
-    EXPECT_EQ(received.packet_size_words(), PacketType::total_words);
 
     // Verify payload
     verify_test_payload(received.payload());
@@ -189,6 +190,8 @@ TEST_F(RoundTripTest, FullFeaturedPacket) {
     // Parse packet
     PacketType received(buffer.data(), false);
 
+    ASSERT_EQ(received.validate(PacketType::size_bytes), vrtio::ValidationError::none);
+
     // Verify all fields
     EXPECT_EQ(received.stream_id(), 0x01234567);
     auto read_ts = received.timestamp();
@@ -196,7 +199,6 @@ TEST_F(RoundTripTest, FullFeaturedPacket) {
     EXPECT_EQ(read_ts.fractional(), 123456789012ULL);
     EXPECT_EQ(received.trailer().raw(), 0xF0F0F0F0);
     EXPECT_EQ(received.packet_count(), 13);
-    EXPECT_EQ(received.packet_size_words(), PacketType::total_words);
     verify_test_payload(received.payload());
 }
 
@@ -216,7 +218,7 @@ TEST_F(RoundTripTest, BuilderRoundTrip) {
     }
 
     // Build packet using fluent API
-    auto trailer_cfg = vrtio::TrailerBuilder{}.clear().context_packets(1);
+    auto trailer_cfg = vrtio::TrailerBuilder{}.clear().context_packet_count(1);
 
     auto ts = vrtio::TimeStampUTC::from_components(1700000000, 500000000000ULL);
     vrtio::PacketBuilder<PacketType>(tx_buffer.data())
@@ -239,7 +241,8 @@ TEST_F(RoundTripTest, BuilderRoundTrip) {
     auto read_ts = received.timestamp();
     EXPECT_EQ(read_ts.seconds(), 1700000000);
     EXPECT_EQ(read_ts.fractional(), 500000000000ULL);
-    EXPECT_EQ(received.trailer().raw(), 0x00000001);
+    // context_packet_count(1) sets count=1 (bit 0) and E bit=1 (bit 7) = 0x81
+    EXPECT_EQ(received.trailer().raw(), 0x00000081);
     EXPECT_EQ(received.packet_count(), 9);
 
     // Verify payload
@@ -322,7 +325,7 @@ TEST_F(RoundTripTest, HeaderBitsCorrect) {
     EXPECT_EQ((raw_header >> 20) & 0x03, 2);
 
     // Verify packet size (bits 15-0)
-    EXPECT_EQ(raw_header & 0xFFFF, PacketType::total_words);
+    EXPECT_EQ(raw_header & 0xFFFF, PacketType::size_words);
 }
 
 // Test 10: Type 0 packet (no stream ID)

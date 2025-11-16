@@ -14,7 +14,7 @@
 
 using namespace vrtio;
 using namespace vrtio::utils::netio;
-using namespace vrtio::utils::fileio;
+// PacketVariant and related types are now in vrtio namespace
 
 // =============================================================================
 // RAII Thread Guard

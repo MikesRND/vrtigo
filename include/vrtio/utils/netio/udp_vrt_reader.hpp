@@ -22,10 +22,10 @@
 #include "../../detail/data_packet_view.hpp"
 #include "../../detail/endian.hpp"
 #include "../../detail/header_decode.hpp"
+#include "../../detail/packet_parser.hpp"
+#include "../../detail/packet_variant.hpp"
 #include "../../types.hpp"
 #include "../detail/iteration_helpers.hpp"
-#include "../fileio/detail/packet_parser.hpp"
-#include "../fileio/packet_variant.hpp"
 #include "udp_transport_status.hpp"
 
 namespace vrtio::utils::netio {
@@ -202,7 +202,7 @@ public:
      * @note The returned view references the internal scratch buffer and is valid
      *       until the next read operation.
      */
-    std::optional<fileio::PacketVariant> read_next_packet() noexcept {
+    std::optional<vrtio::PacketVariant> read_next_packet() noexcept {
         auto bytes = read_next_datagram();
 
         if (bytes.empty()) {
@@ -223,7 +223,7 @@ public:
                 if (status_.bytes_received >= 4) {
                     // We have header - create proper InvalidPacket
                     auto decoded = vrtio::detail::decode_header(status_.header);
-                    return fileio::PacketVariant{fileio::InvalidPacket{
+                    return vrtio::PacketVariant{vrtio::InvalidPacket{
                         ValidationError::buffer_too_small, status_.packet_type, decoded,
                         std::span<const uint8_t>() // No partial data
                     }};
@@ -236,7 +236,7 @@ public:
                     static_cast<uint16_t>(std::min(status_.actual_size / 4, size_t(65535)));
                 dummy.has_class_id = false;
                 dummy.trailer_included = false;
-                return fileio::PacketVariant{fileio::InvalidPacket{
+                return vrtio::PacketVariant{vrtio::InvalidPacket{
                     ValidationError::buffer_too_small, PacketType::signal_data_no_id, dummy,
                     std::span<const uint8_t>()}};
             }
@@ -253,13 +253,13 @@ public:
             dummy.size_words = static_cast<uint16_t>(bytes.size() / 4);
             dummy.has_class_id = false;
             dummy.trailer_included = false;
-            return fileio::PacketVariant{fileio::InvalidPacket{
+            return vrtio::PacketVariant{vrtio::InvalidPacket{
                 ValidationError::buffer_too_small, PacketType::signal_data_no_id, dummy,
                 std::span<const uint8_t>(bytes.data(), bytes.size())}};
         }
 
         // Parse and validate the packet
-        return fileio::detail_packet_parsing::parse_and_validate_packet(bytes);
+        return vrtio::detail::parse_packet(bytes);
     }
 
     /**

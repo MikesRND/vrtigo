@@ -11,6 +11,7 @@
 #include "endian.hpp"
 #include "field_access.hpp"
 #include "header_decode.hpp"
+#include "packet_header_accessor.hpp"
 #include "variable_field_dispatch.hpp"
 
 namespace vrtio {
@@ -47,13 +48,11 @@ private:
     ValidationError error_;
 
     struct ParsedStructure {
-        // Header fields
-        uint16_t packet_size_words = 0;
-        uint8_t packet_type = 0;
-        bool has_stream_id = false;
-        bool has_class_id = false;
-        TsiType tsi = TsiType::none;
-        TsfType tsf = TsfType::none;
+        // Header data (consolidated from decode_header)
+        detail::DecodedHeader header{}; // Value-initialize to zero
+
+        // Additional derived fields not in header
+        bool has_stream_id = false; // Derived from packet type
 
         // CIF words
         uint32_t cif0 = 0;
@@ -86,17 +85,12 @@ private:
         uint32_t header = cif::read_u32_safe(buffer_, 0);
         auto decoded = detail::decode_header(header);
 
-        // 2. Store decoded header fields
-        structure_.packet_type = static_cast<uint8_t>(decoded.type);
-        structure_.has_class_id = decoded.has_class_id;
+        // 2. Store decoded header
+        structure_.header = decoded;
 
         // For Context packets, stream ID presence is determined by packet type
         // Per VITA 49.2: types 1,3,4,5,6,7 have stream ID; types 0,2 do not
         structure_.has_stream_id = detail::has_stream_id_field(decoded.type);
-
-        structure_.tsi = decoded.tsi;
-        structure_.tsf = decoded.tsf;
-        structure_.packet_size_words = decoded.size_words;
 
         // 3. Validate packet type (must be context: 4 or 5)
         if (decoded.type != PacketType::context && decoded.type != PacketType::extension_context) {
@@ -110,7 +104,7 @@ private:
         }
 
         // 5. Initial buffer size check
-        size_t required_bytes = structure_.packet_size_words * 4;
+        size_t required_bytes = structure_.header.size_words * 4;
         if (buffer_size_ < required_bytes) {
             return ValidationError::buffer_too_small;
         }
@@ -125,7 +119,7 @@ private:
             offset_words++; // Skip stream ID
         }
 
-        if (structure_.has_class_id) {
+        if (structure_.header.has_class_id) {
             if ((offset_words + 2) * 4 > buffer_size_) {
                 return ValidationError::buffer_too_small;
             }
@@ -133,8 +127,8 @@ private:
         }
 
         // Skip timestamp fields based on TSI/TSF
-        size_t tsi_words = (structure_.tsi != TsiType::none) ? 1 : 0;
-        size_t tsf_words = (structure_.tsf != TsfType::none) ? 2 : 0;
+        size_t tsi_words = (structure_.header.tsi != TsiType::none) ? 1 : 0;
+        size_t tsf_words = (structure_.header.tsf != TsfType::none) ? 2 : 0;
         offset_words += tsi_words + tsf_words;
 
         // 7. Read CIF words
@@ -286,7 +280,7 @@ private:
         structure_.calculated_size_words = offset_words + context_fields_words;
 
         // 10. Final validation: calculated size must match header
-        if (structure_.calculated_size_words != structure_.packet_size_words) {
+        if (structure_.calculated_size_words != structure_.header.size_words) {
             return ValidationError::size_field_mismatch;
         }
 
@@ -320,7 +314,129 @@ public:
      */
     bool is_valid() const noexcept { return error_ == ValidationError::none; }
 
-    // Query methods
+    /**
+     * Get header accessor
+     * @return Const accessor for header word fields
+     */
+    HeaderView header() const noexcept { return HeaderView{&structure_.header}; }
+
+    /**
+     * Get packet type decoded from the header
+     */
+    PacketType type() const noexcept { return structure_.header.type; }
+
+    // Header field accessors
+
+    /**
+     * Get timestamp integer format type (TSI field)
+     *
+     * Returns the format of the integer timestamp component.
+     * This is metadata ABOUT the timestamp, not the timestamp data itself.
+     *
+     * @return TSI type from header
+     */
+    TsiType tsi_type() const noexcept { return structure_.header.tsi; }
+
+    /**
+     * Get timestamp fractional format type (TSF field)
+     *
+     * Returns the format of the fractional timestamp component.
+     * This is metadata ABOUT the timestamp, not the timestamp data itself.
+     *
+     * @return TSF type from header
+     */
+    TsfType tsf_type() const noexcept { return structure_.header.tsf; }
+
+    /**
+     * Check if packet has stream ID
+     * @return true (always present per VITA 49.2 spec for context packets)
+     */
+    bool has_stream_id() const noexcept { return true; }
+
+    /**
+     * Check if packet has class ID
+     * @return true if class ID indicator is set
+     */
+    bool has_class_id() const noexcept { return header().has_class_id(); }
+
+    /**
+     * Check if packet has trailer
+     * @return false (always false per VITA 49.2 spec - bit 26 reserved for context packets)
+     */
+    bool has_trailer() const noexcept { return false; }
+
+    /**
+     * Check if packet has integer timestamp
+     * @return true if TSI != none
+     */
+    bool has_timestamp_integer() const noexcept { return header().has_timestamp_integer(); }
+
+    /**
+     * Check if packet has fractional timestamp
+     * @return true if TSF != none
+     */
+    bool has_timestamp_fractional() const noexcept { return header().has_timestamp_fractional(); }
+
+    /**
+     * Get integer timestamp
+     * @return Integer timestamp if packet has TSI and is valid, otherwise std::nullopt
+     */
+    std::optional<uint32_t> timestamp_integer() const noexcept {
+        if (!is_valid() || structure_.header.tsi == TsiType::none) {
+            return std::nullopt;
+        }
+
+        // Calculate offset to integer timestamp
+        size_t offset = 4; // After header
+        if (structure_.has_stream_id) {
+            offset += 4;
+        }
+        if (structure_.header.has_class_id) {
+            offset += 8; // 64-bit class ID
+        }
+
+        return cif::read_u32_safe(buffer_, offset);
+    }
+
+    /**
+     * Get fractional timestamp
+     * @return Fractional timestamp if packet has TSF and is valid, otherwise std::nullopt
+     */
+    std::optional<uint64_t> timestamp_fractional() const noexcept {
+        if (!is_valid() || structure_.header.tsf == TsfType::none) {
+            return std::nullopt;
+        }
+
+        // Calculate offset to fractional timestamp
+        size_t offset = 4; // After header
+        if (structure_.has_stream_id) {
+            offset += 4;
+        }
+        if (structure_.header.has_class_id) {
+            offset += 8; // 64-bit class ID
+        }
+        if (structure_.header.tsi != TsiType::none) {
+            offset += 4; // Integer timestamp
+        }
+
+        // Read fractional timestamp (size depends on TSF type per VITA 49.2)
+        switch (structure_.header.tsf) {
+            case TsfType::none:
+                return std::nullopt;
+            case TsfType::sample_count:
+                // 64-bit sample count
+                return cif::read_u64_safe(buffer_, offset);
+            case TsfType::real_time:
+                // 64-bit picoseconds
+                return cif::read_u64_safe(buffer_, offset);
+            case TsfType::free_running:
+                // 32-bit free running count (pad to 64-bit)
+                return static_cast<uint64_t>(cif::read_u32_safe(buffer_, offset));
+        }
+        return std::nullopt;
+    }
+
+    // CIF accessors
 
     uint32_t cif0() const noexcept { return structure_.cif0; }
     uint32_t cif1() const noexcept { return structure_.cif1; }
@@ -337,9 +453,12 @@ public:
         return cif::read_u32_safe(buffer_, 4); // Right after header
     }
 
+    // Packet count accessor (4-bit field in header, always present)
+    uint8_t packet_count() const noexcept { return structure_.header.packet_count; }
+
     // Class ID accessor
     [[nodiscard]] std::optional<ClassIdValue> class_id() const noexcept {
-        if (!is_valid() || !structure_.has_class_id) {
+        if (!is_valid() || !structure_.header.has_class_id) {
             return std::nullopt;
         }
 
@@ -366,9 +485,9 @@ public:
     // interpreted access (.value()).
 
     // Size queries
-    size_t packet_size_bytes() const noexcept { return structure_.packet_size_words * 4; }
+    size_t packet_size_bytes() const noexcept { return structure_.header.size_words * 4; }
 
-    size_t packet_size_words() const noexcept { return structure_.packet_size_words; }
+    size_t packet_size_words() const noexcept { return structure_.header.size_words; }
 
     // Field access API support - expose buffer and offsets
     const uint8_t* context_buffer() const noexcept { return buffer_; }
@@ -376,6 +495,17 @@ public:
     size_t context_base_offset() const noexcept { return structure_.context_base_bytes; }
 
     size_t buffer_size() const noexcept { return buffer_size_; }
+
+    /**
+     * Get entire packet as bytes
+     * @return Span of entire packet if valid, otherwise empty span
+     */
+    std::span<const uint8_t> as_bytes() const noexcept {
+        if (!is_valid()) {
+            return {};
+        }
+        return std::span<const uint8_t>(buffer_, packet_size_bytes());
+    }
 
     // Field access via subscript operator
     template <uint8_t CifWord, uint8_t Bit>

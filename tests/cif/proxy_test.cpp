@@ -8,8 +8,8 @@ using namespace vrtio::field;
 
 // =============================================================================
 // FieldProxy Interface Tests
-// Tests for FieldProxy methods: raw_bytes(), set_raw_bytes(), raw_value(),
-// set_raw_value(), offset(), size(), has_value(), operator bool, operator*
+// Tests for FieldProxy methods: bytes(), set_bytes(), encoded(),
+// set_encoded(), offset(), size(), has_value(), operator bool, operator*
 // =============================================================================
 
 class FieldProxyTest : public ::testing::Test {
@@ -27,12 +27,12 @@ TEST_F(FieldProxyTest, BasicSetAndGet) {
     TestContext packet(buffer.data());
 
     // Set bandwidth raw value (Q52.12 format)
-    packet[bandwidth].set_raw_value(20'000'000ULL);
+    packet[bandwidth].set_encoded(20'000'000ULL);
 
     // Get and verify raw value
     auto bw = packet[bandwidth];
     ASSERT_TRUE(bw.has_value());
-    EXPECT_EQ(bw.raw_value(), 20'000'000ULL);
+    EXPECT_EQ(bw.encoded(), 20'000'000ULL);
 }
 
 TEST_F(FieldProxyTest, FieldPresenceCheck) {
@@ -61,7 +61,7 @@ TEST_F(FieldProxyTest, UncheckedAccess) {
     TestContext packet(buffer.data());
 
     // Set bandwidth
-    packet[bandwidth].set_raw_value(1'000'000ULL);
+    packet[bandwidth].set_encoded(1'000'000ULL);
 
     // make_field_proxy_unchecked() for zero-overhead access (no presence check)
     uint64_t bw_direct = make_field_proxy_unchecked(packet, bandwidth);
@@ -77,14 +77,14 @@ TEST_F(FieldProxyTest, RawBytesAccess) {
 
     TestContext packet(buffer.data());
 
-    packet[bandwidth].set_raw_value(1'000'000ULL);
+    packet[bandwidth].set_encoded(1'000'000ULL);
 
     // Get field proxy
     auto bw_proxy = packet[bandwidth];
     ASSERT_TRUE(bw_proxy.has_value());
 
     // Get raw bytes
-    auto bw_raw = bw_proxy.raw_bytes();
+    auto bw_raw = bw_proxy.bytes();
 
     // Bandwidth is 64-bit (2 words = 8 bytes)
     EXPECT_EQ(bw_raw.size(), 8);
@@ -102,10 +102,10 @@ TEST_F(FieldProxyTest, RawBytesManipulation) {
     };
 
     auto bw_proxy = packet[bandwidth];
-    bw_proxy.set_raw_bytes(std::span<const uint8_t>(test_bytes, 8));
+    bw_proxy.set_bytes(std::span<const uint8_t>(test_bytes, 8));
 
     // Verify value was written
-    EXPECT_EQ(bw_proxy.raw_value(), 1'000'000ULL);
+    EXPECT_EQ(bw_proxy.encoded(), 1'000'000ULL);
 }
 
 TEST_F(FieldProxyTest, OffsetAndSize) {
@@ -133,7 +133,7 @@ TEST_F(FieldProxyTest, MissingFieldHandling) {
     EXPECT_FALSE(missing_proxy.has_value());
     EXPECT_FALSE(missing_proxy); // operator bool
 
-    auto missing_data = missing_proxy.raw_bytes();
+    auto missing_data = missing_proxy.bytes();
     EXPECT_TRUE(missing_data.empty());
 }
 
@@ -160,11 +160,11 @@ TEST_F(FieldProxyTest, ConditionalPatternCompatibility) {
 
     TestContext packet(buffer.data());
 
-    packet[gain].set_raw_value(42U);
+    packet[gain].set_encoded(42U);
 
     // if (auto field = packet[...]) pattern works
     if (auto field = packet[gain]) {
-        EXPECT_EQ(field.raw_value(), 42U);
+        EXPECT_EQ(field.encoded(), 42U);
     } else {
         FAIL() << "Field should be present";
     }
@@ -193,14 +193,14 @@ TEST_F(FieldProxyTest, MultiFieldPacket) {
     TestContext packet(buffer.data());
 
     // Set all fields
-    packet[bandwidth].set_raw_value(100'000'000ULL);
-    packet[sample_rate].set_raw_value(50'000'000ULL);
-    packet[gain].set_raw_value(0x12345678U);
+    packet[bandwidth].set_encoded(100'000'000ULL);
+    packet[sample_rate].set_encoded(50'000'000ULL);
+    packet[gain].set_encoded(0x12345678U);
 
     // Verify all fields accessible and not corrupted
-    EXPECT_EQ(packet[bandwidth].raw_value(), 100'000'000ULL);
-    EXPECT_EQ(packet[sample_rate].raw_value(), 50'000'000ULL);
-    EXPECT_EQ(packet[gain].raw_value(), 0x12345678U);
+    EXPECT_EQ(packet[bandwidth].encoded(), 100'000'000ULL);
+    EXPECT_EQ(packet[sample_rate].encoded(), 50'000'000ULL);
+    EXPECT_EQ(packet[gain].encoded(), 0x12345678U);
 
     EXPECT_TRUE(packet[field::bandwidth]);
     EXPECT_TRUE(packet[field::sample_rate]);
@@ -215,7 +215,7 @@ TEST_F(FieldProxyTest, MultiCIFWordPacket) {
     TestContext packet(buffer.data());
 
     // Set bandwidth (CIF0 field)
-    packet[bandwidth].set_raw_value(150'000'000ULL);
+    packet[bandwidth].set_encoded(150'000'000ULL);
 
     // Verify CIF enable bits are set
     constexpr uint32_t cif_enable_mask =
@@ -223,7 +223,7 @@ TEST_F(FieldProxyTest, MultiCIFWordPacket) {
     EXPECT_EQ(packet.cif0() & cif_enable_mask, cif_enable_mask);
 
     // Verify bandwidth is accessible despite multi-CIF structure
-    EXPECT_EQ(packet[bandwidth].raw_value(), 150'000'000ULL);
+    EXPECT_EQ(packet[bandwidth].encoded(), 150'000'000ULL);
 }
 
 TEST_F(FieldProxyTest, RuntimeParserIntegration) {
@@ -233,7 +233,7 @@ TEST_F(FieldProxyTest, RuntimeParserIntegration) {
     TestContext tx_packet(buffer.data());
 
     tx_packet.set_stream_id(0xDEADBEEF);
-    tx_packet[bandwidth].set_raw_value(75'000'000ULL);
+    tx_packet[bandwidth].set_encoded(75'000'000ULL);
 
     // Parse with runtime view
     ContextPacketView view(buffer.data(), TestContext::size_bytes);
@@ -242,6 +242,6 @@ TEST_F(FieldProxyTest, RuntimeParserIntegration) {
     // Verify field accessible from runtime parser
     auto bw = view[bandwidth];
     ASSERT_TRUE(bw.has_value());
-    EXPECT_EQ(bw.raw_value(), 75'000'000ULL);
+    EXPECT_EQ(bw.encoded(), 75'000'000ULL);
     EXPECT_EQ(view.stream_id().value(), 0xDEADBEEF);
 }

@@ -88,11 +88,11 @@ TEST_F(ContextPacketTest, RuntimeParserBasic) {
 
     auto bw = view[bandwidth];
     EXPECT_TRUE(bw.has_value());
-    EXPECT_EQ(bw.raw_value(), 25'000'000);
+    EXPECT_EQ(bw.encoded(), 25'000'000);
 
     auto sr = view[sample_rate];
     EXPECT_TRUE(sr.has_value());
-    EXPECT_EQ(sr.raw_value(), 12'500'000);
+    EXPECT_EQ(sr.encoded(), 12'500'000);
 
     // Field that's not present should return nullopt
     EXPECT_FALSE(view[gain].has_value());
@@ -134,4 +134,79 @@ TEST_F(ContextPacketTest, InvalidPacketType) {
 
     ContextPacketView view(buffer.data(), 3 * 4);
     EXPECT_EQ(view.error(), ValidationError::invalid_packet_type);
+}
+
+TEST_F(ContextPacketTest, PacketCountAccessors) {
+    // Test packet_count getter/setter for compile-time context packets
+    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
+
+    TestContext packet(buffer.data());
+
+    // Test initial packet count (should be 0 after initialization)
+    EXPECT_EQ(packet.packet_count(), 0);
+
+    // Test setting valid values (0-15)
+    packet.set_packet_count(5);
+    EXPECT_EQ(packet.packet_count(), 5);
+
+    packet.set_packet_count(0);
+    EXPECT_EQ(packet.packet_count(), 0);
+
+    packet.set_packet_count(15);
+    EXPECT_EQ(packet.packet_count(), 15);
+
+    // Test modulo-16 wrapping for values > 15
+    packet.set_packet_count(16);
+    EXPECT_EQ(packet.packet_count(), 0); // 16 % 16 = 0
+
+    packet.set_packet_count(17);
+    EXPECT_EQ(packet.packet_count(), 1); // 17 % 16 = 1
+
+    packet.set_packet_count(31);
+    EXPECT_EQ(packet.packet_count(), 15); // 31 % 16 = 15
+
+    packet.set_packet_count(255);
+    EXPECT_EQ(packet.packet_count(), 15); // 255 % 16 = 15
+}
+
+TEST_F(ContextPacketTest, PacketCountParsing) {
+    // Test packet_count parsing in ContextPacketView
+    // Manually construct a context packet with specific packet count
+
+    // Create header with packet count = 7
+    uint32_t header = (static_cast<uint32_t>(PacketType::context) << header::packet_type_shift) |
+                      (7U << 16) | // packet_count = 7
+                      5;           // size = 5 words
+    cif::write_u32_safe(buffer.data(), 0, header);
+
+    // Stream ID (always present for context packets per spec)
+    cif::write_u32_safe(buffer.data(), 4, 0x12345678);
+
+    // CIF0 - enable bandwidth
+    uint32_t cif0_mask = vrtio::detail::field_bitmask<bandwidth>();
+    cif::write_u32_safe(buffer.data(), 8, cif0_mask);
+
+    // Bandwidth field (64-bit)
+    cif::write_u64_safe(buffer.data(), 12, 20'000'000);
+
+    // Parse with ContextPacketView
+    ContextPacketView view(buffer.data(), 5 * 4);
+    EXPECT_TRUE(view.is_valid());
+    EXPECT_EQ(view.error(), ValidationError::none);
+
+    // Verify packet_count was correctly parsed
+    EXPECT_EQ(view.packet_count(), 7);
+
+    // Test with different packet count values
+    for (uint8_t count = 0; count <= 15; ++count) {
+        // Update header with new packet count
+        header = (static_cast<uint32_t>(PacketType::context) << header::packet_type_shift) |
+                 (static_cast<uint32_t>(count) << 16) | 5;
+        cif::write_u32_safe(buffer.data(), 0, header);
+
+        // Re-parse
+        ContextPacketView view2(buffer.data(), 5 * 4);
+        EXPECT_TRUE(view2.is_valid());
+        EXPECT_EQ(view2.packet_count(), count);
+    }
 }

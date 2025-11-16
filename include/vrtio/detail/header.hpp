@@ -15,9 +15,9 @@ namespace vrtio {
  * - Bit 27: Class ID present
  * - Bits 26-24: Packet-specific indicator bits (interpretation depends on type)
  * - Bit 23: Reserved (must be 0)
- * - Bits 22-21: TSI type (2 bits)
- * - Bits 20-19: TSF type (2 bits)
- * - Bits 18-16: Reserved (must be 0)
+ * - Bits 23-22: TSI type (2 bits)
+ * - Bits 21-20: TSF type (2 bits)
+ * - Bits 19-16: Packet Count (4 bits)
  * - Bits 15-0: Packet size in words (16 bits)
  *
  * This is the single source of truth for all header bit manipulation.
@@ -51,13 +51,13 @@ inline constexpr uint8_t indicator_bit_24_shift = 24; // Spectrum/TSM/Cancel
 inline constexpr uint32_t indicator_bit_mask = 0x1;   // After shift (single bit)
 
 // ========================================================================
-// TSI Field (bits 22-21) - Integer Timestamp Type
+// TSI Field (bits 23-22) - Integer Timestamp Type
 // ========================================================================
 inline constexpr uint8_t tsi_shift = 22;
 inline constexpr uint32_t tsi_mask = 0x3; // After shift (2 bits)
 
 // ========================================================================
-// TSF Field (bits 20-19) - Fractional Timestamp Type
+// TSF Field (bits 21-20) - Fractional Timestamp Type
 // ========================================================================
 inline constexpr uint8_t tsf_shift = 20;
 inline constexpr uint32_t tsf_mask = 0x3; // After shift (2 bits)

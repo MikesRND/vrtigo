@@ -151,10 +151,10 @@ TEST_F(SecurityTest, SizeFieldMismatch) {
     PacketType packet(buffer.data());
 
     // Corrupt size field (bits 15-0) to wrong value
-    corrupt_header_field(buffer.data(), 0x0000FFFF, PacketType::total_words + 1);
+    corrupt_header_field(buffer.data(), 0x0000FFFF, PacketType::size_words + 1);
     EXPECT_EQ(packet.validate(buffer.size()), vrtio::ValidationError::size_field_mismatch);
 
-    corrupt_header_field(buffer.data(), 0x0000FFFF, PacketType::total_words - 1);
+    corrupt_header_field(buffer.data(), 0x0000FFFF, PacketType::size_words - 1);
     EXPECT_EQ(packet.validate(buffer.size()), vrtio::ValidationError::size_field_mismatch);
 
     corrupt_header_field(buffer.data(), 0x0000FFFF, 0);

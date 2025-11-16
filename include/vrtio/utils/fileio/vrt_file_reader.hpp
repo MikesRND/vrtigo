@@ -5,9 +5,9 @@
 #include <string>
 #include <utility>
 
+#include "../../detail/packet_parser.hpp"
+#include "../../detail/packet_variant.hpp"
 #include "../detail/iteration_helpers.hpp"
-#include "detail/packet_parser.hpp"
-#include "packet_variant.hpp"
 #include "raw_vrt_file_reader.hpp"
 
 namespace vrtio::utils::fileio {
@@ -111,7 +111,7 @@ public:
      * @note The returned view references the internal reader buffer and is valid
      *       until the next read operation.
      */
-    std::optional<PacketVariant> read_next_packet() noexcept {
+    std::optional<vrtio::PacketVariant> read_next_packet() noexcept {
         auto bytes = reader_.read_next_span();
 
         // Check for EOF
@@ -123,14 +123,14 @@ public:
         if (bytes.empty()) {
             const auto& err = reader_.last_error();
             auto decoded = vrtio::detail::decode_header(err.header);
-            return PacketVariant{InvalidPacket{
+            return vrtio::PacketVariant{vrtio::InvalidPacket{
                 err.error, err.type, decoded,
                 std::span<const uint8_t>() // Empty span since read failed
             }};
         }
 
         // Parse and validate the packet
-        return detail_packet_parsing::parse_and_validate_packet(bytes);
+        return vrtio::detail::parse_packet(bytes);
     }
 
     /**

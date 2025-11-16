@@ -10,15 +10,16 @@
 #include <vrtio/vrtio_utils.hpp>
 
 using namespace vrtio::utils::netio;
-using namespace vrtio::utils::fileio;
 
 // Import specific types from vrtio namespace to avoid ambiguity
 using vrtio::ContextPacket;
 using vrtio::ContextPacketView;
 using vrtio::DataPacketView;
+using vrtio::InvalidPacket;
 using vrtio::NoClassId;
 using vrtio::NoTimeStamp;
 using vrtio::PacketBuilder;
+using vrtio::PacketVariant;
 using vrtio::SignalDataPacket;
 using vrtio::TimeStampUTC;
 using vrtio::Trailer;
@@ -169,7 +170,7 @@ TEST_F(UDPWriterTest, RoundTripContextPacket) {
 
     PacketType packet(buffer.data());
     packet.set_stream_id(test_stream_id);
-    packet[vrtio::field::reference_point_id].set_raw_value(test_ref_point);
+    packet[vrtio::field::reference_point_id].set_encoded(test_ref_point);
 
     EXPECT_TRUE(writer.write_packet(packet));
 

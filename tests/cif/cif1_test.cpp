@@ -21,20 +21,20 @@ TEST_F(ContextPacketTest, NewCIF1Fields) {
     TestContext packet(buffer.data());
 
     // Set and verify Health Status (1 word)
-    packet[health_status].set_raw_value(0xABCDEF01);
-    EXPECT_EQ(packet[health_status].raw_value(), 0xABCDEF01);
+    packet[health_status].set_encoded(0xABCDEF01);
+    EXPECT_EQ(packet[health_status].encoded(), 0xABCDEF01);
 
     // Set and verify Phase Offset (1 word)
-    packet[phase_offset].set_raw_value(0x12345678);
-    EXPECT_EQ(packet[phase_offset].raw_value(), 0x12345678);
+    packet[phase_offset].set_encoded(0x12345678);
+    EXPECT_EQ(packet[phase_offset].encoded(), 0x12345678);
 
     // Set and verify Polarization (1 word)
-    packet[polarization].set_raw_value(0x87654321);
-    EXPECT_EQ(packet[polarization].raw_value(), 0x87654321);
+    packet[polarization].set_encoded(0x87654321);
+    EXPECT_EQ(packet[polarization].encoded(), 0x87654321);
 
     // Set and verify 3D Pointing Single (1 word)
-    packet[pointing_vector_3d_single].set_raw_value(0xFEDCBA98);
-    EXPECT_EQ(packet[pointing_vector_3d_single].raw_value(), 0xFEDCBA98);
+    packet[pointing_vector_3d_single].set_encoded(0xFEDCBA98);
+    EXPECT_EQ(packet[pointing_vector_3d_single].encoded(), 0xFEDCBA98);
 }
 
 TEST_F(ContextPacketTest, RuntimeParseCIF1) {
@@ -70,7 +70,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF1) {
     // Verify we can read back the Aux Frequency field using the accessor
     auto aux_freq = view[aux_frequency];
     ASSERT_TRUE(aux_freq.has_value());
-    EXPECT_EQ(aux_freq.raw_value(), expected_freq);
+    EXPECT_EQ(aux_freq.encoded(), expected_freq);
 }
 
 TEST_F(ContextPacketTest, CompileTimeCIF1RuntimeParse) {
@@ -85,7 +85,7 @@ TEST_F(ContextPacketTest, CompileTimeCIF1RuntimeParse) {
 
     TestContext tx_packet(buffer.data());
     tx_packet.set_stream_id(0xAABBCCDD);
-    tx_packet[aux_frequency].set_raw_value(15'000'000ULL); // 15 MHz
+    tx_packet[aux_frequency].set_encoded(15'000'000ULL); // 15 MHz
 
     // Parse with runtime view
     ContextPacketView view(buffer.data(), TestContext::size_bytes);

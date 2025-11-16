@@ -40,51 +40,70 @@ This document provides a comprehensive reference for accessing VRT packet data. 
 
 | Method/Member | DataPacket | DataPacketView | ContextPacket | ContextPacketView |
 |--------------|-----------|----------------|---------------|-------------------|
-| `packet_size_words()` | ✓ returns `uint16_t` | ✓ returns `size_t` | ✗ | ✓ returns `size_t` |
-| `packet_size_bytes()` | ✗ | ✓ returns `size_t` | ✗ | ✓ returns `size_t` |
-| `size_words` (static) | ✗ (has `total_words`) | N/A | ✓ constexpr `size_t` | N/A |
-| `size_bytes` (static) | ✓ constexpr `size_t` | N/A | ✓ constexpr `size_t` | N/A |
+| `packet_size_words()` | ✗ (use `size_words`) | ✓ returns `size_t` | ✗ | ✓ returns `size_t` |
+| `packet_size_bytes()` | ✗ (use `size_bytes`) | ✓ returns `size_t` | ✗ | ✓ returns `size_t` |
+| `buffer_size()` | ✗ | ✓ returns `size_t` | ✗ | ✓ returns `size_t` |
+| `size_words` (static) | ✓ `constexpr size_t` | N/A | ✓ `constexpr size_t` | N/A |
+| `size_bytes` (static) | ✓ `constexpr size_t` | N/A | ✓ `constexpr size_t` | N/A |
 | `validate(size_t)` | ✓ returns `ValidationError` | ✗ (auto-validated) | ✓ returns `ValidationError` | ✗ (auto-validated) |
 | `error()` | ✗ | ✓ returns `ValidationError` | ✗ | ✓ returns `ValidationError` |
 | `is_valid()` | ✗ | ✓ returns `bool` | ✗ | ✓ returns `bool` |
-| `type()` | ✗ (template parameter) | ✓ returns `PacketType` | ✗ (template parameter) | ✗ |
+| `type()` | ✗ (template parameter) | ✓ returns `PacketType` | ✗ (template parameter) | ✓ returns `PacketType` |
 
-**Note**: Compile-time packets (DataPacket, ContextPacket) expose static constexpr size members, while runtime views provide instance methods that read from the packet buffer.
+**Note**: Compile-time packets (DataPacket, ContextPacket) publish their size through `static constexpr size_words/size_bytes` (rename `total_words` to `size_words`). Runtime views instead expose `packet_size_*()` for the on-wire length and `buffer_size()` for the caller-supplied span length so receivers can check that the buffer actually contains the full packet.
 
 ### Packet Count
 
 | Method | DataPacket | DataPacketView | ContextPacket | ContextPacketView |
 |--------|-----------|----------------|---------------|-------------------|
-| `packet_count()` | ✓ returns `uint8_t` | ✓ returns `uint8_t` | ✗ | ✗ |
-| `set_packet_count(uint8_t)` | ✓ | ✗ | ✗ | ✗ |
+| `packet_count()` | ✓ returns `uint8_t` | ✓ returns `uint8_t` | ✓ returns `uint8_t` | ✓ returns `uint8_t` |
+| `set_packet_count(uint8_t)` | ✓ | ✗ | ✓ | ✗ |
 
-**Note**: Packet count is a 4-bit header field (valid range 0-15) only available in data packets. Context packets do not expose packet count accessors. Values > 15 are truncated with debug warnings.
+**Note**: Packet count is a 4-bit header field (valid range 0-15) available in all packet types per VITA 49.2. Values are wrapped modulo 16 automatically. Debug builds emit warnings when values > 15 are provided to `set_packet_count()`.
 
 ---
+
+## Header Word Access
+
+All packet types provide a `header()` accessor that returns a view over the first 32-bit header word:
+
+| Method | DataPacket | DataPacketView | ContextPacket | ContextPacketView |
+|--------|-----------|----------------|---------------|-------------------|
+| `header()` | ✓ `MutableHeaderView` | ✓ `HeaderView` | ✓ `MutableHeaderView` | ✓ `HeaderView` |
+| `header() const` | ✓ `HeaderView` | — | ✓ `HeaderView` | — |
+
+The returned view provides typed access to all header fields including packet type, size, indicators, and timestamp format metadata.
+
+**See [Header View API](header_view.md) for complete documentation** of HeaderView/MutableHeaderView methods and usage.
 
 ## Packet Component Presence Queries
 
 ### Compile-Time Packets (DataPacket, ContextPacket)
 
 These use compile-time `static constexpr bool` members determined by template parameters:
-- `has_stream_id`
+- `has_stream_id` - Always `true` for ContextPacket per VITA 49.2 spec
 - `has_class_id`
-- `has_timestamp`
-- `has_trailer` (DataPacket only; always false for ContextPacket per spec)
+- `has_timestamp` - Combined check for any timestamp components
+- `has_timestamp_integer` - TSI component present
+- `has_timestamp_fractional` - TSF component present
+- `has_trailer` - Always `false` for ContextPacket per spec (bit 26 reserved)
 
 ### Runtime Views (DataPacketView, ContextPacketView)
 
 | Method | DataPacketView | ContextPacketView | Notes |
 |--------|----------------|-------------------|-------|
-| `has_stream_id()` | ✓ returns `bool` | ✗ | Presence check (DataPacket only) |
-| `has_class_id()` | ✓ returns `bool` | ✗ | Presence check from header bit 27 |
-| `has_trailer()` | ✓ returns `bool` | ✗ | From header bit 26 |
-| `has_timestamp_integer()` | ✓ returns `bool` | ✗ | TSI ≠ none |
-| `has_timestamp_fractional()` | ✓ returns `bool` | ✗ | TSF ≠ none |
-| `tsi()` | ✓ returns `TsiType` | ✗ | Timestamp integer type |
-| `tsf()` | ✓ returns `TsfType` | ✗ | Timestamp fractional type |
+| `has_stream_id()` | ✓ returns `bool` | ✓ returns `bool` | Type-based for data packets; always `true` for context packets |
+| `has_class_id()` | ✓ returns `bool` | ✓ returns `bool` | Header bit 27 (C bit) |
+| `has_trailer()` | ✓ returns `bool` | ✓ returns `bool` | Header bit 26 (T bit) for data; always `false` for context |
+| `has_timestamp_integer()` | ✓ returns `bool` | ✓ returns `bool` | TSI ≠ none (delegates to `header()`) |
+| `has_timestamp_fractional()` | ✓ returns `bool` | ✓ returns `bool` | TSF ≠ none (delegates to `header()`) |
+| `tsi_type()` | ✓ returns `TsiType` | ✓ returns `TsiType` | Timestamp integer format metadata |
+| `tsf_type()` | ✓ returns `TsfType` | ✓ returns `TsfType` | Timestamp fractional format metadata |
 
-**Note**: ContextPacketView does not provide presence query methods. Stream ID presence is checked via the optional return from `stream_id()`. Class ID presence must be inferred from the optional return of `class_id()`.
+**Delegation Strategy**:
+- Header-based queries (`has_class_id`, `has_trailer`, `has_timestamp_*`) delegate to `header()` accessor for single source of truth
+- Stream ID presence is packet-type-derived for data packets (not a header bit), always `true` for context packets per spec
+- Context packets return `false` for `has_trailer()` per VITA 49.2 (bit 26 reserved for context packet types)
 
 ---
 
@@ -123,17 +142,17 @@ These methods access the optional packet components that appear between the head
 
 | Method | DataPacketView | ContextPacketView |
 |--------|----------------|-------------------|
-| `timestamp_integer()` | ✓ `optional<uint32_t>` | ✗ |
-| `timestamp_fractional()` | ✓ `optional<uint64_t>` | ✗ |
+| `timestamp_integer()` | ✓ `optional<uint32_t>` | ✓ `optional<uint32_t>` |
+| `timestamp_fractional()` | ✓ `optional<uint64_t>` | ✓ `optional<uint64_t>` |
 
-**Important API Gap**: `ContextPacketView` does not provide any timestamp accessor methods, even though timestamp components may be present in the packet structure. This means timestamps in context packets are currently inaccessible via the runtime API. Context Fields accessed via `operator[]` are CIF-encoded fields within the context section, not timestamp packet components.
+**Note**: Timestamp data is distinct from timestamp format metadata. Use `tsi_type()` and `tsf_type()` (or `header().tsi_type()` / `header().tsf_type()`) to query the timestamp format, and `timestamp_integer()` / `timestamp_fractional()` to access the actual timestamp values.
 
 ### Trailer
 
 | Method | DataPacket | DataPacketView | ContextPacket | ContextPacketView |
 |--------|-----------|----------------|---------------|-------------------|
-| `trailer()` | ✓ `TrailerView` (if `HasTrailer`) | ✓ `optional<uint32_t>` (raw word) | ✗ (spec forbids) | ✗ (spec forbids) |
-| `trailer() const` | ✓ `ConstTrailerView` (if `HasTrailer`) | — | ✗ | ✗ |
+| `trailer()` | ✓ `MutableTrailerView` (if `HasTrailer`) | ✓ `optional<uint32_t>` (raw word) | ✗ (spec forbids) | ✗ (spec forbids) |
+| `trailer() const` | ✓ `TrailerView` (if `HasTrailer`) | — | ✗ | ✗ |
 
 **Note**: Context packets never include trailers per VITA 49.2 specification (bit 26 is reserved and must be zero).
 
@@ -141,37 +160,61 @@ For trailer bit manipulation, see [TrailerView API](#trailerview-api-data-packet
 
 ---
 
-## Buffer and Payload Access
+## Buffer Access
 
-### Data Packets
+All packet types provide access to the complete packet buffer as a byte span.
 
-| Method | DataPacket | DataPacketView |
-|--------|-----------|----------------|
+| Method/Query | Compile-Time (DataPacket, ContextPacket) | Runtime (DataPacketView, ContextPacketView) |
+|--------------|------------------------------------------|---------------------------------------------|
+| `as_bytes()` | ✓ `span<uint8_t, N>` | ✓ `span<const uint8_t>` |
+| `as_bytes() const` | ✓ `span<const uint8_t, N>` | — |
+| Total packet size | `size_bytes` / `size_words` (static constexpr members) | `packet_size_bytes()` / `packet_size_words()` (methods) |
+| Caller-supplied buffer size | ✗ | `buffer_size()` |
+
+**Const Overloading**: Compile-time packets provide both mutable and const overloads for `as_bytes()`. Runtime views are read-only parsers and only provide const access.
+
+**Naming Convention**: Compile-time packets expose sizes as `static constexpr` members (e.g., `size_bytes`, `size_words`) for use in template logic and static assertions. Runtime views provide methods (e.g., `packet_size_bytes()`, `packet_size_words()`) that read decoded header values. This distinction reflects that compile-time sizes are constants while runtime sizes are determined by parsing.
+
+**Note**:
+- Compile-time packets use fixed-size spans with compile-time extent (`span<T, N>`)
+- Runtime views use dynamic-size spans (`span<T>`) and return empty spans if invalid
+
+---
+
+## Payload Access (Data Packets Only)
+
+Data packets have a traditional data payload section. Context packets use CIF-based field access instead (see next section).
+
+| Method/Query | DataPacket (Compile-Time) | DataPacketView (Runtime) |
+|--------------|---------------------------|--------------------------|
 | `payload()` | ✓ `span<uint8_t, N>` | ✓ `span<const uint8_t>` |
 | `payload() const` | ✓ `span<const uint8_t, N>` | — |
 | `set_payload(const uint8_t*, size_t)` | ✓ | ✗ |
-| `payload_size_bytes()` | ✓ (static constexpr) | ✓ returns `size_t` |
-| `payload_size_words()` | ✓ (static constexpr) | ✓ returns `size_t` |
-| `as_bytes()` | ✓ `span<uint8_t, N>` | ✓ `span<const uint8_t>` |
-| `as_bytes() const` | ✓ `span<const uint8_t, N>` | — |
-| `buffer_size()` | ✗ (use `size_bytes`) | ✓ returns `size_t` |
+| Payload size in bytes | `payload_size_bytes` (static constexpr member) | `payload_size_bytes()` (method) |
+| Payload size in words | `payload_words` (static constexpr member) | `payload_size_words()` (method) |
 
-**Note**: Compile-time packets use fixed-size spans with compile-time extent; runtime views use dynamic spans.
+**Const Overloading**:
+- `DataPacket::payload()` (non-const) returns mutable `span<uint8_t>` for writing payload data
+- `DataPacket::payload() const` returns `span<const uint8_t>` for read-only access in const contexts
+- `DataPacketView::payload()` is always const (read-only parser)
 
-### Context Packets
+**Naming Pattern**: Same as buffer size queries - static members for compile-time constants, methods for runtime decoded values.
 
-Context packets don't have a traditional "payload" - instead they use CIF-based Context Field access:
+---
 
-| Method | ContextPacket | ContextPacketView | Purpose |
-|--------|---------------|-------------------|---------|
-| `operator[](field_tag)` | ✓ mutable `FieldProxy` | ✓ const `FieldProxy` | Access Context Fields (CIF-encoded) |
-| `as_bytes()` | ✓ `span<uint8_t, N>` | ✗ | Full packet buffer |
-| `as_bytes() const` | ✓ `span<const uint8_t, N>` | ✗ | Full packet buffer (const) |
-| `buffer_size()` | ✗ (use `size_bytes`) | ✓ returns `size_t` | Buffer size query |
+## CIF Field Access (Context Packets Only)
+
+Context packets don't have a traditional "payload" - instead they encode CIF-based context fields.
+
+| Method | ContextPacket | ContextPacketView |
+|--------|---------------|-------------------|
+| `operator[](field_tag)` | ✓ mutable `FieldProxy` | ✓ const `FieldProxy` |
+
+**Usage**: Access context fields via field tags from `vrtio::field` namespace (e.g., `packet[field::bandwidth]`).
 
 **Internal helpers** (do not call directly; for FieldProxy use only):
-- `context_buffer()` / `mutable_context_buffer()` - Raw buffer pointers
-- `context_base_offset()` - Offset to context field area
+- `context_buffer()` / `mutable_context_buffer()` - Raw buffer pointers to CIF field area
+- `context_base_offset()` - Byte offset to start of CIF field area
 
 ---
 
@@ -217,16 +260,16 @@ auto proxy = packet[field::bandwidth];
 
 | Method | Compile-Time (mutable) | Runtime (const) | Description |
 |--------|----------------------|-----------------|-------------|
-| `raw_bytes()` | ✓ read | ✓ read | Literal on-wire bytes |
-| `set_raw_bytes(span)` | ✓ write | ✗ | Set on-wire bytes in bulk |
-| `raw_value()` | ✓ read | ✓ read | Structured format (e.g., Q52.12 as `uint64_t`) |
-| `set_raw_value(T)` | ✓ write | ✗ | Set structured value |
+| `bytes()` | ✓ read | ✓ read | Literal on-wire bytes |
+| `set_bytes(span)` | ✓ write | ✗ | Set on-wire bytes in bulk |
+| `encoded()` | ✓ read | ✓ read | Structured format (e.g., Q52.12 as `uint64_t`) |
+| `set_encoded(T)` | ✓ write | ✗ | Set structured value |
 | `value()` | ✓ read | ✓ read | Interpreted units (Hz, dBm, etc.) if defined |
 | `set_value(T)` | ✓ write | ✗ | Set interpreted value |
 | `operator bool()` | ✓ | ✓ | Check field presence |
 
 **Notes**:
-- Variable-length fields include the count word automatically in `raw_bytes()`
+- Variable-length fields include the count word automatically in `bytes()`
 - `value()` methods only available if `FieldTraits` specialization defines interpreted conversions
 - FieldProxy caches offset, size, and presence on creation for efficiency
 
@@ -240,11 +283,11 @@ if (packet[field::bandwidth]) {  // bandwidth is a Context Field
     // Read interpreted value (Hz)
     double bw = packet[field::bandwidth].value();
 
-    // Read raw structured value (Q52.12 as uint64_t)
-    uint64_t raw = packet[field::bandwidth].raw_value();
+    // Read encoded structured value (Q52.12 as uint64_t)
+    uint64_t enc = packet[field::bandwidth].encoded();
 
     // Read raw bytes
-    auto bytes = packet[field::bandwidth].raw_bytes();
+    auto bytes = packet[field::bandwidth].bytes();
 }
 
 // Set value (compile-time packets only)
@@ -257,44 +300,17 @@ packet[field::bandwidth].set_value(20e6); // 20 MHz
 
 ---
 
-## TrailerView API (Data Packets)
+## Trailer Access (Data Packets Only)
 
-When `DataPacket<>` has `HasTrailer == Trailer::included`, the `trailer()` method returns a view object for bit manipulation.
+Data packets can optionally include a trailer word for signal quality and status information. When `HasTrailer == Trailer::included`, the `trailer()` method returns a view object:
 
-### ConstTrailerView (Read-Only)
+| Method | DataPacket (mutable) | DataPacket (const) | DataPacketView |
+|--------|---------------------|-------------------|----------------|
+| `trailer()` | ✓ `MutableTrailerView` | ✓ `TrailerView` | ✓ `optional<uint32_t>` |
 
-| Method | Return Type | Description |
-|--------|-------------|-------------|
-| `raw()` | `uint32_t` | Entire trailer word |
-| `valid_data()` | `bool` | Valid data indicator |
-| `reference_point()` | `bool` | Reference point indicator |
-| `calibrated_time()` | `bool` | Calibrated time indicator |
-| `sample_loss()` | `bool` | Sample loss indicator |
-| `over_range()` | `bool` | Over-range indicator |
-| `spectral_inversion()` | `bool` | Spectral inversion indicator |
-| `detected_signal()` | `bool` | Detected signal indicator |
-| `agc_mgc()` | `bool` | AGC/MGC indicator |
-| `reference_lock()` | `bool` | Reference lock indicator |
-| `context_packets()` | `uint8_t` | Associated context packet count (7 bits) |
+The returned view provides typed access to all trailer status and error fields.
 
-### TrailerView (Mutable)
-
-Inherits all methods from `ConstTrailerView` and adds:
-
-| Method | Parameters | Description |
-|--------|-----------|-------------|
-| `set_raw(uint32_t)` | value | Set entire trailer word |
-| `clear()` | — | Zero entire trailer word |
-| `set_valid_data(bool)` | state | Set valid data bit |
-| `set_reference_point(bool)` | state | Set reference point bit |
-| `set_calibrated_time(bool)` | state | Set calibrated time bit |
-| `set_sample_loss(bool)` | state | Set sample loss bit |
-| `set_over_range(bool)` | state | Set over-range bit |
-| `set_spectral_inversion(bool)` | state | Set spectral inversion bit |
-| `set_detected_signal(bool)` | state | Set detected signal bit |
-| `set_agc_mgc(bool)` | state | Set AGC/MGC bit |
-| `set_reference_lock(bool)` | state | Set reference lock bit |
-| `set_context_packets(uint8_t)` | count | Set context packet count (0-127) |
+**See [Trailer View API](trailer_view.md) for complete documentation** of TrailerView/MutableTrailerView methods, TrailerBuilder, and usage examples.
 
 ---
 
@@ -320,7 +336,7 @@ For implementation details and exact signatures, see:
 - **File**: `include/vrtio/detail/data_packet.hpp`
 - **Class**: `DataPacket<PacketType Type, ClassIdType ClassId, TimeStampType TimeStamp, Trailer HasTrailer, size_t PayloadWords>`
 - **Key sections**:
-  - Header accessors (packet_count, packet_size_words)
+  - Header accessors (packet_count) and static size constants (`size_words`, `size_bytes`)
   - Stream ID (conditional on has_stream_id)
   - Class ID (conditional on has_class_id)
   - Timestamp (conditional on HasTimestamp)
@@ -334,7 +350,8 @@ For implementation details and exact signatures, see:
 - **Key sections**:
   - Automatic validation on construction
   - Validation query methods (error, is_valid)
-  - Type and presence queries (type, has_*, tsi, tsf)
+  - Header accessor (header())
+  - Type and presence queries (type, has_*, tsi_type, tsf_type)
   - Optional field accessors (stream_id, class_id, timestamp_*, trailer)
   - Payload and size queries (dynamic spans)
 
@@ -355,20 +372,27 @@ For implementation details and exact signatures, see:
 - **Key sections**:
   - Automatic validation on construction
   - Validation query methods
-  - Optional accessors (stream_id, class_id)
+  - Header accessor (header())
+  - Timestamp format metadata accessors (tsi_type, tsf_type, has_timestamp_*)
+  - Optional accessors (stream_id, class_id, timestamp_integer, timestamp_fractional)
   - CIF query methods (cif0-3)
   - FieldProxy access via operator[]
   - Size queries
 
+### Header Views
+- **File**: `include/vrtio/detail/packet_header_accessor.hpp`
+- **Classes**: `HeaderView`, `MutableHeaderView`
+- **Documentation**: [Header View API](header_view.md)
+
 ### Trailer Views
 - **File**: `include/vrtio/detail/trailer_view.hpp`
-- **Classes**: `ConstTrailerView`, `TrailerView`
-- **Coverage**: All VITA 49.2 defined trailer bits
+- **Classes**: `TrailerView`, `MutableTrailerView`
+- **Documentation**: [Trailer View API](trailer_view.md)
 
 ### Field Proxy
 - **File**: `include/vrtio/detail/field_proxy.hpp`
 - **Template**: `FieldProxy<FieldTag, PacketType>`
-- **Methods**: raw_bytes, raw_value, value (with corresponding setters for mutable packets)
+- **Methods**: bytes, encoded, value (with corresponding setters for mutable packets)
 
 ---
 

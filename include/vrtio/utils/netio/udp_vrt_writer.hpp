@@ -17,8 +17,8 @@
 
 // Linux/POSIX socket headers
 #include "vrtio/detail/packet_concepts.hpp"
+#include "vrtio/detail/packet_variant.hpp"
 #include "vrtio/utils/detail/writer_concepts.hpp"
-#include "vrtio/utils/fileio/packet_variant.hpp"
 #include "vrtio/utils/netio/udp_transport_status.hpp"
 
 #include <arpa/inet.h>
@@ -94,7 +94,7 @@ namespace vrtio::utils::netio {
  * // Convert to variant for per-destination API
  * auto bytes = packet.as_bytes();
  * vrtio::DataPacketView packet_view{bytes.data(), bytes.size()};
- * vrtio::utils::fileio::PacketVariant variant = packet_view;
+ * vrtio::PacketVariant variant = packet_view;
  *
  * multi_writer.write_packet(variant, dest1);
  * multi_writer.write_packet(variant, dest2);
@@ -237,9 +237,9 @@ public:
      * @param packet The packet variant to write
      * @return true on success, false on error or invalid packet
      */
-    bool write_packet(const fileio::PacketVariant& packet) noexcept {
+    bool write_packet(const vrtio::PacketVariant& packet) noexcept {
         // Check if variant holds InvalidPacket
-        if (std::holds_alternative<fileio::InvalidPacket>(packet)) {
+        if (std::holds_alternative<vrtio::InvalidPacket>(packet)) {
             status_.state = UDPTransportStatus::State::socket_error;
             status_.errno_value = EINVAL;
             return false;
@@ -251,7 +251,7 @@ public:
                 using T = std::decay_t<decltype(pkt)>;
 
                 // InvalidPacket already handled above
-                if constexpr (std::is_same_v<T, fileio::InvalidPacket>) {
+                if constexpr (std::is_same_v<T, vrtio::InvalidPacket>) {
                     return false; // Should never reach here
                 } else if constexpr (std::is_same_v<T, vrtio::DataPacketView>) {
                     return this->write_packet_impl(pkt.as_bytes());
@@ -312,10 +312,9 @@ public:
      * @param dest Destination address
      * @return true on success, false on error or invalid packet
      */
-    bool write_packet(const fileio::PacketVariant& packet,
-                      const struct sockaddr_in& dest) noexcept {
+    bool write_packet(const vrtio::PacketVariant& packet, const struct sockaddr_in& dest) noexcept {
         // Check if variant holds InvalidPacket
-        if (std::holds_alternative<fileio::InvalidPacket>(packet)) {
+        if (std::holds_alternative<vrtio::InvalidPacket>(packet)) {
             status_.state = UDPTransportStatus::State::socket_error;
             status_.errno_value = EINVAL;
             return false;
@@ -326,7 +325,7 @@ public:
             [this, &dest](auto&& pkt) -> bool {
                 using T = std::decay_t<decltype(pkt)>;
 
-                if constexpr (std::is_same_v<T, fileio::InvalidPacket>) {
+                if constexpr (std::is_same_v<T, vrtio::InvalidPacket>) {
                     return false; // Should never reach here
                 } else if constexpr (std::is_same_v<T, vrtio::DataPacketView>) {
                     return this->write_packet_to(pkt.as_bytes(), dest);

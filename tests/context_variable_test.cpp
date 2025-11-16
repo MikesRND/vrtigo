@@ -30,7 +30,7 @@ TEST_F(ContextPacketTest, GPSASCIIVariableField) {
     // Use operator[] API instead of has_gps_ascii() / gps_ascii_data()
     auto gps_proxy = view[gps_ascii];
     EXPECT_TRUE(gps_proxy.has_value());
-    auto gps_data = gps_proxy.raw_bytes();
+    auto gps_data = gps_proxy.bytes();
     EXPECT_EQ(gps_data.size(), 4 * 4); // 1 count + 3 data words (12 bytes)
 
     // Extract the character count
@@ -75,7 +75,7 @@ TEST_F(ContextPacketTest, ContextAssociationLists) {
     // Use operator[] API instead of has_context_association() / context_association_data()
     auto assoc_proxy = view[context_association_lists];
     EXPECT_TRUE(assoc_proxy.has_value());
-    auto assoc_data = assoc_proxy.raw_bytes();
+    auto assoc_data = assoc_proxy.bytes();
     EXPECT_EQ(assoc_data.size(), 4 * 4); // 1 counts + 2 stream + 1 context
 }
 

@@ -10,6 +10,7 @@
 #include "buffer_io.hpp"
 #include "endian.hpp"
 #include "header_decode.hpp"
+#include "packet_header_accessor.hpp"
 
 namespace vrtio {
 
@@ -53,15 +54,11 @@ private:
     ValidationError error_;
 
     struct ParsedStructure {
-        // Header fields
-        PacketType type = PacketType::signal_data_no_id;
-        bool has_stream_id = false;
-        bool has_class_id = false;
-        bool has_trailer = false;
-        TsiType tsi = TsiType::none;
-        TsfType tsf = TsfType::none;
-        uint16_t packet_size_words = 0;
-        uint8_t packet_count = 0;
+        // Header data (consolidated from decode_header)
+        detail::DecodedHeader header{}; // Value-initialize to zero
+
+        // Additional derived fields not in header
+        bool has_stream_id = false; // Derived from packet type
 
         // Field offsets (in bytes)
         size_t stream_id_offset = 0;
@@ -84,7 +81,8 @@ public:
     explicit DataPacketView(const uint8_t* buffer, size_t buffer_size) noexcept
         : buffer_(buffer),
           buffer_size_(buffer_size),
-          error_(ValidationError::none) {
+          error_(ValidationError::none),
+          structure_{} {
         error_ = validate_internal();
     }
 
@@ -101,10 +99,16 @@ public:
     bool is_valid() const noexcept { return error_ == ValidationError::none; }
 
     /**
+     * Get header accessor
+     * @return Const accessor for header word fields
+     */
+    HeaderView header() const noexcept { return HeaderView{&structure_.header}; }
+
+    /**
      * Get packet type
      * @return PacketType if valid, otherwise SignalDataNoId
      */
-    PacketType type() const noexcept { return structure_.type; }
+    PacketType type() const noexcept { return structure_.header.type; }
 
     /**
      * Check if packet has stream ID
@@ -116,43 +120,51 @@ public:
      * Check if packet has class ID
      * @return true if class ID indicator is set
      */
-    bool has_class_id() const noexcept { return structure_.has_class_id; }
+    bool has_class_id() const noexcept { return header().has_class_id(); }
 
     /**
      * Check if packet has trailer
      * @return true if trailer indicator is set
      */
-    bool has_trailer() const noexcept { return structure_.has_trailer; }
+    bool has_trailer() const noexcept { return header().has_trailer(); }
 
     /**
-     * Get TSI type
+     * Get timestamp integer format type (TSI field)
+     *
+     * Returns the format of the integer timestamp component.
+     * This is metadata ABOUT the timestamp, not the timestamp data itself.
+     *
      * @return TSI type from header
      */
-    TsiType tsi() const noexcept { return structure_.tsi; }
+    TsiType tsi_type() const noexcept { return structure_.header.tsi; }
 
     /**
-     * Get TSF type
+     * Get timestamp fractional format type (TSF field)
+     *
+     * Returns the format of the fractional timestamp component.
+     * This is metadata ABOUT the timestamp, not the timestamp data itself.
+     *
      * @return TSF type from header
      */
-    TsfType tsf() const noexcept { return structure_.tsf; }
+    TsfType tsf_type() const noexcept { return structure_.header.tsf; }
 
     /**
      * Check if packet has integer timestamp
      * @return true if TSI != none
      */
-    bool has_timestamp_integer() const noexcept { return structure_.tsi != TsiType::none; }
+    bool has_timestamp_integer() const noexcept { return header().has_timestamp_integer(); }
 
     /**
      * Check if packet has fractional timestamp
      * @return true if TSF != none
      */
-    bool has_timestamp_fractional() const noexcept { return structure_.tsf != TsfType::none; }
+    bool has_timestamp_fractional() const noexcept { return header().has_timestamp_fractional(); }
 
     /**
      * Get packet count field
      * @return packet count (0-15) if valid, otherwise 0
      */
-    uint8_t packet_count() const noexcept { return structure_.packet_count; }
+    uint8_t packet_count() const noexcept { return structure_.header.packet_count; }
 
     /**
      * Get stream ID
@@ -170,7 +182,7 @@ public:
      * @return ClassIdValue if packet has class_id and is valid, otherwise std::nullopt
      */
     [[nodiscard]] std::optional<ClassIdValue> class_id() const noexcept {
-        if (!is_valid() || !structure_.has_class_id) {
+        if (!is_valid() || !structure_.header.has_class_id) {
             return std::nullopt;
         }
         uint32_t word0 = detail::read_u32(buffer_, structure_.class_id_offset);
@@ -183,7 +195,7 @@ public:
      * @return Integer timestamp if packet has TSI and is valid, otherwise std::nullopt
      */
     std::optional<uint32_t> timestamp_integer() const noexcept {
-        if (!is_valid() || structure_.tsi == TsiType::none) {
+        if (!is_valid() || structure_.header.tsi == TsiType::none) {
             return std::nullopt;
         }
         return detail::read_u32(buffer_, structure_.tsi_offset);
@@ -194,7 +206,7 @@ public:
      * @return Fractional timestamp if packet has TSF and is valid, otherwise std::nullopt
      */
     std::optional<uint64_t> timestamp_fractional() const noexcept {
-        if (!is_valid() || structure_.tsf == TsfType::none) {
+        if (!is_valid() || structure_.header.tsf == TsfType::none) {
             return std::nullopt;
         }
         return detail::read_u64(buffer_, structure_.tsf_offset);
@@ -205,7 +217,7 @@ public:
      * @return Trailer word if packet has trailer and is valid, otherwise std::nullopt
      */
     std::optional<uint32_t> trailer() const noexcept {
-        if (!is_valid() || !structure_.has_trailer) {
+        if (!is_valid() || !has_trailer()) {
             return std::nullopt;
         }
         return detail::read_u32(buffer_, structure_.trailer_offset);
@@ -239,14 +251,14 @@ public:
      * @return Packet size in bytes
      */
     size_t packet_size_bytes() const noexcept {
-        return structure_.packet_size_words * vrt_word_size;
+        return structure_.header.size_words * vrt_word_size;
     }
 
     /**
      * Get packet size in words (from header size field)
      * @return Packet size in words
      */
-    size_t packet_size_words() const noexcept { return structure_.packet_size_words; }
+    size_t packet_size_words() const noexcept { return structure_.header.size_words; }
 
     /**
      * Get payload size in bytes
@@ -294,31 +306,17 @@ private:
         // Note: Bit 25 is the "Not a V49.0 Packet Indicator (Nd0)", NOT stream ID indicator!
         bool has_stream_id = detail::has_stream_id_field(decoded.type);
 
-        // 5. Interpret packet-specific bits correctly
-        // For Signal/Extension Data packets:
-        // - Bit 26 = Trailer indicator
-        // - Bit 25 = Nd0 (Not a V49.0 Packet Indicator)
-        // - Bit 24 = Spectrum/Time indicator
-        // Use the type-aware field from decoded header
-        bool has_trailer = decoded.trailer_included;
+        // 5. Store header data
+        structure_.header = decoded;
+        structure_.has_stream_id = has_stream_id; // Derived from packet type (odd/even)
 
-        // 6. Store header fields
-        structure_.type = decoded.type;
-        structure_.has_stream_id = has_stream_id;       // Derived from packet type (odd/even)
-        structure_.has_class_id = decoded.has_class_id; // Bit 27
-        structure_.has_trailer = has_trailer;           // Bit 26 for Signal packets
-        structure_.tsi = decoded.tsi;
-        structure_.tsf = decoded.tsf;
-        structure_.packet_size_words = decoded.size_words;
-        structure_.packet_count = (header >> 16) & 0x0F;
-
-        // 7. Validate buffer size against declared packet size
-        size_t required_bytes = structure_.packet_size_words * vrt_word_size;
+        // 6. Validate buffer size against declared packet size
+        size_t required_bytes = structure_.header.size_words * vrt_word_size;
         if (buffer_size_ < required_bytes) {
             return ValidationError::buffer_too_small;
         }
 
-        // 8. Calculate field offsets (in bytes)
+        // 7. Calculate field offsets (in bytes)
         size_t offset_words = 1; // After header
 
         // Stream ID
@@ -328,19 +326,19 @@ private:
         }
 
         // Class ID
-        if (structure_.has_class_id) {
+        if (structure_.header.has_class_id) {
             structure_.class_id_offset = offset_words * vrt_word_size;
             offset_words += 2; // 64-bit class ID
         }
 
         // Integer timestamp
-        if (structure_.tsi != TsiType::none) {
+        if (structure_.header.tsi != TsiType::none) {
             structure_.tsi_offset = offset_words * vrt_word_size;
             offset_words++;
         }
 
         // Fractional timestamp
-        if (structure_.tsf != TsfType::none) {
+        if (structure_.header.tsf != TsfType::none) {
             structure_.tsf_offset = offset_words * vrt_word_size;
             offset_words += 2; // 64-bit field
         }
@@ -348,18 +346,18 @@ private:
         // Payload starts here
         structure_.payload_offset = offset_words * vrt_word_size;
 
-        // 9. Calculate payload size
-        size_t trailer_words = structure_.has_trailer ? 1 : 0;
-        size_t payload_words = structure_.packet_size_words - offset_words - trailer_words;
+        // 8. Calculate payload size
+        size_t trailer_words = structure_.header.trailer_included ? 1 : 0;
+        size_t payload_words = structure_.header.size_words - offset_words - trailer_words;
         structure_.payload_size_bytes = payload_words * vrt_word_size;
 
         // Trailer offset (if present)
-        if (structure_.has_trailer) {
-            structure_.trailer_offset = (structure_.packet_size_words - 1) * vrt_word_size;
+        if (structure_.header.trailer_included) {
+            structure_.trailer_offset = (structure_.header.size_words - 1) * vrt_word_size;
         }
 
-        // 10. Sanity check: payload size should be non-negative
-        if (structure_.packet_size_words < offset_words + trailer_words) {
+        // 9. Sanity check: payload size should be non-negative
+        if (structure_.header.size_words < offset_words + trailer_words) {
             return ValidationError::size_field_mismatch;
         }
 

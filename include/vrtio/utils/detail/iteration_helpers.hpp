@@ -8,7 +8,7 @@
 
 #include "../../detail/context_packet_view.hpp"
 #include "../../detail/data_packet_view.hpp"
-#include "../fileio/packet_variant.hpp"
+#include "../../detail/packet_variant.hpp"
 
 namespace vrtio::utils::detail {
 
@@ -20,7 +20,7 @@ namespace vrtio::utils::detail {
  */
 template <typename T>
 concept PacketReader = requires(T& reader) {
-    { reader.read_next_packet() } -> std::same_as<std::optional<fileio::PacketVariant>>;
+    { reader.read_next_packet() } -> std::same_as<std::optional<vrtio::PacketVariant>>;
 };
 
 /**
@@ -130,7 +130,7 @@ size_t for_each_packet_with_stream_id(Reader& reader, uint32_t stream_id_filter,
     size_t count = 0;
 
     while (auto pkt = reader.read_next_packet()) {
-        auto sid = fileio::stream_id(*pkt);
+        auto sid = vrtio::stream_id(*pkt);
         if (sid && *sid == stream_id_filter) {
             bool continue_processing = callback(*pkt);
             count++;

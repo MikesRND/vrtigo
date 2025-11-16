@@ -64,9 +64,9 @@ public:
     static constexpr size_t timestamp_words = tsi_words + tsf_words;
 
     // Total prologue size
-    static constexpr size_t total_words =
+    static constexpr size_t size_words =
         header_words + stream_id_words + class_id_words + timestamp_words;
-    static constexpr size_t total_bytes = total_words * vrt_word_size;
+    static constexpr size_t size_bytes = size_words * vrt_word_size;
 
     // Field offsets in words (from start of packet)
     static constexpr size_t header_offset = 0;
@@ -141,6 +141,24 @@ public:
      */
     [[nodiscard]] uint32_t header() const noexcept {
         return detail::read_u32(buffer_, header_offset * vrt_word_size);
+    }
+
+    /**
+     * @brief Get reference to raw header word (mutable)
+     *
+     * Used by MutableHeaderView for direct manipulation.
+     */
+    [[nodiscard]] uint32_t& header_word() noexcept {
+        return *reinterpret_cast<uint32_t*>(buffer_ + header_offset * vrt_word_size);
+    }
+
+    /**
+     * @brief Get reference to raw header word (const)
+     *
+     * Used by HeaderView for reading.
+     */
+    [[nodiscard]] const uint32_t& header_word() const noexcept {
+        return *reinterpret_cast<const uint32_t*>(buffer_ + header_offset * vrt_word_size);
     }
 
     /**

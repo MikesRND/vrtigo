@@ -151,11 +151,11 @@ public:
      * Set trailer context packets count
      * @param count Number of context packets (0-127)
      */
-    auto& trailer_context_packets(uint8_t count) noexcept
+    auto& trailer_context_packet_count(uint8_t count) noexcept
         requires HasTrailer<PacketType>
     {
         PacketType packet(buffer_, false); // Don't reinitialize
-        packet.trailer().set_context_packets(count);
+        packet.trailer().set_context_packet_count(count);
         return *this;
     }
 
@@ -195,29 +195,9 @@ public:
         return *this;
     }
 
-    /**
-     * Set trailer reference point indicator
-     * @param ref_point true if reference point is indicated
-     */
-    auto& trailer_reference_point(bool ref_point) noexcept
-        requires HasTrailer<PacketType>
-    {
-        PacketType packet(buffer_, false); // Don't reinitialize
-        packet.trailer().set_reference_point(ref_point);
-        return *this;
-    }
-
-    /**
-     * Set trailer signal detected indicator
-     * @param detected true if signal is detected
-     */
-    auto& trailer_signal_detected(bool detected) noexcept
-        requires HasTrailer<PacketType>
-    {
-        PacketType packet(buffer_, false); // Don't reinitialize
-        packet.trailer().set_signal_detected(detected);
-        return *this;
-    }
+    // NOTE: trailer_reference_point and trailer_signal_detected methods removed
+    // These were based on incorrect bit interpretations in the old API.
+    // Use the corrected indicator methods above instead.
 
     // Packet count (available for all packet types)
     auto& packet_count(uint8_t count) noexcept

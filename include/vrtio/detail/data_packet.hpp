@@ -15,6 +15,7 @@
 #include "header.hpp"
 #include "header_decode.hpp"
 #include "header_init.hpp"
+#include "packet_header_accessor.hpp"
 #include "prologue.hpp"
 #include "timestamp_traits.hpp"
 #include "trailer.hpp"
@@ -41,6 +42,8 @@ public:
     static constexpr bool has_stream_id = prologue_type::has_stream_id;
     static constexpr bool has_class_id = prologue_type::has_class_id;
     static constexpr bool has_timestamp = prologue_type::has_timestamp;
+    static constexpr bool has_timestamp_integer = (prologue_type::tsi != TsiType::none);
+    static constexpr bool has_timestamp_fractional = (prologue_type::tsf != TsfType::none);
     static constexpr bool has_trailer = (HasTrailer == Trailer::included);
 
     // Payload configuration
@@ -48,14 +51,13 @@ public:
     static constexpr size_t payload_size_bytes = PayloadWords * vrt_word_size;
 
     // Total packet size
-    static constexpr size_t total_words =
-        prologue_type::total_words + PayloadWords + (has_trailer ? 1 : 0);
-    static constexpr size_t size_bytes = total_words * vrt_word_size;
+    static constexpr size_t size_words =
+        prologue_type::size_words + PayloadWords + (has_trailer ? 1 : 0);
+    static constexpr size_t size_bytes = size_words * vrt_word_size;
 
     // Compile-time check: ensure total packet size fits in 16-bit size field
-    static_assert(total_words <= max_packet_words,
-                  "Packet size exceeds maximum (65535 words). "
-                  "Reduce payload size or remove optional fields.");
+    static_assert(size_words <= max_packet_words, "Packet size exceeds maximum (65535 words). "
+                                                  "Reduce payload size or remove optional fields.");
 
     // Constructor: creates view over user-provided buffer.
     // If init=true, initializes a new packet; otherwise just wraps existing data.
@@ -91,27 +93,39 @@ public:
 
     // Header field accessors (always available)
 
+    /**
+     * Get header accessor (mutable)
+     * Provides access to header word fields (first 32 bits)
+     * @return Mutable accessor for header fields
+     */
+    MutableHeaderView header() noexcept { return MutableHeaderView{&prologue_.header_word()}; }
+
+    /**
+     * Get header accessor (const)
+     * Provides read-only access to header word fields (first 32 bits)
+     * @return Const accessor for header fields
+     */
+    HeaderView header() const noexcept { return HeaderView{&prologue_.header_word()}; }
+
     // Get packet count (4-bit field: valid range 0-15)
     uint8_t packet_count() const noexcept { return prologue_.packet_count(); }
 
     // Set packet count (4-bit field: valid range 0-15)
-    // NOTE: Values > 15 will be silently truncated to 4 bits.
-    // In debug builds, this will trigger an assertion for values > 15.
+    // NOTE: Values > 15 will be wrapped modulo 16.
+    // In debug builds, this will emit a warning for values > 15.
     void set_packet_count(uint8_t count) noexcept {
 #ifndef NDEBUG
         if (count > 15) {
-            // Debug build: warn about truncation
+            // Debug build: warn about wrapping
             // This is a logic error - packet count should be in range 0-15
             std::fprintf(stderr,
                          "WARNING: packet_count value %u exceeds 4-bit limit (15). "
-                         "Value will be truncated to %u.\n",
+                         "Value will be wrapped modulo 16 to %u.\n",
                          static_cast<unsigned>(count), static_cast<unsigned>(count & 0x0F));
         }
 #endif
-        prologue_.set_packet_count(count & 0x0F);
+        prologue_.set_packet_count(count);
     }
-
-    uint16_t packet_size_words() const noexcept { return prologue_.packet_size(); }
 
     // Stream ID accessors (only if has_stream_id)
 
@@ -177,16 +191,16 @@ public:
 
     // Trailer view access
 
-    TrailerView trailer() noexcept
+    MutableTrailerView trailer() noexcept
+        requires(HasTrailer == Trailer::included)
+    {
+        return MutableTrailerView(buffer_ + trailer_offset * vrt_word_size);
+    }
+
+    TrailerView trailer() const noexcept
         requires(HasTrailer == Trailer::included)
     {
         return TrailerView(buffer_ + trailer_offset * vrt_word_size);
-    }
-
-    ConstTrailerView trailer() const noexcept
-        requires(HasTrailer == Trailer::included)
-    {
-        return ConstTrailerView(buffer_ + trailer_offset * vrt_word_size);
     }
 
     // Payload access
@@ -259,7 +273,7 @@ public:
         }
 
         // Check 7: Size field (bits 15-0)
-        if (decoded.size_words != total_words) {
+        if (decoded.size_words != size_words) {
             return ValidationError::size_field_mismatch;
         }
 
@@ -276,7 +290,7 @@ private:
 
     // Initialize header with packet metadata
     void init_header() noexcept {
-        prologue_.init_header(total_words, 0, HasTrailer == Trailer::included);
+        prologue_.init_header(size_words, 0, HasTrailer == Trailer::included);
     }
 
     // Initialize class ID field (zero-initialize, values set via setClassId())

@@ -12,7 +12,7 @@ TEST(SignalPacketViewTest, BasicPacketNoStream) {
                                             64                    // 64 words payload
                                             >;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
+    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
     PacketType packet(buffer.data());
 
     // Parse with runtime view
@@ -33,7 +33,7 @@ TEST(SignalPacketViewTest, BasicPacketNoStream) {
 TEST(SignalPacketViewTest, PacketWithStreamID) {
     using PacketType = SignalDataPacket<vrtio::NoClassId, NoTimeStamp, vrtio::Trailer::none, 64>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
+    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
     [[maybe_unused]] auto packet =
         PacketBuilder<PacketType>(buffer.data()).stream_id(0x12345678).build();
@@ -54,7 +54,7 @@ TEST(SignalPacketViewTest, PacketWithStreamID) {
 TEST(SignalPacketViewTest, PacketWithTimestamps) {
     using PacketType = SignalDataPacket<vrtio::NoClassId, TimeStampUTC, vrtio::Trailer::none, 64>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
+    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
     auto ts = TimeStampUTC::from_components(1234567890, 500000000000ULL);
     [[maybe_unused]] auto packet =
@@ -66,8 +66,8 @@ TEST(SignalPacketViewTest, PacketWithTimestamps) {
     EXPECT_TRUE(view.is_valid());
     EXPECT_TRUE(view.has_timestamp_integer());
     EXPECT_TRUE(view.has_timestamp_fractional());
-    EXPECT_EQ(view.tsi(), TsiType::utc);
-    EXPECT_EQ(view.tsf(), TsfType::real_time);
+    EXPECT_EQ(view.tsi_type(), TsiType::utc);
+    EXPECT_EQ(view.tsf_type(), TsfType::real_time);
 
     auto tsi = view.timestamp_integer();
     ASSERT_TRUE(tsi.has_value());
@@ -84,7 +84,7 @@ TEST(SignalPacketViewTest, PacketWithTrailer) {
                                         vrtio::Trailer::included, // has trailer
                                         64>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
+    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
     auto trailer_cfg = vrtio::TrailerBuilder{0xDEADBEEF};
 
@@ -109,7 +109,7 @@ TEST(SignalPacketViewTest, FullFeaturedPacket) {
                                         128                       // larger payload
                                         >;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
+    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
     auto ts = TimeStampUTC::from_components(9999999, 123456789012ULL);
     [[maybe_unused]] auto packet = PacketBuilder<PacketType>(buffer.data())
@@ -143,7 +143,7 @@ TEST(SignalPacketViewTest, PayloadAccess) {
                                             16 // 16 words = 64 bytes
                                             >;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
+    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
     PacketType packet(buffer.data());
 
     // Fill payload with test pattern
@@ -173,7 +173,7 @@ TEST(SignalPacketViewTest, ValidationBufferTooSmall) {
     using PacketType =
         SignalDataPacketNoId<vrtio::NoClassId, NoTimeStamp, vrtio::Trailer::none, 64>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
+    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
     PacketType packet(buffer.data());
 
     // Parse with smaller buffer size
@@ -219,10 +219,10 @@ TEST(SignalPacketViewTest, RoundTripBuildParse) {
         SignalDataPacket<vrtio::NoClassId, TimeStamp<TsiType::gps, TsfType::real_time>,
                          vrtio::Trailer::included, 256>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
+    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
     // Build packet
-    std::array<uint8_t, 256 * 4> payload_data;
+    std::array<uint8_t, 256 * 4> payload_data{};
     for (size_t i = 0; i < payload_data.size(); i++) {
         payload_data[i] = static_cast<uint8_t>((i * 7) & 0xFF);
     }
@@ -249,8 +249,8 @@ TEST(SignalPacketViewTest, RoundTripBuildParse) {
     EXPECT_TRUE(view.has_timestamp_integer());
     EXPECT_TRUE(view.has_timestamp_fractional());
     EXPECT_TRUE(view.has_trailer());
-    EXPECT_EQ(view.tsi(), TsiType::gps);
-    EXPECT_EQ(view.tsf(), TsfType::real_time);
+    EXPECT_EQ(view.tsi_type(), TsiType::gps);
+    EXPECT_EQ(view.tsf_type(), TsfType::real_time);
     EXPECT_EQ(view.packet_count(), 15);
 
     EXPECT_EQ(*view.stream_id(), 0x87654321);

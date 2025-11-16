@@ -142,7 +142,7 @@ TEST(EnhancedReaderTest, ForEachValidatedPacket) {
 
     size_t callback_count = 0;
 
-    size_t processed = reader.for_each_validated_packet([&](const fileio::PacketVariant& pkt) {
+    size_t processed = reader.for_each_validated_packet([&](const vrtio::PacketVariant& pkt) {
         (void)pkt; // Only counting packets in this test
         callback_count++;
         return true; // Continue
@@ -188,7 +188,7 @@ TEST(EnhancedReaderTest, EarlyTermination) {
     size_t max_packets = 5;
     size_t count = 0;
 
-    reader.for_each_validated_packet([&](const fileio::PacketVariant&) {
+    reader.for_each_validated_packet([&](const vrtio::PacketVariant&) {
         count++;
         return count < max_packets; // Stop after 5 packets
     });
@@ -218,7 +218,7 @@ TEST(EnhancedReaderTest, FilterByStreamId) {
     reader.rewind();
 
     size_t matching_count = 0;
-    reader.for_each_packet_with_stream_id(*target_stream_id, [&](const fileio::PacketVariant& pkt) {
+    reader.for_each_packet_with_stream_id(*target_stream_id, [&](const vrtio::PacketVariant& pkt) {
         matching_count++;
         auto sid = stream_id(pkt);
         if (sid.has_value()) {
@@ -284,8 +284,8 @@ TEST(EnhancedReaderTest, InvalidPacketHasErrorInfo) {
     // This test just verifies the InvalidPacket structure works
 
     vrtio::detail::DecodedHeader header{};
-    fileio::InvalidPacket invalid{ValidationError::buffer_too_small, PacketType::signal_data_no_id,
-                                  header, std::span<const uint8_t>{}};
+    vrtio::InvalidPacket invalid{ValidationError::buffer_too_small, PacketType::signal_data_no_id,
+                                 header, std::span<const uint8_t>{}};
 
     EXPECT_EQ(invalid.error, ValidationError::buffer_too_small);
     EXPECT_FALSE(invalid.error_message().empty());

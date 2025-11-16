@@ -28,7 +28,7 @@ int main() {
 
     packet[bandwidth].set_value(1'000'000.0);   // 1 MHz
     packet[sample_rate].set_value(2'000'000.0); // 2 MSPS
-    packet[gain].set_raw_value(42U);            // Gain has no interpreted support
+    packet[gain].set_encoded(42U);              // Gain has no interpreted support
 
     // =======================================================================
     // Test operator[] function
@@ -44,7 +44,7 @@ int main() {
 
     [[maybe_unused]] auto g = packet[gain];
     assert(g.has_value() && "Gain should be present");
-    assert(g.raw_value() == 42U && "Gain value should match");
+    assert(g.encoded() == 42U && "Gain value should match");
 
     // =======================================================================
     // Test operator[] for presence checking

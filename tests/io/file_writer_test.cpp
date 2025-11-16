@@ -9,15 +9,18 @@
 #include <gtest/gtest.h>
 #include <vrtio/vrtio_utils.hpp>
 
+// PacketVariant and related types are now in vrtio namespace
 using namespace vrtio::utils::fileio;
 
 // Import specific types from vrtio namespace to avoid ambiguity
 using vrtio::ContextPacket;
 using vrtio::ContextPacketView;
 using vrtio::DataPacketView;
+using vrtio::InvalidPacket;
 using vrtio::NoClassId;
 using vrtio::NoTimeStamp;
 using vrtio::PacketBuilder;
+using vrtio::PacketVariant;
 using vrtio::SignalDataPacket;
 using vrtio::TimeStampUTC;
 using vrtio::Trailer;
@@ -218,7 +221,7 @@ TEST_F(FileWriterTest, RoundTripContextPacket) {
 
     PacketType write_packet(buffer.data());
     write_packet.set_stream_id(test_stream_id);
-    write_packet[vrtio::field::reference_point_id].set_raw_value(test_ref_point);
+    write_packet[vrtio::field::reference_point_id].set_encoded(test_ref_point);
     write_packet[vrtio::field::bandwidth].set_value(1000000.0); // 1 MHz
 
     {

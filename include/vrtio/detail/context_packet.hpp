@@ -13,6 +13,7 @@
 #include "field_mask.hpp"
 #include "header_decode.hpp"
 #include "header_init.hpp"
+#include "packet_header_accessor.hpp"
 #include "prologue.hpp"
 #include "timestamp_traits.hpp"
 
@@ -37,11 +38,6 @@ private:
     // Use Prologue for common header fields (IsContext = true for always-present stream ID)
     using prologue_type = Prologue<PacketType::context, ClassIdType, TimeStampType, true>;
     mutable prologue_type prologue_;
-
-    // Expose necessary constants
-    static constexpr bool has_stream_id = true; // Per spec: Context packets ALWAYS have stream ID
-    static constexpr bool has_timestamp = prologue_type::has_timestamp;
-    static constexpr bool has_class_id = prologue_type::has_class_id;
 
     // Compute actual CIF0 with automatic CIF1/CIF2/CIF3 enable bits
     static constexpr uint32_t computed_cif0 = CIF0 |
@@ -100,8 +96,8 @@ private:
     static constexpr size_t context_fields_words =
         cif::calculate_context_size_ct<CIF0, CIF1, CIF2, CIF3>();
 
-    static constexpr size_t total_words =
-        prologue_type::total_words + cif_words + context_fields_words;
+    static constexpr size_t computed_size_words =
+        prologue_type::size_words + cif_words + context_fields_words;
 
     // Complete offset calculation for CIF words
     static constexpr size_t calculate_cif_offset() {
@@ -129,12 +125,21 @@ private:
     }
 
 public:
-    static constexpr size_t size_bytes = total_words * 4;
-    static constexpr size_t size_words = total_words;
+    // Packet size configuration
+    static constexpr size_t size_words = computed_size_words;
+    static constexpr size_t size_bytes = size_words * 4;
     static constexpr uint32_t cif0_value = computed_cif0; // For builder (with enable bits)
     static constexpr uint32_t cif1_value = CIF1;
     static constexpr uint32_t cif2_value = CIF2;
     static constexpr uint32_t cif3_value = CIF3;
+
+    // Packet component presence (per VITA 49.2 spec)
+    static constexpr bool has_stream_id = true; // Always present per spec
+    static constexpr bool has_class_id = prologue_type::has_class_id;
+    static constexpr bool has_timestamp = prologue_type::has_timestamp;
+    static constexpr bool has_timestamp_integer = (prologue_type::tsi != TsiType::none);
+    static constexpr bool has_timestamp_fractional = (prologue_type::tsf != TsfType::none);
+    static constexpr bool has_trailer = false; // Always false per spec (bit 26 reserved)
 
     explicit ContextPacketBase(uint8_t* buffer, bool init = true) noexcept
         : buffer_(buffer),
@@ -160,7 +165,7 @@ public:
 private:
     void init_header() noexcept {
         // Use prologue to initialize header (no trailer for context packets)
-        prologue_.init_header(total_words, 0, false);
+        prologue_.init_header(size_words, 0, false);
     }
 
     void init_stream_id() noexcept {
@@ -206,10 +211,29 @@ private:
     }
 
 public:
+    /**
+     * Get header accessor (mutable)
+     * Provides access to header word fields (first 32 bits)
+     * @return Mutable accessor for header fields
+     */
+    MutableHeaderView header() noexcept { return MutableHeaderView{&prologue_.header_word()}; }
+
+    /**
+     * Get header accessor (const)
+     * Provides read-only access to header word fields (first 32 bits)
+     * @return Const accessor for header fields
+     */
+    HeaderView header() const noexcept { return HeaderView{&prologue_.header_word()}; }
+
     // Stream ID accessor (always present per VITA 49.2 spec)
     uint32_t stream_id() const noexcept { return prologue_.stream_id(); }
 
     void set_stream_id(uint32_t id) noexcept { prologue_.set_stream_id(id); }
+
+    // Packet count accessor (4-bit field in header, valid range 0-15)
+    uint8_t packet_count() const noexcept { return prologue_.packet_count(); }
+
+    void set_packet_count(uint8_t count) noexcept { prologue_.set_packet_count(count); }
 
     // Timestamp accessors
 
@@ -280,7 +304,7 @@ public:
         }
 
         // Check size field
-        if (decoded.size_words != total_words) {
+        if (decoded.size_words != size_words) {
             return ValidationError::size_field_mismatch;
         }
 

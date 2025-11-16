@@ -13,7 +13,8 @@
  * - PacketVariant: Type-safe union of DataPacketView, ContextPacketView, or InvalidPacket
  */
 
-#include "utils/fileio/packet_variant.hpp"
+#include "detail/packet_parser.hpp"
+#include "detail/packet_variant.hpp"
 #include "utils/fileio/raw_vrt_file_reader.hpp"
 #include "utils/fileio/vrt_file_reader.hpp"
 
@@ -27,15 +28,32 @@ using VRTFileReader = utils::fileio::VRTFileReader<MaxPacketWords>;
 template <uint16_t MaxPacketWords = 65535>
 using RawVRTFileReader = utils::fileio::RawVRTFileReader<MaxPacketWords>;
 
-// Packet variant types
-using PacketVariant = utils::fileio::PacketVariant;
-using InvalidPacket = utils::fileio::InvalidPacket;
-
-// Helper functions for working with PacketVariant
-using utils::fileio::is_context_packet;
-using utils::fileio::is_data_packet;
-using utils::fileio::is_valid;
-using utils::fileio::packet_type;
-using utils::fileio::stream_id;
+/**
+ * @brief Parse and validate a VRT packet from raw bytes
+ *
+ * Automatically detects packet type and returns a validated packet view.
+ * This is the recommended way to parse packets when the packet type is
+ * unknown at compile time.
+ *
+ * Supported packet types:
+ * - Signal Data (types 0-1) → DataPacketView
+ * - Extension Data (types 2-3) → DataPacketView
+ * - Context (types 4-5) → ContextPacketView
+ * - Command (types 6-7) → InvalidPacket (not yet supported)
+ *
+ * @param bytes Raw packet bytes (must remain valid while using returned view)
+ * @return PacketVariant containing validated view or error information
+ *
+ * @example
+ * std::span<const uint8_t> bytes = get_packet_bytes();
+ * auto pkt = vrtio::parse_packet(bytes);
+ * if (vrtio::is_data_packet(pkt)) {
+ *     const auto& view = std::get<vrtio::DataPacketView>(pkt);
+ *     // Process packet...
+ * }
+ */
+inline PacketVariant parse_packet(std::span<const uint8_t> bytes) noexcept {
+    return detail::parse_packet(bytes);
+}
 
 } // namespace vrtio

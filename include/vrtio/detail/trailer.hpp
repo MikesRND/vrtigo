@@ -4,71 +4,87 @@
 
 namespace vrtio::trailer {
 
-// VITA 49.2 Trailer field bit positions
-// The trailer is a 32-bit word with various status and indicator fields
+// VITA 49.2 Section 5.1.6 Trailer field bit positions
+// The trailer is a 32-bit word with enable/indicator bit pairing
 
-// Bits 0-6: Associated Context Packets Count (7 bits)
-inline constexpr uint32_t context_packets_shift = 0;
-inline constexpr uint32_t context_packets_mask = 0x7F; // 7 bits
+// ============================================================================
+// Bits 0-6: Associated Context Packet Count (7 bits, range 0-127)
+// Bit 7: E bit (Associated Context Packet Count Enable)
+// ============================================================================
+inline constexpr uint32_t context_packet_count_shift = 0;
+inline constexpr uint32_t context_packet_count_mask = 0x7F; // 7 bits (bits 0-6)
+inline constexpr uint32_t e_bit = 7;                        // Enable bit for context packet count
 
-// Bit 7: Reserved
-inline constexpr uint32_t reserved1_bit = 7;
+// ============================================================================
+// Bits 8-11: User-Defined and Sample Frame Indicators
+// ============================================================================
+inline constexpr uint32_t user_defined_0_bit = 8;
+inline constexpr uint32_t user_defined_1_bit = 9;
+inline constexpr uint32_t sample_frame_0_bit = 10;
+inline constexpr uint32_t sample_frame_1_bit = 11;
 
-// Bit 8: Reference Lock
-inline constexpr uint32_t reference_lock_bit = 8;
+// ============================================================================
+// Bits 12-19: Indicator Bits (for 8 named state/event indicators)
+// ============================================================================
+inline constexpr uint32_t sample_loss_indicator_bit = 12;
+inline constexpr uint32_t over_range_indicator_bit = 13;
+inline constexpr uint32_t spectral_inversion_indicator_bit = 14;
+inline constexpr uint32_t detected_signal_indicator_bit = 15;
+inline constexpr uint32_t agc_mgc_indicator_bit = 16;
+inline constexpr uint32_t reference_lock_indicator_bit = 17;
+inline constexpr uint32_t valid_data_indicator_bit = 18;
+inline constexpr uint32_t calibrated_time_indicator_bit = 19;
 
-// Bit 9: AGC/MGC (Automatic/Manual Gain Control)
-inline constexpr uint32_t agc_mgc_bit = 9;
+// ============================================================================
+// Bits 24-31: Enable Bits (for 8 named state/event indicators)
+// These are separate from the E bit (bit 7) for context packet count
+// ============================================================================
+inline constexpr uint32_t sample_loss_enable_bit = 24;
+inline constexpr uint32_t over_range_enable_bit = 25;
+inline constexpr uint32_t spectral_inversion_enable_bit = 26;
+inline constexpr uint32_t detected_signal_enable_bit = 27;
+inline constexpr uint32_t agc_mgc_enable_bit = 28;
+inline constexpr uint32_t reference_lock_enable_bit = 29;
+inline constexpr uint32_t valid_data_enable_bit = 30;
+inline constexpr uint32_t calibrated_time_enable_bit = 31;
 
-// Bit 10: Detected Signal
-inline constexpr uint32_t detected_signal_bit = 10;
-
-// Bit 11: Spectral Inversion
-inline constexpr uint32_t spectral_inversion_bit = 11;
-
-// Bit 12: Over-range
-inline constexpr uint32_t over_range_bit = 12;
-
-// Bit 13: Sample Loss
-inline constexpr uint32_t sample_loss_bit = 13;
-
-// Bits 14-15: Reserved
-inline constexpr uint32_t reserved2_shift = 14;
-inline constexpr uint32_t reserved2_mask = 0x03; // 2 bits
-
-// Bit 16: Calibrated Time Indicator
-inline constexpr uint32_t calibrated_time_bit = 16;
-
-// Bit 17: Valid Data Indicator
-inline constexpr uint32_t valid_data_bit = 17;
-
-// Bit 18: Reference Point Indicator
-inline constexpr uint32_t reference_point_bit = 18;
-
-// Bit 19: Signal Detected
-inline constexpr uint32_t signal_detected_bit = 19;
-
-// Bits 20-31: Reserved
-inline constexpr uint32_t reserved3_shift = 20;
-inline constexpr uint32_t reserved3_mask = 0xFFF; // 12 bits
-
+// ============================================================================
 // Bit masks for direct manipulation
-inline constexpr uint32_t reference_lock_mask = 1U << reference_lock_bit;
-inline constexpr uint32_t agc_mgc_mask = 1U << agc_mgc_bit;
-inline constexpr uint32_t detected_signal_mask = 1U << detected_signal_bit;
-inline constexpr uint32_t spectral_inversion_mask = 1U << spectral_inversion_bit;
-inline constexpr uint32_t over_range_mask = 1U << over_range_bit;
-inline constexpr uint32_t sample_loss_mask = 1U << sample_loss_bit;
-inline constexpr uint32_t calibrated_time_mask = 1U << calibrated_time_bit;
-inline constexpr uint32_t valid_data_mask = 1U << valid_data_bit;
-inline constexpr uint32_t reference_point_mask = 1U << reference_point_bit;
-inline constexpr uint32_t signal_detected_mask = 1U << signal_detected_bit;
+// ============================================================================
 
-// Common status combinations
-inline constexpr uint32_t status_all_good = valid_data_mask | calibrated_time_mask;
-inline constexpr uint32_t status_errors = over_range_mask | sample_loss_mask;
+// E bit and context packet count
+inline constexpr uint32_t e_bit_mask = 1U << e_bit;
 
+// User-Defined and Sample Frame
+inline constexpr uint32_t user_defined_0_mask = 1U << user_defined_0_bit;
+inline constexpr uint32_t user_defined_1_mask = 1U << user_defined_1_bit;
+inline constexpr uint32_t sample_frame_0_mask = 1U << sample_frame_0_bit;
+inline constexpr uint32_t sample_frame_1_mask = 1U << sample_frame_1_bit;
+
+// Indicator bits
+inline constexpr uint32_t sample_loss_indicator_mask = 1U << sample_loss_indicator_bit;
+inline constexpr uint32_t over_range_indicator_mask = 1U << over_range_indicator_bit;
+inline constexpr uint32_t spectral_inversion_indicator_mask = 1U
+                                                              << spectral_inversion_indicator_bit;
+inline constexpr uint32_t detected_signal_indicator_mask = 1U << detected_signal_indicator_bit;
+inline constexpr uint32_t agc_mgc_indicator_mask = 1U << agc_mgc_indicator_bit;
+inline constexpr uint32_t reference_lock_indicator_mask = 1U << reference_lock_indicator_bit;
+inline constexpr uint32_t valid_data_indicator_mask = 1U << valid_data_indicator_bit;
+inline constexpr uint32_t calibrated_time_indicator_mask = 1U << calibrated_time_indicator_bit;
+
+// Enable bits
+inline constexpr uint32_t sample_loss_enable_mask = 1U << sample_loss_enable_bit;
+inline constexpr uint32_t over_range_enable_mask = 1U << over_range_enable_bit;
+inline constexpr uint32_t spectral_inversion_enable_mask = 1U << spectral_inversion_enable_bit;
+inline constexpr uint32_t detected_signal_enable_mask = 1U << detected_signal_enable_bit;
+inline constexpr uint32_t agc_mgc_enable_mask = 1U << agc_mgc_enable_bit;
+inline constexpr uint32_t reference_lock_enable_mask = 1U << reference_lock_enable_bit;
+inline constexpr uint32_t valid_data_enable_mask = 1U << valid_data_enable_bit;
+inline constexpr uint32_t calibrated_time_enable_mask = 1U << calibrated_time_enable_bit;
+
+// ============================================================================
 // Helper functions for bit manipulation
+// ============================================================================
 
 /**
  * Extract a single bit value from a trailer word
@@ -96,6 +112,18 @@ constexpr uint32_t set_bit(uint32_t value, bool bit_value) noexcept {
 }
 
 /**
+ * Clear a single bit in a trailer word
+ * @tparam Bit The bit position (0-31)
+ * @param value The trailer word value
+ * @return Updated trailer word with bit cleared
+ */
+template <uint32_t Bit>
+constexpr uint32_t clear_bit(uint32_t value) noexcept {
+    static_assert(Bit < 32, "Bit position must be less than 32");
+    return value & ~(1U << Bit);
+}
+
+/**
  * Extract a multi-bit field from a trailer word
  * @tparam Shift The starting bit position
  * @tparam Mask The bit mask (after shifting)
@@ -120,42 +148,16 @@ constexpr uint32_t set_field(uint32_t value, uint32_t field_value) noexcept {
     return (value & ~(Mask << Shift)) | ((field_value & Mask) << Shift);
 }
 
-// Inline helper functions for common operations
-
 /**
- * Check if the trailer indicates valid data
+ * Clear a multi-bit field in a trailer word
+ * @tparam Shift The starting bit position
+ * @tparam Mask The bit mask (after shifting)
+ * @param value The trailer word value
+ * @return Updated trailer word with field cleared
  */
-inline constexpr bool is_valid_data(uint32_t trailer) noexcept {
-    return extract_bit<valid_data_bit>(trailer);
-}
-
-/**
- * Check if the trailer indicates calibrated time
- */
-inline constexpr bool is_calibrated_time(uint32_t trailer) noexcept {
-    return extract_bit<calibrated_time_bit>(trailer);
-}
-
-/**
- * Check if the trailer indicates any error conditions
- */
-inline constexpr bool has_errors(uint32_t trailer) noexcept {
-    return (trailer & status_errors) != 0;
-}
-
-/**
- * Extract the associated context packets count
- */
-inline constexpr uint8_t extract_context_packets(uint32_t trailer) noexcept {
-    return static_cast<uint8_t>(
-        extract_field<context_packets_shift, context_packets_mask>(trailer));
-}
-
-/**
- * Create a trailer word with common good status
- */
-inline constexpr uint32_t create_good_status() noexcept {
-    return status_all_good;
+template <uint32_t Shift, uint32_t Mask>
+constexpr uint32_t clear_field(uint32_t value) noexcept {
+    return value & ~(Mask << Shift);
 }
 
 } // namespace vrtio::trailer

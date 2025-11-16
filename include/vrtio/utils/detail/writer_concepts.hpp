@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "vrtio/utils/fileio/packet_variant.hpp"
+#include "vrtio/detail/packet_variant.hpp"
 
 #include <concepts>
 
@@ -20,7 +20,7 @@ namespace vrtio::utils::detail {
  * @tparam T The type to check
  */
 template <typename T>
-concept PacketWriter = requires(T& writer, const fileio::PacketVariant& pv) {
+concept PacketWriter = requires(T& writer, const vrtio::PacketVariant& pv) {
     { writer.write_packet(pv) } -> std::same_as<bool>;
     { writer.packets_written() } -> std::same_as<size_t>;
 };

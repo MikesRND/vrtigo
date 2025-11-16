@@ -52,7 +52,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF2) {
     // Verify we can read back the Controller UUID field using operator[] API
     auto uuid_proxy = view[field::controller_uuid];
     ASSERT_TRUE(uuid_proxy.has_value());
-    auto uuid = uuid_proxy.raw_bytes();
+    auto uuid = uuid_proxy.bytes();
     ASSERT_EQ(uuid.size(), 16); // 128 bits = 16 bytes
 
     // Verify UUID bytes match what we wrote
