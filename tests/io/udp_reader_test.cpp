@@ -153,7 +153,7 @@ TEST_F(UDPReaderTest, ReceiveSinglePacket) {
     ASSERT_TRUE(is_data_packet(*pkt)) << "Should be a data packet";
 
     // Verify packet contents
-    const auto& view = std::get<DataPacketView>(*pkt);
+    const auto& view = std::get<RuntimeDataPacket>(*pkt);
     EXPECT_TRUE(view.is_valid());
     EXPECT_EQ(view.type(), PacketType::signal_data);
     EXPECT_TRUE(view.has_stream_id());
@@ -203,7 +203,7 @@ TEST_F(UDPReaderTest, ReceiveMultiplePackets) {
             break;
 
         if (is_data_packet(*pkt)) {
-            const auto& view = std::get<DataPacketView>(*pkt);
+            const auto& view = std::get<RuntimeDataPacket>(*pkt);
             auto sid = view.stream_id();
             EXPECT_TRUE(sid.has_value());
 
@@ -264,7 +264,7 @@ TEST_F(UDPReaderTest, IterationHelper) {
 
     // Use for_each_data_packet helper
     size_t count = 0;
-    reader.for_each_data_packet([&count](const DataPacketView& view) {
+    reader.for_each_data_packet([&count](const RuntimeDataPacket& view) {
         EXPECT_TRUE(view.is_valid());
         EXPECT_TRUE(view.has_stream_id());
         count++;
@@ -372,7 +372,7 @@ TEST_F(UDPReaderTest, LargePayload) {
     ASSERT_TRUE(pkt.has_value()) << "Should receive large packet";
     ASSERT_TRUE(is_data_packet(*pkt));
 
-    const auto& view = std::get<DataPacketView>(*pkt);
+    const auto& view = std::get<RuntimeDataPacket>(*pkt);
     EXPECT_TRUE(view.is_valid());
 
     auto payload = view.payload();

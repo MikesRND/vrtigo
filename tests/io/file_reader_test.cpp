@@ -11,8 +11,8 @@
 
 using namespace vrtio::utils::fileio;
 using namespace vrtio::detail;
-using vrtio::ContextPacketView;
 using vrtio::PacketType;
+using vrtio::RuntimeContextPacket;
 using vrtio::ValidationError;
 
 // Test data file paths
@@ -177,8 +177,8 @@ TEST(FileReaderTest, ParseContextPackets) {
         if (info.type == PacketType::context || info.type == PacketType::extension_context) {
             found_context = true;
 
-            // Verify we can create a ContextPacketView (basic parsing check)
-            ContextPacketView view(const_cast<uint8_t*>(packet.data()), packet.size());
+            // Verify we can create a RuntimeContextPacket (basic parsing check)
+            RuntimeContextPacket view(const_cast<uint8_t*>(packet.data()), packet.size());
 
             // Note: We don't validate because test data may have unsupported/reserved fields
             // The file reader's job is just to read packets correctly

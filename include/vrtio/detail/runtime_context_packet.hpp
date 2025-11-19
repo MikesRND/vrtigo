@@ -30,7 +30,7 @@ namespace vrtio {
  * - Makes unsafe parsing patterns impossible
  *
  * Usage:
- *   ContextPacketView view(rx_buffer, buffer_size);
+ *   RuntimeContextPacket view(rx_buffer, buffer_size);
  *   if (view.is_valid()) {
  *       if (auto id = view.stream_id()) {
  *           std::cout << "Stream ID: " << *id << "\n";
@@ -41,7 +41,7 @@ namespace vrtio {
  *       // Process fields...
  *   }
  */
-class ContextPacketView {
+class RuntimeContextPacket {
 private:
     const uint8_t* buffer_;
     size_t buffer_size_;
@@ -293,7 +293,7 @@ public:
      * @param buffer Pointer to packet buffer
      * @param buffer_size Size of buffer in bytes
      */
-    explicit ContextPacketView(const uint8_t* buffer, size_t buffer_size) noexcept
+    explicit RuntimeContextPacket(const uint8_t* buffer, size_t buffer_size) noexcept
         : buffer_(buffer),
           buffer_size_(buffer_size),
           error_(ValidationError::none),
@@ -510,7 +510,7 @@ public:
     // Field access via subscript operator
     template <uint8_t CifWord, uint8_t Bit>
     auto operator[](field::field_tag_t<CifWord, Bit> tag) const noexcept
-        -> FieldProxy<field::field_tag_t<CifWord, Bit>, const ContextPacketView> {
+        -> FieldProxy<field::field_tag_t<CifWord, Bit>, const RuntimeContextPacket> {
         return detail::make_field_proxy(*this, tag);
     }
 };

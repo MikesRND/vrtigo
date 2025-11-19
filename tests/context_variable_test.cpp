@@ -24,7 +24,7 @@ TEST_F(ContextPacketTest, GPSASCIIVariableField) {
     const char* msg = "Hello World!";
     std::memcpy(buffer.data() + 16, msg, 12);
 
-    ContextPacketView view(buffer.data(), 7 * 4);
+    RuntimeContextPacket view(buffer.data(), 7 * 4);
     EXPECT_EQ(view.error(), ValidationError::none);
 
     // Use operator[] API instead of has_gps_ascii() / gps_ascii_data()
@@ -69,7 +69,7 @@ TEST_F(ContextPacketTest, ContextAssociationLists) {
     // Context ID
     cif::write_u32_safe(buffer.data(), 24, 0x3333);
 
-    ContextPacketView view(buffer.data(), 7 * 4);
+    RuntimeContextPacket view(buffer.data(), 7 * 4);
     EXPECT_EQ(view.error(), ValidationError::none);
 
     // Use operator[] API instead of has_context_association() / context_association_data()

@@ -13,13 +13,13 @@ using namespace vrtio::utils::netio;
 
 // Import specific types from vrtio namespace to avoid ambiguity
 using vrtio::ContextPacket;
-using vrtio::ContextPacketView;
-using vrtio::DataPacketView;
 using vrtio::InvalidPacket;
 using vrtio::NoClassId;
 using vrtio::NoTimeStamp;
 using vrtio::PacketBuilder;
 using vrtio::PacketVariant;
+using vrtio::RuntimeContextPacket;
+using vrtio::RuntimeDataPacket;
 using vrtio::SignalDataPacket;
 using vrtio::TimeStampUTC;
 using vrtio::Trailer;
@@ -78,7 +78,7 @@ TEST_F(UDPWriterTest, WriteCompileTimePacket) {
     EXPECT_TRUE(is_valid(*received));
     EXPECT_TRUE(is_data_packet(*received));
 
-    auto data_pkt = std::get<DataPacketView>(*received);
+    auto data_pkt = std::get<RuntimeDataPacket>(*received);
     EXPECT_EQ(data_pkt.stream_id(), 0x12345678);
 }
 
@@ -108,7 +108,7 @@ TEST_F(UDPWriterTest, WriteMultiplePackets) {
         ASSERT_TRUE(received.has_value());
         EXPECT_TRUE(is_valid(*received));
 
-        auto data_pkt = std::get<DataPacketView>(*received);
+        auto data_pkt = std::get<RuntimeDataPacket>(*received);
         EXPECT_EQ(data_pkt.stream_id(), i);
     }
 }
@@ -143,7 +143,7 @@ TEST_F(UDPWriterTest, RoundTripDataPacket) {
     ASSERT_TRUE(received.has_value());
     EXPECT_TRUE(is_valid(*received));
 
-    auto data_pkt = std::get<DataPacketView>(*received);
+    auto data_pkt = std::get<RuntimeDataPacket>(*received);
     EXPECT_EQ(data_pkt.stream_id(), test_stream_id);
 
     auto ts_int = data_pkt.timestamp_integer();
@@ -180,7 +180,7 @@ TEST_F(UDPWriterTest, RoundTripContextPacket) {
     EXPECT_TRUE(is_valid(*received));
     EXPECT_TRUE(is_context_packet(*received));
 
-    auto ctx_pkt = std::get<ContextPacketView>(*received);
+    auto ctx_pkt = std::get<RuntimeContextPacket>(*received);
     EXPECT_EQ(ctx_pkt.stream_id(), test_stream_id);
 }
 
@@ -283,7 +283,7 @@ TEST_F(UDPWriterTest, UnboundModeMultipleDestinations) {
 
     // Convert to PacketVariant for the per-destination API
     auto packet_bytes = packet.as_bytes();
-    DataPacketView packet_view{packet_bytes.data(), packet_bytes.size()};
+    RuntimeDataPacket packet_view{packet_bytes.data(), packet_bytes.size()};
     PacketVariant variant = packet_view;
 
     // Send to first destination

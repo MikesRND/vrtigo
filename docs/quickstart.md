@@ -79,7 +79,7 @@ signal characteristics.
 
 This example demonstrates reading a VRT file with the high-level reader:
 - Automatic packet validation
-- Type-safe variant access (DataPacketView, ContextPacketView)
+- Type-safe variant access (RuntimeDataPacket, RuntimeContextPacket)
 - Elegant iteration with for_each helpers
 - Zero-copy access to packet data
 
@@ -101,7 +101,7 @@ This example demonstrates reading a VRT file with the high-level reader:
             data_packets++;
 
             // Access type-safe data packet view
-            const auto& data = std::get<vrtio::DataPacketView>(pkt);
+            const auto& data = std::get<vrtio::RuntimeDataPacket>(pkt);
 
             // Get payload - zero-copy span into file buffer!
             auto payload = data.payload();
@@ -111,7 +111,7 @@ This example demonstrates reading a VRT file with the high-level reader:
             context_packets++;
 
             // Access context packet view
-            const auto& ctx = std::get<vrtio::ContextPacketView>(pkt);
+            const auto& ctx = std::get<vrtio::RuntimeContextPacket>(pkt);
             if (auto sr = ctx[sample_rate]) {
                 std::cout << "Context packet sample rate: " << sr.value() << " Hz\n";
             }

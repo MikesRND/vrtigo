@@ -20,9 +20,9 @@ Header views are obtained through packet accessors:
 | Packet Type | Non-const Method | Const Method |
 |-------------|------------------|--------------|
 | `DataPacket` | `header()` → `MutableHeaderView` | `header() const` → `HeaderView` |
-| `DataPacketView` | `header()` → `HeaderView` | — |
+| `RuntimeDataPacket` | `header()` → `HeaderView` | — |
 | `ContextPacket` | `header()` → `MutableHeaderView` | `header() const` → `HeaderView` |
-| `ContextPacketView` | `header()` → `HeaderView` | — |
+| `RuntimeContextPacket` | `header()` → `HeaderView` | — |
 
 ## HeaderView Methods (Read-Only)
 
@@ -123,7 +123,7 @@ uint8_t count = hdr.packet_count();
 bool has_trailer = hdr.data_indicators().has_trailer;
 
 // Runtime view
-DataPacketView view(rx_buffer, size);
+RuntimeDataPacket view(rx_buffer, size);
 if (view.is_valid()) {
     auto hdr = view.header();
     PacketType type = hdr.packet_type();

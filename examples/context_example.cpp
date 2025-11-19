@@ -93,8 +93,8 @@ void example_runtime_parsing() {
     tx_packet[sample_rate].set_value(50'000'000.0); // 50 MSPS
     // Temperature would be set here if we had a setter for it
 
-    // Now parse it with ContextPacketView (simulating receiver)
-    ContextPacketView view(rx_buffer.data(), TxPacket::size_bytes);
+    // Now parse it with RuntimeContextPacket (simulating receiver)
+    RuntimeContextPacket view(rx_buffer.data(), TxPacket::size_bytes);
 
     // Validate the packet
     auto error = view.error();
@@ -159,7 +159,7 @@ void example_variable_fields() {
     std::memcpy(buffer.data() + 16, nmea_sentence, nmea_len);
 
     // Parse with view
-    ContextPacketView view(buffer.data(), total_words * 4);
+    RuntimeContextPacket view(buffer.data(), total_words * 4);
     auto error = view.error();
     if (error != ValidationError::none) {
         std::cout << "Validation failed: " << validation_error_string(error) << "\n";
@@ -205,7 +205,7 @@ void example_unsupported_rejection() {
     uint32_t cif0_reserved = (1U << 4); // Bit 4 is reserved
     cif::write_u32_safe(buffer.data(), 8, cif0_reserved);
 
-    ContextPacketView view1(buffer.data(), 3 * 4);
+    RuntimeContextPacket view1(buffer.data(), 3 * 4);
     auto error1 = view1.error();
     std::cout << "  Reserved bit 4: "
               << (error1 == ValidationError::unsupported_field ? "Correctly rejected" : "ERROR")
@@ -215,7 +215,7 @@ void example_unsupported_rejection() {
     uint32_t cif0_cif3 = (1U << 3); // Bit 3 enables CIF3 (unsupported)
     cif::write_u32_safe(buffer.data(), 8, cif0_cif3);
 
-    ContextPacketView view2(buffer.data(), 3 * 4);
+    RuntimeContextPacket view2(buffer.data(), 3 * 4);
     auto error2 = view2.error();
     std::cout << "  CIF3 enable bit: "
               << (error2 == ValidationError::unsupported_field ? "Correctly rejected" : "ERROR")
@@ -225,7 +225,7 @@ void example_unsupported_rejection() {
     uint32_t cif0_attr = (1U << 7); // Bit 7 is Field Attributes (unsupported)
     cif::write_u32_safe(buffer.data(), 8, cif0_attr);
 
-    ContextPacketView view3(buffer.data(), 3 * 4);
+    RuntimeContextPacket view3(buffer.data(), 3 * 4);
     auto error3 = view3.error();
     std::cout << "  Field Attributes bit: "
               << (error3 == ValidationError::unsupported_field ? "Correctly rejected" : "ERROR")

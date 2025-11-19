@@ -27,7 +27,7 @@ Trailer views are obtained through packet's `trailer()` method when `HasTrailer 
 | Packet Type | Non-const Method | Const Method |
 |-------------|------------------|--------------|
 | `DataPacket<..., Trailer::included>` | `trailer()` → `MutableTrailerView` | `trailer() const` → `TrailerView` |
-| `DataPacketView` | — | `trailer()` → `optional<uint32_t>` (raw word only) |
+| `RuntimeDataPacket` | — | `trailer()` → `optional<uint32_t>` (raw word only) |
 
 ## Enable/Indicator Bit Pairing
 

@@ -41,8 +41,8 @@ namespace vrtio::utils::netio {
  *
  * Supported Packet Types:
  * - PacketVariant (runtime packets)
- * - DataPacketView (runtime data packets)
- * - ContextPacketView (runtime context packets)
+ * - RuntimeDataPacket (runtime data packets)
+ * - RuntimeContextPacket (runtime context packets)
  * - Any CompileTimePacket (from PacketBuilder)
  *
  * InvalidPacket Handling:
@@ -93,7 +93,7 @@ namespace vrtio::utils::netio {
  *
  * // Convert to variant for per-destination API
  * auto bytes = packet.as_bytes();
- * vrtio::DataPacketView packet_view{bytes.data(), bytes.size()};
+ * vrtio::RuntimeDataPacket packet_view{bytes.data(), bytes.size()};
  * vrtio::PacketVariant variant = packet_view;
  *
  * multi_writer.write_packet(variant, dest1);
@@ -253,10 +253,10 @@ public:
                 // InvalidPacket already handled above
                 if constexpr (std::is_same_v<T, vrtio::InvalidPacket>) {
                     return false; // Should never reach here
-                } else if constexpr (std::is_same_v<T, vrtio::DataPacketView>) {
+                } else if constexpr (std::is_same_v<T, vrtio::RuntimeDataPacket>) {
                     return this->write_packet_impl(pkt.as_bytes());
-                } else if constexpr (std::is_same_v<T, vrtio::ContextPacketView>) {
-                    // ContextPacketView uses context_buffer() instead of as_bytes()
+                } else if constexpr (std::is_same_v<T, vrtio::RuntimeContextPacket>) {
+                    // RuntimeContextPacket uses context_buffer() instead of as_bytes()
                     std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.packet_size_bytes()};
                     return this->write_packet_impl(bytes);
                 } else {
@@ -272,7 +272,7 @@ public:
      * @param packet The data packet to write
      * @return true on success, false on error
      */
-    bool write_packet(const vrtio::DataPacketView& packet) noexcept {
+    bool write_packet(const vrtio::RuntimeDataPacket& packet) noexcept {
         return write_packet_impl(packet.as_bytes());
     }
 
@@ -282,8 +282,8 @@ public:
      * @param packet The context packet to write
      * @return true on success, false on error
      */
-    bool write_packet(const vrtio::ContextPacketView& packet) noexcept {
-        // ContextPacketView uses context_buffer() instead of as_bytes()
+    bool write_packet(const vrtio::RuntimeContextPacket& packet) noexcept {
+        // RuntimeContextPacket uses context_buffer() instead of as_bytes()
         std::span<const uint8_t> bytes{packet.context_buffer(), packet.packet_size_bytes()};
         return write_packet_impl(bytes);
     }
@@ -327,10 +327,10 @@ public:
 
                 if constexpr (std::is_same_v<T, vrtio::InvalidPacket>) {
                     return false; // Should never reach here
-                } else if constexpr (std::is_same_v<T, vrtio::DataPacketView>) {
+                } else if constexpr (std::is_same_v<T, vrtio::RuntimeDataPacket>) {
                     return this->write_packet_to(pkt.as_bytes(), dest);
-                } else if constexpr (std::is_same_v<T, vrtio::ContextPacketView>) {
-                    // ContextPacketView uses context_buffer() instead of as_bytes()
+                } else if constexpr (std::is_same_v<T, vrtio::RuntimeContextPacket>) {
+                    // RuntimeContextPacket uses context_buffer() instead of as_bytes()
                     std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.packet_size_bytes()};
                     return this->write_packet_to(bytes, dest);
                 } else {

@@ -3,7 +3,7 @@
 This document provides a comprehensive reference for accessing VRT packet data. The library provides two parallel APIs:
 
 - **Compile-Time API**: `DataPacket<>`, `ContextPacket<>` - For transmit side where structure is known at compile time
-- **Runtime API**: `DataPacketView`, `ContextPacketView` - For receive side with automatic validation
+- **Runtime API**: `RuntimeDataPacket`, `RuntimeContextPacket` - For receive side with automatic validation
 
 ## Important Terminology
 
@@ -17,12 +17,12 @@ This document provides a comprehensive reference for accessing VRT packet data. 
 
 - **Context Fields**: CIF-encoded fields specific to context packets, accessed via `operator[]` returning `FieldProxy`
   - These are NOT packet components but encoded values within the context section
-  - Only available in `ContextPacket` and `ContextPacketView`
+  - Only available in `ContextPacket` and `RuntimeContextPacket`
   - Examples: bandwidth, reference_level, gain, etc.
 
 ## Quick Comparison
 
-| Feature | DataPacket<...> | DataPacketView | ContextPacket<...> | ContextPacketView |
+| Feature | DataPacket<...> | RuntimeDataPacket | ContextPacket<...> | RuntimeContextPacket |
 |---------|----------------|----------------|-------------------|-------------------|
 | **Use Case** | Transmit (known structure) | Receive (unknown structure) | Transmit (known structure) | Receive (unknown structure) |
 | **Validation** | Manual (call `validate()`) | Automatic on construction | Manual (call `validate()`) | Automatic on construction |
@@ -38,7 +38,7 @@ This document provides a comprehensive reference for accessing VRT packet data. 
 
 ### Size and Validation
 
-| Method/Member | DataPacket | DataPacketView | ContextPacket | ContextPacketView |
+| Method/Member | DataPacket | RuntimeDataPacket | ContextPacket | RuntimeContextPacket |
 |--------------|-----------|----------------|---------------|-------------------|
 | `packet_size_words()` | ✗ (use `size_words`) | ✓ returns `size_t` | ✗ | ✓ returns `size_t` |
 | `packet_size_bytes()` | ✗ (use `size_bytes`) | ✓ returns `size_t` | ✗ | ✓ returns `size_t` |
@@ -54,7 +54,7 @@ This document provides a comprehensive reference for accessing VRT packet data. 
 
 ### Packet Count
 
-| Method | DataPacket | DataPacketView | ContextPacket | ContextPacketView |
+| Method | DataPacket | RuntimeDataPacket | ContextPacket | RuntimeContextPacket |
 |--------|-----------|----------------|---------------|-------------------|
 | `packet_count()` | ✓ returns `uint8_t` | ✓ returns `uint8_t` | ✓ returns `uint8_t` | ✓ returns `uint8_t` |
 | `set_packet_count(uint8_t)` | ✓ | ✗ | ✓ | ✗ |
@@ -67,7 +67,7 @@ This document provides a comprehensive reference for accessing VRT packet data. 
 
 All packet types provide a `header()` accessor that returns a view over the first 32-bit header word:
 
-| Method | DataPacket | DataPacketView | ContextPacket | ContextPacketView |
+| Method | DataPacket | RuntimeDataPacket | ContextPacket | RuntimeContextPacket |
 |--------|-----------|----------------|---------------|-------------------|
 | `header()` | ✓ `MutableHeaderView` | ✓ `HeaderView` | ✓ `MutableHeaderView` | ✓ `HeaderView` |
 | `header() const` | ✓ `HeaderView` | — | ✓ `HeaderView` | — |
@@ -88,9 +88,9 @@ These use compile-time `static constexpr bool` members determined by template pa
 - `has_timestamp_fractional` - TSF component present
 - `has_trailer` - Always `false` for ContextPacket per spec (bit 26 reserved)
 
-### Runtime Views (DataPacketView, ContextPacketView)
+### Runtime Views (RuntimeDataPacket, RuntimeContextPacket)
 
-| Method | DataPacketView | ContextPacketView | Notes |
+| Method | RuntimeDataPacket | RuntimeContextPacket | Notes |
 |--------|----------------|-------------------|-------|
 | `has_stream_id()` | ✓ returns `bool` | ✓ returns `bool` | Type-based for data packets; always `true` for context packets |
 | `has_class_id()` | ✓ returns `bool` | ✓ returns `bool` | Header bit 27 (C bit) |
@@ -113,7 +113,7 @@ These methods access the optional packet components that appear between the head
 
 ### Stream ID
 
-| Method | DataPacket | DataPacketView | ContextPacket | ContextPacketView |
+| Method | DataPacket | RuntimeDataPacket | ContextPacket | RuntimeContextPacket |
 |--------|-----------|----------------|---------------|-------------------|
 | `stream_id()` | ✓ `uint32_t` (if `has_stream_id`) | ✓ `optional<uint32_t>` | ✓ `uint32_t` (always) | ✓ `optional<uint32_t>` |
 | `set_stream_id(uint32_t)` | ✓ (if `has_stream_id`) | ✗ | ✓ (always) | ✗ |
@@ -122,7 +122,7 @@ These methods access the optional packet components that appear between the head
 
 ### Class ID
 
-| Method | DataPacket | DataPacketView | ContextPacket | ContextPacketView |
+| Method | DataPacket | RuntimeDataPacket | ContextPacket | RuntimeContextPacket |
 |--------|-----------|----------------|---------------|-------------------|
 | `class_id()` | ✓ `ClassIdValue` (if `has_class_id`) | ✓ `optional<ClassIdValue>` | ✓ `ClassIdValue` (if `has_class_id`) | ✓ `optional<ClassIdValue>` |
 | `set_class_id(ClassIdValue)` | ✓ (if `has_class_id`) | ✗ | ✓ (if `has_class_id`) | ✗ |
@@ -140,7 +140,7 @@ These methods access the optional packet components that appear between the head
 
 **Runtime Views**:
 
-| Method | DataPacketView | ContextPacketView |
+| Method | RuntimeDataPacket | RuntimeContextPacket |
 |--------|----------------|-------------------|
 | `timestamp_integer()` | ✓ `optional<uint32_t>` | ✓ `optional<uint32_t>` |
 | `timestamp_fractional()` | ✓ `optional<uint64_t>` | ✓ `optional<uint64_t>` |
@@ -149,7 +149,7 @@ These methods access the optional packet components that appear between the head
 
 ### Trailer
 
-| Method | DataPacket | DataPacketView | ContextPacket | ContextPacketView |
+| Method | DataPacket | RuntimeDataPacket | ContextPacket | RuntimeContextPacket |
 |--------|-----------|----------------|---------------|-------------------|
 | `trailer()` | ✓ `MutableTrailerView` (if `HasTrailer`) | ✓ `optional<uint32_t>` (raw word) | ✗ (spec forbids) | ✗ (spec forbids) |
 | `trailer() const` | ✓ `TrailerView` (if `HasTrailer`) | — | ✗ | ✗ |
@@ -164,7 +164,7 @@ For trailer bit manipulation, see [TrailerView API](#trailerview-api-data-packet
 
 All packet types provide access to the complete packet buffer as a byte span.
 
-| Method/Query | Compile-Time (DataPacket, ContextPacket) | Runtime (DataPacketView, ContextPacketView) |
+| Method/Query | Compile-Time (DataPacket, ContextPacket) | Runtime (RuntimeDataPacket, RuntimeContextPacket) |
 |--------------|------------------------------------------|---------------------------------------------|
 | `as_bytes()` | ✓ `span<uint8_t, N>` | ✓ `span<const uint8_t>` |
 | `as_bytes() const` | ✓ `span<const uint8_t, N>` | — |
@@ -185,7 +185,7 @@ All packet types provide access to the complete packet buffer as a byte span.
 
 Data packets have a traditional data payload section. Context packets use CIF-based field access instead (see next section).
 
-| Method/Query | DataPacket (Compile-Time) | DataPacketView (Runtime) |
+| Method/Query | DataPacket (Compile-Time) | RuntimeDataPacket (Runtime) |
 |--------------|---------------------------|--------------------------|
 | `payload()` | ✓ `span<uint8_t, N>` | ✓ `span<const uint8_t>` |
 | `payload() const` | ✓ `span<const uint8_t, N>` | — |
@@ -196,7 +196,7 @@ Data packets have a traditional data payload section. Context packets use CIF-ba
 **Const Overloading**:
 - `DataPacket::payload()` (non-const) returns mutable `span<uint8_t>` for writing payload data
 - `DataPacket::payload() const` returns `span<const uint8_t>` for read-only access in const contexts
-- `DataPacketView::payload()` is always const (read-only parser)
+- `RuntimeDataPacket::payload()` is always const (read-only parser)
 
 **Naming Pattern**: Same as buffer size queries - static members for compile-time constants, methods for runtime decoded values.
 
@@ -206,7 +206,7 @@ Data packets have a traditional data payload section. Context packets use CIF-ba
 
 Context packets don't have a traditional "payload" - instead they encode CIF-based context fields.
 
-| Method | ContextPacket | ContextPacketView |
+| Method | ContextPacket | RuntimeContextPacket |
 |--------|---------------|-------------------|
 | `operator[](field_tag)` | ✓ mutable `FieldProxy` | ✓ const `FieldProxy` |
 
@@ -237,7 +237,7 @@ Also available via methods:
 - `static constexpr uint32_t cif2()`
 - `static constexpr uint32_t cif3()`
 
-### Runtime (ContextPacketView)
+### Runtime (RuntimeContextPacket)
 
 | Method | Return Type | Description |
 |--------|-------------|-------------|
@@ -250,7 +250,7 @@ Also available via methods:
 
 ## Context Field Access (Context Packets Only)
 
-Both compile-time (`ContextPacket<>`) and runtime (`ContextPacketView`) context packets use `operator[]` to access CIF-encoded fields within the context section of the packet (NOT packet components like stream_id or timestamp). This returns a `FieldProxy` object providing a three-tier access pattern:
+Both compile-time (`ContextPacket<>`) and runtime (`RuntimeContextPacket`) context packets use `operator[]` to access CIF-encoded fields within the context section of the packet (NOT packet components like stream_id or timestamp). This returns a `FieldProxy` object providing a three-tier access pattern:
 
 ```cpp
 auto proxy = packet[field::bandwidth];
@@ -304,7 +304,7 @@ packet[field::bandwidth].set_value(20e6); // 20 MHz
 
 Data packets can optionally include a trailer word for signal quality and status information. When `HasTrailer == Trailer::included`, the `trailer()` method returns a view object:
 
-| Method | DataPacket (mutable) | DataPacket (const) | DataPacketView |
+| Method | DataPacket (mutable) | DataPacket (const) | RuntimeDataPacket |
 |--------|---------------------|-------------------|----------------|
 | `trailer()` | ✓ `MutableTrailerView` | ✓ `TrailerView` | ✓ `optional<uint32_t>` |
 
@@ -345,8 +345,8 @@ For implementation details and exact signatures, see:
   - Validation method
 
 ### Data Packets (Runtime)
-- **File**: `include/vrtio/detail/data_packet_view.hpp`
-- **Class**: `DataPacketView`
+- **File**: `include/vrtio/detail/runtime_data_packet.hpp`
+- **Class**: `RuntimeDataPacket`
 - **Key sections**:
   - Automatic validation on construction
   - Validation query methods (error, is_valid)
@@ -367,8 +367,8 @@ For implementation details and exact signatures, see:
   - Validation method
 
 ### Context Packets (Runtime)
-- **File**: `include/vrtio/detail/context_packet_view.hpp`
-- **Class**: `ContextPacketView`
+- **File**: `include/vrtio/detail/runtime_context_packet.hpp`
+- **Class**: `RuntimeContextPacket`
 - **Key sections**:
   - Automatic validation on construction
   - Validation query methods

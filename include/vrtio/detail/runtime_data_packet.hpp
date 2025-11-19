@@ -21,9 +21,9 @@ namespace vrtio {
  * validation. Unlike DataPacket<...>, this class doesn't require compile-time
  * knowledge of the packet structure and automatically validates on construction.
  *
- * Design Pattern: Runtime View vs Compile-Time Template
+ * Design Pattern: Runtime Parser vs Compile-Time Template
  * - DataPacket<...>: Compile-time template for building/modifying packets with known structure
- * - DataPacketView: Runtime parser for reading received packets with unknown structure
+ * - RuntimeDataPacket: Runtime parser for reading received packets with unknown structure
  * This separation ensures type safety while allowing flexible packet parsing.
  *
  * Safety:
@@ -38,7 +38,7 @@ namespace vrtio {
  * - Read-only access (no setters)
  *
  * Usage:
- *   DataPacketView view(rx_buffer, buffer_size);
+ *   RuntimeDataPacket view(rx_buffer, buffer_size);
  *   if (view.is_valid()) {
  *       if (auto id = view.stream_id()) {
  *           std::cout << "Stream ID: " << *id << "\n";
@@ -47,7 +47,7 @@ namespace vrtio {
  *       // Process payload...
  *   }
  */
-class DataPacketView {
+class RuntimeDataPacket {
 private:
     const uint8_t* buffer_;
     size_t buffer_size_;
@@ -78,7 +78,7 @@ public:
      * @param buffer Pointer to packet buffer
      * @param buffer_size Size of buffer in bytes
      */
-    explicit DataPacketView(const uint8_t* buffer, size_t buffer_size) noexcept
+    explicit RuntimeDataPacket(const uint8_t* buffer, size_t buffer_size) noexcept
         : buffer_(buffer),
           buffer_size_(buffer_size),
           error_(ValidationError::none),
@@ -366,6 +366,6 @@ private:
 };
 
 // User-facing type alias for convenient usage
-using SignalPacketView = DataPacketView;
+using SignalPacketView = RuntimeDataPacket;
 
 } // namespace vrtio

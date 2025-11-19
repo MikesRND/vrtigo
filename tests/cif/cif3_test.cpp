@@ -45,7 +45,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF3) {
     cif::write_u32_safe(buffer.data(), 16, 0xDEADBEEF);
 
     // Parse and validate
-    ContextPacketView view(buffer.data(), 5 * 4);
+    RuntimeContextPacket view(buffer.data(), 5 * 4);
     EXPECT_EQ(view.error(), ValidationError::none);
     EXPECT_TRUE(view.is_valid());
 
@@ -77,7 +77,7 @@ TEST_F(ContextPacketTest, CompileTimeCIF3) {
     EXPECT_EQ(packet[tropospheric_state].encoded(), 0x22222222);
 
     // Parse as runtime packet to verify structure
-    ContextPacketView view(buffer.data(), TestContext::size_bytes);
+    RuntimeContextPacket view(buffer.data(), TestContext::size_bytes);
     EXPECT_EQ(view.error(), ValidationError::none);
     EXPECT_EQ(view.cif3(), expected_cif3);
     EXPECT_EQ(view[network_id].encoded(), 0x11111111);

@@ -16,7 +16,7 @@
 //
 // Context Packet Features:
 // - Context packets (types 4-5)
-// - Runtime parsing with ContextPacketView
+// - Runtime parsing with RuntimeContextPacket
 // - Compile-time creation with ContextPacket template
 // - CIF0, CIF1, CIF2, CIF3 field support (70+ fields)
 // - Variable-length field handling (GPS ASCII, Context Association Lists)
@@ -46,9 +46,9 @@
 // Packet implementations (exposed via this header but users don't include detail/ directly)
 #include "vrtio/detail/builder.hpp"
 #include "vrtio/detail/context_packet.hpp"
-#include "vrtio/detail/context_packet_view.hpp"
 #include "vrtio/detail/data_packet.hpp"
-#include "vrtio/detail/data_packet_view.hpp"
+#include "vrtio/detail/runtime_context_packet.hpp"
+#include "vrtio/detail/runtime_data_packet.hpp"
 
 // ====================
 // Convenience Aliases

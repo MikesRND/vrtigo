@@ -10,7 +10,7 @@
  * Primary types:
  * - VRTFileReader: High-level reader returning validated, type-safe PacketVariant (RECOMMENDED)
  * - RawVRTFileReader: Low-level reader returning raw packet bytes
- * - PacketVariant: Type-safe union of DataPacketView, ContextPacketView, or InvalidPacket
+ * - PacketVariant: Type-safe union of RuntimeDataPacket, RuntimeContextPacket, or InvalidPacket
  */
 
 #include "detail/packet_parser.hpp"
@@ -36,9 +36,9 @@ using RawVRTFileReader = utils::fileio::RawVRTFileReader<MaxPacketWords>;
  * unknown at compile time.
  *
  * Supported packet types:
- * - Signal Data (types 0-1) → DataPacketView
- * - Extension Data (types 2-3) → DataPacketView
- * - Context (types 4-5) → ContextPacketView
+ * - Signal Data (types 0-1) → RuntimeDataPacket
+ * - Extension Data (types 2-3) → RuntimeDataPacket
+ * - Context (types 4-5) → RuntimeContextPacket
  * - Command (types 6-7) → InvalidPacket (not yet supported)
  *
  * @param bytes Raw packet bytes (must remain valid while using returned view)
@@ -48,7 +48,7 @@ using RawVRTFileReader = utils::fileio::RawVRTFileReader<MaxPacketWords>;
  * std::span<const uint8_t> bytes = get_packet_bytes();
  * auto pkt = vrtio::parse_packet(bytes);
  * if (vrtio::is_data_packet(pkt)) {
- *     const auto& view = std::get<vrtio::DataPacketView>(pkt);
+ *     const auto& view = std::get<vrtio::RuntimeDataPacket>(pkt);
  *     // Process packet...
  * }
  */

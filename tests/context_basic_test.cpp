@@ -75,8 +75,8 @@ TEST_F(ContextPacketTest, RuntimeParserBasic) {
     // Sample rate (64-bit)
     cif::write_u64_safe(buffer.data(), 20, 12'500'000);
 
-    // Parse with ContextPacketView
-    ContextPacketView view(buffer.data(), 7 * 4);
+    // Parse with RuntimeContextPacket
+    RuntimeContextPacket view(buffer.data(), 7 * 4);
     EXPECT_EQ(view.error(), ValidationError::none);
 
     // Check parsed values
@@ -114,7 +114,7 @@ TEST_F(ContextPacketTest, SizeFieldValidation) {
     cif::write_u64_safe(buffer.data(), 12, 25'000'000);
 
     // Provide buffer large enough for header's claim, so we get past buffer_too_small check
-    ContextPacketView view(buffer.data(), 10 * 4);
+    RuntimeContextPacket view(buffer.data(), 10 * 4);
     EXPECT_EQ(view.error(), ValidationError::size_field_mismatch);
 }
 
@@ -124,7 +124,7 @@ TEST_F(ContextPacketTest, BufferTooSmall) {
     cif::write_u32_safe(buffer.data(), 0, header);
 
     // Provide buffer smaller than declared size
-    ContextPacketView view(buffer.data(), 3 * 4); // Only 3 words provided
+    RuntimeContextPacket view(buffer.data(), 3 * 4); // Only 3 words provided
     EXPECT_EQ(view.error(), ValidationError::buffer_too_small);
 }
 
@@ -132,7 +132,7 @@ TEST_F(ContextPacketTest, InvalidPacketType) {
     uint32_t header = (0U << 28) | 3; // type=0 (not context), size=3
     cif::write_u32_safe(buffer.data(), 0, header);
 
-    ContextPacketView view(buffer.data(), 3 * 4);
+    RuntimeContextPacket view(buffer.data(), 3 * 4);
     EXPECT_EQ(view.error(), ValidationError::invalid_packet_type);
 }
 
@@ -170,7 +170,7 @@ TEST_F(ContextPacketTest, PacketCountAccessors) {
 }
 
 TEST_F(ContextPacketTest, PacketCountParsing) {
-    // Test packet_count parsing in ContextPacketView
+    // Test packet_count parsing in RuntimeContextPacket
     // Manually construct a context packet with specific packet count
 
     // Create header with packet count = 7
@@ -189,8 +189,8 @@ TEST_F(ContextPacketTest, PacketCountParsing) {
     // Bandwidth field (64-bit)
     cif::write_u64_safe(buffer.data(), 12, 20'000'000);
 
-    // Parse with ContextPacketView
-    ContextPacketView view(buffer.data(), 5 * 4);
+    // Parse with RuntimeContextPacket
+    RuntimeContextPacket view(buffer.data(), 5 * 4);
     EXPECT_TRUE(view.is_valid());
     EXPECT_EQ(view.error(), ValidationError::none);
 
@@ -205,7 +205,7 @@ TEST_F(ContextPacketTest, PacketCountParsing) {
         cif::write_u32_safe(buffer.data(), 0, header);
 
         // Re-parse
-        ContextPacketView view2(buffer.data(), 5 * 4);
+        RuntimeContextPacket view2(buffer.data(), 5 * 4);
         EXPECT_TRUE(view2.is_valid());
         EXPECT_EQ(view2.packet_count(), count);
     }

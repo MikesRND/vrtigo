@@ -42,7 +42,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF2) {
     cif::write_u32_safe(buffer.data(), 28, expected_uuid[3]);
 
     // Parse and validate
-    ContextPacketView view(buffer.data(), 8 * 4);
+    RuntimeContextPacket view(buffer.data(), 8 * 4);
     EXPECT_EQ(view.error(), ValidationError::none);
 
     // Verify CIF0 and CIF2 are read correctly
@@ -78,7 +78,7 @@ TEST_F(ContextPacketTest, CompileTimeCIF2RuntimeParse) {
     tx_packet.set_stream_id(0xAABBCCDD);
 
     // Parse with runtime view
-    ContextPacketView view(buffer.data(), TestContext::size_bytes);
+    RuntimeContextPacket view(buffer.data(), TestContext::size_bytes);
     EXPECT_EQ(view.error(), ValidationError::none);
     EXPECT_EQ(view.stream_id().value(), 0xAABBCCDD);
     // CIF0 should have bit 2 set (CIF2 enable)

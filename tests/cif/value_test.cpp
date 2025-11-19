@@ -302,7 +302,7 @@ TEST_F(InterpretedValueTest, RuntimeParserIntegration) {
     tx_packet[sample_rate].set_value(80'000'000.0); // 80 MSPS
 
     // Parse with runtime view
-    ContextPacketView view(buffer.data(), TestContext::size_bytes);
+    RuntimeContextPacket view(buffer.data(), TestContext::size_bytes);
     EXPECT_EQ(view.error(), ValidationError::none);
 
     // Verify values accessible from runtime parser

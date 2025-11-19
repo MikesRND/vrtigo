@@ -19,7 +19,7 @@ public:
     /**
      * @brief Process a single packet
      *
-     * @param pkt Type-safe packet variant (DataPacketView or ContextPacketView)
+     * @param pkt Type-safe packet variant (RuntimeDataPacket or RuntimeContextPacket)
      * @return true to continue processing, false to stop
      */
     bool operator()(const PacketVariant& pkt) {
@@ -30,7 +30,7 @@ public:
 
         // Use appropriate packet view based on packet type
         if (is_data_packet(pkt)) {
-            const auto& view = std::get<DataPacketView>(pkt);
+            const auto& view = std::get<RuntimeDataPacket>(pkt);
             std::cout << "  Stream ID: " << (view.has_stream_id() ? "Yes" : "No") << "\n";
             std::cout << "  Class ID: " << (view.has_class_id() ? "Yes" : "No") << "\n";
             std::cout << "  Trailer: " << (view.has_trailer() ? "Yes" : "No") << "\n";
@@ -38,7 +38,7 @@ public:
             std::cout << "  TSF: " << static_cast<int>(view.tsf_type()) << "\n";
             std::cout << "  Count: " << static_cast<int>(view.packet_count()) << "\n";
         } else if (is_context_packet(pkt)) {
-            const auto& view = std::get<ContextPacketView>(pkt);
+            const auto& view = std::get<RuntimeContextPacket>(pkt);
             std::cout << "  Stream ID: " << (view.stream_id().has_value() ? "Yes" : "No") << "\n";
             std::cout << "  Class ID: " << (view.class_id().has_value() ? "Yes" : "No") << "\n";
             std::cout << "  Trailer: No\n"; // Context packets don't have trailers

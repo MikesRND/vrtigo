@@ -25,8 +25,8 @@ namespace vrtio::utils::fileio {
  *
  * Supported Packet Types:
  * - PacketVariant (runtime packets from readers)
- * - DataPacketView (runtime data packets)
- * - ContextPacketView (runtime context packets)
+ * - RuntimeDataPacket (runtime data packets)
+ * - RuntimeContextPacket (runtime context packets)
  * - Any CompileTimePacket (from PacketBuilder)
  *
  * InvalidPacket Handling:
@@ -93,10 +93,10 @@ public:
                 // InvalidPacket already handled above
                 if constexpr (std::is_same_v<T, InvalidPacket>) {
                     return false; // Should never reach here
-                } else if constexpr (std::is_same_v<T, vrtio::DataPacketView>) {
+                } else if constexpr (std::is_same_v<T, vrtio::RuntimeDataPacket>) {
                     return this->write_packet_impl(pkt);
-                } else if constexpr (std::is_same_v<T, vrtio::ContextPacketView>) {
-                    // ContextPacketView uses context_buffer() instead of as_bytes()
+                } else if constexpr (std::is_same_v<T, vrtio::RuntimeContextPacket>) {
+                    // RuntimeContextPacket uses context_buffer() instead of as_bytes()
                     std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.packet_size_bytes()};
                     return this->raw_writer_.write_packet(bytes);
                 } else {
@@ -119,7 +119,7 @@ public:
      * @param packet The data packet to write
      * @return true on success, false on error
      */
-    bool write_packet(const vrtio::DataPacketView& packet) noexcept {
+    bool write_packet(const vrtio::RuntimeDataPacket& packet) noexcept {
         bool result = write_packet_impl(packet);
         if (result) {
             high_level_status_ = WriterStatus::ready;
@@ -133,8 +133,8 @@ public:
      * @param packet The context packet to write
      * @return true on success, false on error
      */
-    bool write_packet(const vrtio::ContextPacketView& packet) noexcept {
-        // ContextPacketView uses context_buffer() instead of as_bytes()
+    bool write_packet(const vrtio::RuntimeContextPacket& packet) noexcept {
+        // RuntimeContextPacket uses context_buffer() instead of as_bytes()
         std::span<const uint8_t> bytes{packet.context_buffer(), packet.packet_size_bytes()};
         bool result = raw_writer_.write_packet(bytes);
         if (result) {
@@ -268,7 +268,7 @@ private:
     /**
      * @brief Write runtime packet view
      *
-     * Common implementation for DataPacketView and ContextPacketView.
+     * Common implementation for RuntimeDataPacket and RuntimeContextPacket.
      */
     template <typename PacketView>
     bool write_packet_impl(const PacketView& packet) noexcept {

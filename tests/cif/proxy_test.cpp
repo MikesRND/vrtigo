@@ -236,7 +236,7 @@ TEST_F(FieldProxyTest, RuntimeParserIntegration) {
     tx_packet[bandwidth].set_encoded(75'000'000ULL);
 
     // Parse with runtime view
-    ContextPacketView view(buffer.data(), TestContext::size_bytes);
+    RuntimeContextPacket view(buffer.data(), TestContext::size_bytes);
     EXPECT_EQ(view.error(), ValidationError::none);
 
     // Verify field accessible from runtime parser

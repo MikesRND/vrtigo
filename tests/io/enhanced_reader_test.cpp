@@ -100,8 +100,8 @@ TEST(EnhancedReaderTest, DetectDataPackets) {
         if (is_data_packet(*pkt)) {
             data_packet_count++;
 
-            // Verify we can access DataPacketView methods
-            auto& data_pkt = std::get<vrtio::DataPacketView>(*pkt);
+            // Verify we can access RuntimeDataPacket methods
+            auto& data_pkt = std::get<vrtio::RuntimeDataPacket>(*pkt);
             EXPECT_TRUE(data_pkt.is_valid());
 
             // Should have a payload
@@ -123,8 +123,8 @@ TEST(EnhancedReaderTest, DetectContextPackets) {
         if (is_context_packet(*pkt)) {
             context_packet_count++;
 
-            // Verify we can access ContextPacketView methods
-            auto& ctx_pkt = std::get<vrtio::ContextPacketView>(*pkt);
+            // Verify we can access RuntimeContextPacket methods
+            auto& ctx_pkt = std::get<vrtio::RuntimeContextPacket>(*pkt);
             EXPECT_TRUE(ctx_pkt.is_valid());
         }
     }
@@ -157,7 +157,7 @@ TEST(EnhancedReaderTest, ForEachDataPacket) {
 
     size_t data_count = 0;
 
-    size_t processed = reader.for_each_data_packet([&](const vrtio::DataPacketView& pkt) {
+    size_t processed = reader.for_each_data_packet([&](const vrtio::RuntimeDataPacket& pkt) {
         data_count++;
         EXPECT_TRUE(pkt.is_valid());
         return true;
@@ -172,7 +172,7 @@ TEST(EnhancedReaderTest, ForEachContextPacket) {
 
     size_t context_count = 0;
 
-    size_t processed = reader.for_each_context_packet([&](const vrtio::ContextPacketView& pkt) {
+    size_t processed = reader.for_each_context_packet([&](const vrtio::RuntimeContextPacket& pkt) {
         context_count++;
         EXPECT_TRUE(pkt.is_valid());
         return true;
@@ -246,10 +246,10 @@ TEST(EnhancedReaderTest, VisitPacketVariant) {
         [&](auto&& p) {
             using T = std::decay_t<decltype(p)>;
 
-            if constexpr (std::is_same_v<T, vrtio::DataPacketView>) {
+            if constexpr (std::is_same_v<T, vrtio::RuntimeDataPacket>) {
                 visited = true;
                 EXPECT_TRUE(p.is_valid());
-            } else if constexpr (std::is_same_v<T, vrtio::ContextPacketView>) {
+            } else if constexpr (std::is_same_v<T, vrtio::RuntimeContextPacket>) {
                 visited = true;
                 EXPECT_TRUE(p.is_valid());
             } else if constexpr (std::is_same_v<T, InvalidPacket>) {

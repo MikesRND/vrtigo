@@ -14,13 +14,13 @@ using namespace vrtio::utils::fileio;
 
 // Import specific types from vrtio namespace to avoid ambiguity
 using vrtio::ContextPacket;
-using vrtio::ContextPacketView;
-using vrtio::DataPacketView;
 using vrtio::InvalidPacket;
 using vrtio::NoClassId;
 using vrtio::NoTimeStamp;
 using vrtio::PacketBuilder;
 using vrtio::PacketVariant;
+using vrtio::RuntimeContextPacket;
+using vrtio::RuntimeDataPacket;
 using vrtio::SignalDataPacket;
 using vrtio::TimeStampUTC;
 using vrtio::Trailer;
@@ -160,7 +160,7 @@ TEST_F(FileWriterTest, RoundTripSinglePacket) {
     EXPECT_TRUE(is_valid(*read_packet_var));
     EXPECT_TRUE(is_data_packet(*read_packet_var));
 
-    auto read_packet = std::get<DataPacketView>(*read_packet_var);
+    auto read_packet = std::get<RuntimeDataPacket>(*read_packet_var);
     EXPECT_EQ(read_packet.stream_id(), test_stream_id);
 
     auto ts_int = read_packet.timestamp_integer();
@@ -200,7 +200,7 @@ TEST_F(FileWriterTest, RoundTripMultiplePackets) {
         EXPECT_TRUE(is_valid(*pkt_var));
         EXPECT_TRUE(is_data_packet(*pkt_var));
 
-        auto pkt = std::get<DataPacketView>(*pkt_var);
+        auto pkt = std::get<RuntimeDataPacket>(*pkt_var);
         EXPECT_EQ(pkt.stream_id(), count);
         count++;
     }
@@ -238,7 +238,7 @@ TEST_F(FileWriterTest, RoundTripContextPacket) {
     EXPECT_TRUE(is_valid(*read_packet_var));
     EXPECT_TRUE(is_context_packet(*read_packet_var));
 
-    auto read_packet = std::get<ContextPacketView>(*read_packet_var);
+    auto read_packet = std::get<RuntimeContextPacket>(*read_packet_var);
     EXPECT_EQ(read_packet.stream_id(), test_stream_id);
 }
 

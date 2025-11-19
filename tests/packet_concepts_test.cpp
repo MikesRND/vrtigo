@@ -46,16 +46,16 @@ TEST(PacketConceptsTest, ContextPacketIsVariablePacketLike) {
     static_assert(!RuntimePacketView<PacketType>);
 }
 
-// Test that ContextPacketView satisfies VariablePacketViewLike concept
-TEST(PacketConceptsTest, ContextPacketViewIsVariablePacketViewLike) {
-    static_assert(PacketBase<ContextPacketView>);
-    static_assert(VariablePacketViewLike<ContextPacketView>);
-    static_assert(RuntimePacketView<ContextPacketView>);
-    static_assert(AnyPacketLike<ContextPacketView>);
+// Test that RuntimeContextPacket satisfies VariablePacketViewLike concept
+TEST(PacketConceptsTest, RuntimeContextPacketIsVariablePacketViewLike) {
+    static_assert(PacketBase<RuntimeContextPacket>);
+    static_assert(VariablePacketViewLike<RuntimeContextPacket>);
+    static_assert(RuntimePacketView<RuntimeContextPacket>);
+    static_assert(AnyPacketLike<RuntimeContextPacket>);
 
     // Should NOT satisfy fixed or compile-time concepts
-    static_assert(!FixedPacketViewLike<ContextPacketView>);
-    static_assert(!CompileTimePacket<ContextPacketView>);
+    static_assert(!FixedPacketViewLike<RuntimeContextPacket>);
+    static_assert(!CompileTimePacket<RuntimeContextPacket>);
 }
 
 // Test helper concepts for PacketBuilder
@@ -113,17 +113,17 @@ TEST(PacketConceptsTest, ViewsMutuallyExclusive) {
     static_assert(FixedPacketViewLike<SignalPacketView>);
     static_assert(!VariablePacketViewLike<SignalPacketView>);
 
-    // ContextPacketView is VariablePacketViewLike, not FixedPacketViewLike
-    static_assert(VariablePacketViewLike<ContextPacketView>);
-    static_assert(!FixedPacketViewLike<ContextPacketView>);
+    // RuntimeContextPacket is VariablePacketViewLike, not FixedPacketViewLike
+    static_assert(VariablePacketViewLike<RuntimeContextPacket>);
+    static_assert(!FixedPacketViewLike<RuntimeContextPacket>);
 
     // Both are RuntimePacketView
     static_assert(RuntimePacketView<SignalPacketView>);
-    static_assert(RuntimePacketView<ContextPacketView>);
+    static_assert(RuntimePacketView<RuntimeContextPacket>);
 
     // Neither are CompileTimePacket
     static_assert(!CompileTimePacket<SignalPacketView>);
-    static_assert(!CompileTimePacket<ContextPacketView>);
+    static_assert(!CompileTimePacket<RuntimeContextPacket>);
 }
 
 // Test that non-packet types are correctly rejected
@@ -181,7 +181,7 @@ TEST(PacketConceptsTest, RuntimeBehaviorConsistency) {
     });
 
     // Create context packet view
-    ContextPacketView ctx_view(context_buffer.data(), context_buffer.size());
+    RuntimeContextPacket ctx_view(context_buffer.data(), context_buffer.size());
     EXPECT_NO_THROW({
         auto err = ctx_view.error();
         EXPECT_EQ(err, ValidationError::none);

@@ -31,7 +31,8 @@ public:
     /**
      * @brief Process a single packet
      *
-     * @param pkt Type-safe packet variant (DataPacketView, ContextPacketView, or InvalidPacket)
+     * @param pkt Type-safe packet variant (RuntimeDataPacket, RuntimeContextPacket, or
+     * InvalidPacket)
      * @return true to continue processing, false to stop
      */
     bool operator()(const vrtio::PacketVariant& pkt) {
@@ -46,7 +47,7 @@ public:
 
         // Process based on packet type
         if (vrtio::is_data_packet(pkt)) {
-            const auto& view = std::get<DataPacketView>(pkt);
+            const auto& view = std::get<RuntimeDataPacket>(pkt);
             data_packet_count_++;
 
             std::cout << "Type: Data Packet\n";
@@ -65,7 +66,7 @@ public:
             std::cout << "  Payload Size: " << view.payload().size() << " bytes\n";
 
         } else if (vrtio::is_context_packet(pkt)) {
-            const auto& view = std::get<ContextPacketView>(pkt);
+            const auto& view = std::get<RuntimeContextPacket>(pkt);
             context_packet_count_++;
 
             std::cout << "Type: Context Packet\n";

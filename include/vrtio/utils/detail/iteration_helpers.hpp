@@ -6,9 +6,9 @@
 
 #include <cstddef>
 
-#include "../../detail/context_packet_view.hpp"
-#include "../../detail/data_packet_view.hpp"
 #include "../../detail/packet_variant.hpp"
+#include "../../detail/runtime_context_packet.hpp"
+#include "../../detail/runtime_data_packet.hpp"
 
 namespace vrtio::utils::detail {
 
@@ -55,10 +55,10 @@ size_t for_each_validated_packet(Reader& reader, Callback&& callback) noexcept {
  * @brief Iterate over data packets only (signal/extension data)
  *
  * Processes only valid data packets (types 0-3), skipping context packets
- * and invalid packets. The callback receives a validated DataPacketView.
+ * and invalid packets. The callback receives a validated RuntimeDataPacket.
  *
  * @tparam Reader Type satisfying PacketReader concept
- * @tparam Callback Function type with signature: bool(const vrtio::DataPacketView&)
+ * @tparam Callback Function type with signature: bool(const vrtio::RuntimeDataPacket&)
  * @param reader Reader providing read_next_packet()
  * @param callback Function called for each data packet. Return false to stop.
  * @return Number of data packets processed
@@ -68,7 +68,7 @@ size_t for_each_data_packet(Reader& reader, Callback&& callback) noexcept {
     size_t count = 0;
 
     while (auto pkt = reader.read_next_packet()) {
-        if (auto* data_pkt = std::get_if<vrtio::DataPacketView>(&(*pkt))) {
+        if (auto* data_pkt = std::get_if<vrtio::RuntimeDataPacket>(&(*pkt))) {
             bool continue_processing = callback(*data_pkt);
             count++;
 
@@ -85,10 +85,10 @@ size_t for_each_data_packet(Reader& reader, Callback&& callback) noexcept {
  * @brief Iterate over context packets only (context/extension context)
  *
  * Processes only valid context packets (types 4-5), skipping data packets
- * and invalid packets. The callback receives a validated ContextPacketView.
+ * and invalid packets. The callback receives a validated RuntimeContextPacket.
  *
  * @tparam Reader Type satisfying PacketReader concept
- * @tparam Callback Function type with signature: bool(const vrtio::ContextPacketView&)
+ * @tparam Callback Function type with signature: bool(const vrtio::RuntimeContextPacket&)
  * @param reader Reader providing read_next_packet()
  * @param callback Function called for each context packet. Return false to stop.
  * @return Number of context packets processed
@@ -98,7 +98,7 @@ size_t for_each_context_packet(Reader& reader, Callback&& callback) noexcept {
     size_t count = 0;
 
     while (auto pkt = reader.read_next_packet()) {
-        if (auto* ctx_pkt = std::get_if<vrtio::ContextPacketView>(&(*pkt))) {
+        if (auto* ctx_pkt = std::get_if<vrtio::RuntimeContextPacket>(&(*pkt))) {
             bool continue_processing = callback(*ctx_pkt);
             count++;
 

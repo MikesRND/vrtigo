@@ -60,7 +60,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF1) {
     cif::write_u64_safe(buffer.data(), 16, expected_freq);
 
     // Parse and validate
-    ContextPacketView view(buffer.data(), 6 * 4);
+    RuntimeContextPacket view(buffer.data(), 6 * 4);
     EXPECT_EQ(view.error(), ValidationError::none);
 
     // Verify CIF0 and CIF1 are read correctly
@@ -88,7 +88,7 @@ TEST_F(ContextPacketTest, CompileTimeCIF1RuntimeParse) {
     tx_packet[aux_frequency].set_encoded(15'000'000ULL); // 15 MHz
 
     // Parse with runtime view
-    ContextPacketView view(buffer.data(), TestContext::size_bytes);
+    RuntimeContextPacket view(buffer.data(), TestContext::size_bytes);
     EXPECT_EQ(view.error(), ValidationError::none);
     EXPECT_EQ(view.stream_id().value(), 0xAABBCCDD);
     // CIF0 should have CIF1 enable bit set

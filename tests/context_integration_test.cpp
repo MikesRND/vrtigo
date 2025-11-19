@@ -13,7 +13,7 @@ TEST_F(ContextPacketTest, RoundTrip) {
     tx_packet[gain].set_encoded(0x12345678U);
 
     // Parse same buffer with view
-    ContextPacketView view(buffer.data(), TestContext::size_bytes);
+    RuntimeContextPacket view(buffer.data(), TestContext::size_bytes);
     EXPECT_EQ(view.error(), ValidationError::none);
 
     EXPECT_EQ(view.stream_id().value(), 0xDEADBEEF);
@@ -40,7 +40,7 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2CompileTime) {
     tx_packet[aux_frequency].set_encoded(25'000'000ULL); // Raw (no interpreted support)
 
     // Parse with runtime view
-    ContextPacketView view(buffer.data(), TestContext::size_bytes);
+    RuntimeContextPacket view(buffer.data(), TestContext::size_bytes);
     EXPECT_EQ(view.error(), ValidationError::none);
 
     // Verify CIF0 has both enable bits set
@@ -92,7 +92,7 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2Runtime) {
     cif::write_u32_safe(buffer.data(), 48, 0x22222222);
 
     // Parse and validate
-    ContextPacketView view(buffer.data(), 13 * 4);
+    RuntimeContextPacket view(buffer.data(), 13 * 4);
     EXPECT_EQ(view.error(), ValidationError::none);
 
     // Verify structure
@@ -135,7 +135,7 @@ TEST_F(ContextPacketTest, MultiWordFieldWrite) {
     EXPECT_EQ(read_value.encoded().word(1), 0x11223344);
 
     // Verify round-trip through runtime parser
-    ContextPacketView view(buffer.data(), TestContext::size_bytes);
+    RuntimeContextPacket view(buffer.data(), TestContext::size_bytes);
     EXPECT_EQ(view.error(), ValidationError::none);
 
     auto runtime_value = view[data_payload_format];

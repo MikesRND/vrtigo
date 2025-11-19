@@ -41,7 +41,7 @@ for system errors so they can integrate cleanly with host I/O abstractions.
 - Type-erased parsing with automatic validation
 - All field access returns `std::optional` for safety
 - Read-only (const) - cannot modify received packets
-- Examples: `DataPacketView`, `ContextPacketView`
+- Examples: `RuntimeDataPacket`, `RuntimeContextPacket`
 
 ## Type Hierarchy (C++20 Concepts)
 
@@ -49,9 +49,9 @@ for system errors so they can integrate cleanly with host I/O abstractions.
 - `CompileTimePacket` - packets with static structure
   - `FixedPacketLike` - data packets with fixed layout
   - `VariablePacketLike` - context packets with CIF-determined layout
-- `RuntimePacketView` - runtime packet parsers
-  - `FixedPacketViewLike` - data packet parsers
-  - `VariablePacketViewLike` - context packet parsers
+- `RuntimePacket` - runtime packet parsers
+  - `RuntimeDataPacket` - data packet parsers
+  - `RuntimeContextPacket` - context packet parsers
 
 ### Concept Usage
 - Enable/disable methods based on packet capabilities

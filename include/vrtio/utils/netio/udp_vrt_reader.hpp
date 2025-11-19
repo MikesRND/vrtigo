@@ -18,12 +18,12 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#include "../../detail/context_packet_view.hpp"
-#include "../../detail/data_packet_view.hpp"
 #include "../../detail/endian.hpp"
 #include "../../detail/header_decode.hpp"
 #include "../../detail/packet_parser.hpp"
 #include "../../detail/packet_variant.hpp"
+#include "../../detail/runtime_context_packet.hpp"
+#include "../../detail/runtime_data_packet.hpp"
 #include "../../types.hpp"
 #include "../detail/iteration_helpers.hpp"
 #include "udp_transport_status.hpp"
@@ -72,7 +72,7 @@ namespace vrtio::utils::netio {
  * while (auto pkt = reader.read_next_packet()) {
  *     std::visit([](auto&& p) {
  *         using T = std::decay_t<decltype(p)>;
- *         if constexpr (std::is_same_v<T, vrtio::DataPacketView>) {
+ *         if constexpr (std::is_same_v<T, vrtio::RuntimeDataPacket>) {
  *             auto payload = p.payload();
  *             // Process data...
  *         }
@@ -80,7 +80,7 @@ namespace vrtio::utils::netio {
  * }
  *
  * // Or use filtered iteration (same API as VRTFileReader)
- * reader.for_each_data_packet([](const vrtio::DataPacketView& pkt) {
+ * reader.for_each_data_packet([](const vrtio::RuntimeDataPacket& pkt) {
  *     // Process data packet
  *     return true; // continue
  * });
@@ -192,7 +192,7 @@ public:
      * Blocks waiting for the next UDP datagram, validates it, and returns a type-safe variant
      * containing the appropriate packet view.
      *
-     * @return PacketVariant (DataPacketView, ContextPacketView, or InvalidPacket),
+     * @return PacketVariant (RuntimeDataPacket, RuntimeContextPacket, or InvalidPacket),
      *         or std::nullopt on socket closure or fatal error
      *
      * @note In blocking mode, this will wait indefinitely for data unless a timeout is set.
@@ -284,9 +284,9 @@ public:
      * @brief Iterate over data packets only (signal/extension data)
      *
      * Processes only valid data packets (types 0-3), skipping context packets
-     * and invalid packets. The callback receives a validated DataPacketView.
+     * and invalid packets. The callback receives a validated RuntimeDataPacket.
      *
-     * @tparam Callback Function type with signature: bool(const vrtio::DataPacketView&)
+     * @tparam Callback Function type with signature: bool(const vrtio::RuntimeDataPacket&)
      * @param callback Function called for each data packet. Return false to stop.
      * @return Number of data packets processed
      */
@@ -299,9 +299,9 @@ public:
      * @brief Iterate over context packets only (context/extension context)
      *
      * Processes only valid context packets (types 4-5), skipping data packets
-     * and invalid packets. The callback receives a validated ContextPacketView.
+     * and invalid packets. The callback receives a validated RuntimeContextPacket.
      *
-     * @tparam Callback Function type with signature: bool(const vrtio::ContextPacketView&)
+     * @tparam Callback Function type with signature: bool(const vrtio::RuntimeContextPacket&)
      * @param callback Function called for each context packet. Return false to stop.
      * @return Number of context packets processed
      */

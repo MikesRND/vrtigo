@@ -66,7 +66,7 @@ concept FixedPacketLike = PacketBase<T> && requires(const T& pkt, T& mut_pkt) {
 };
 
 /**
- * Fixed-structure runtime parsers (SignalPacketView, ExtDataPacketView)
+ * Fixed-structure runtime parsers (SignalPacketView, ExtRuntimeDataPacket)
  *
  * Characteristics:
  * - Type-erased runtime parsing
@@ -128,7 +128,7 @@ concept VariablePacketLike = PacketBase<T> && requires(const T& pkt, T& mut_pkt)
 };
 
 /**
- * Variable-structure runtime parsers (ContextPacketView, CommandPacketView)
+ * Variable-structure runtime parsers (RuntimeContextPacket, CommandPacketView)
  *
  * Characteristics:
  * - Type-erased runtime parsing
@@ -138,7 +138,7 @@ concept VariablePacketLike = PacketBase<T> && requires(const T& pkt, T& mut_pkt)
  * - Size calculated from CIF at runtime
  * - Field access via generic API
  *
- * Examples: ContextPacketView
+ * Examples: RuntimeContextPacket
  */
 template <typename T>
 concept VariablePacketViewLike = PacketBase<T> && requires(const T& view) {

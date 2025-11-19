@@ -20,7 +20,7 @@ namespace vrtio::utils::fileio {
  * Provides:
  * - Automatic packet type detection from header
  * - Built-in validation using packet views
- * - Type-safe access via PacketVariant (DataPacketView, ContextPacketView, or InvalidPacket)
+ * - Type-safe access via PacketVariant (RuntimeDataPacket, RuntimeContextPacket, or InvalidPacket)
  * - Filtered iteration helpers (by type, stream ID, etc.)
  * - I/O error detection (corrupt/truncated packets returned as InvalidPacket, not silently treated
  * as EOF)
@@ -29,9 +29,9 @@ namespace vrtio::utils::fileio {
  * validated packet views ready for immediate field access.
  *
  * Supported packet types:
- * - Signal Data (0-1) -> DataPacketView
- * - Extension Data (2-3) -> DataPacketView
- * - Context (4-5) -> ContextPacketView
+ * - Signal Data (0-1) -> RuntimeDataPacket
+ * - Extension Data (2-3) -> RuntimeDataPacket
+ * - Context (4-5) -> RuntimeContextPacket
  * - Command (6-7) -> InvalidPacket (not yet implemented)
  *
  * @tparam MaxPacketWords Maximum packet size in 32-bit words (default: 65535)
@@ -48,11 +48,11 @@ namespace vrtio::utils::fileio {
  * while (auto pkt = reader.read_next_packet()) {
  *     std::visit([](auto&& p) {
  *         using T = std::decay_t<decltype(p)>;
- *         if constexpr (std::is_same_v<T, vrtio::DataPacketView>) {
+ *         if constexpr (std::is_same_v<T, vrtio::RuntimeDataPacket>) {
  *             auto payload = p.payload();
  *             // Process data...
  *         }
- *         else if constexpr (std::is_same_v<T, vrtio::ContextPacketView>) {
+ *         else if constexpr (std::is_same_v<T, vrtio::RuntimeContextPacket>) {
  *             if (auto bw = p.bandwidth()) {
  *                 std::cout << "BW: " << bw->raw_value() << " Hz\n";
  *             }
@@ -61,7 +61,7 @@ namespace vrtio::utils::fileio {
  * }
  *
  * // Or use filtered iteration
- * reader.for_each_data_packet([](const vrtio::DataPacketView& pkt) {
+ * reader.for_each_data_packet([](const vrtio::RuntimeDataPacket& pkt) {
  *     // Only valid data packets here
  *     return true; // continue
  * });
@@ -100,7 +100,7 @@ public:
      * Reads the next packet from the file, automatically detects its type,
      * validates it, and returns a type-safe variant containing the appropriate view.
      *
-     * @return PacketVariant (DataPacketView, ContextPacketView, or InvalidPacket),
+     * @return PacketVariant (RuntimeDataPacket, RuntimeContextPacket, or InvalidPacket),
      *         or std::nullopt on EOF
      *
      * @note I/O errors (corrupt header, truncated payload, etc.) are returned as
@@ -162,15 +162,15 @@ public:
      * @brief Iterate over data packets only (signal/extension data)
      *
      * Processes only valid data packets (types 0-3), skipping context packets
-     * and invalid packets. The callback receives a validated DataPacketView.
+     * and invalid packets. The callback receives a validated RuntimeDataPacket.
      *
-     * @tparam Callback Function type with signature: bool(const vrtio::DataPacketView&)
+     * @tparam Callback Function type with signature: bool(const vrtio::RuntimeDataPacket&)
      * @param callback Function called for each data packet. Return false to stop.
      * @return Number of data packets processed
      *
      * Example:
      * @code
-     * reader.for_each_data_packet([](const vrtio::DataPacketView& pkt) {
+     * reader.for_each_data_packet([](const vrtio::RuntimeDataPacket& pkt) {
      *     auto payload = pkt.payload();
      *     process_signal_data(payload);
      *     return true;
@@ -186,15 +186,15 @@ public:
      * @brief Iterate over context packets only (context/extension context)
      *
      * Processes only valid context packets (types 4-5), skipping data packets
-     * and invalid packets. The callback receives a validated ContextPacketView.
+     * and invalid packets. The callback receives a validated RuntimeContextPacket.
      *
-     * @tparam Callback Function type with signature: bool(const vrtio::ContextPacketView&)
+     * @tparam Callback Function type with signature: bool(const vrtio::RuntimeContextPacket&)
      * @param callback Function called for each context packet. Return false to stop.
      * @return Number of context packets processed
      *
      * Example:
      * @code
-     * reader.for_each_context_packet([](const vrtio::ContextPacketView& pkt) {
+     * reader.for_each_context_packet([](const vrtio::RuntimeContextPacket& pkt) {
      *     if (auto bw = pkt.bandwidth()) {
      *         std::cout << "Bandwidth: " << bw->raw_value() << " Hz\n";
      *     }
