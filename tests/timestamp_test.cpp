@@ -262,7 +262,8 @@ TEST_F(TimeStampTest, MaxSafeTimestampDifference) {
 
 // Integration with SignalPacket tests
 TEST_F(TimeStampTest, PacketIntegration) {
-    using PacketType = SignalDataPacket<vrtigo::NoClassId, TimeStampUTC, vrtigo::Trailer::none, 256>;
+    using PacketType =
+        SignalDataPacket<vrtigo::NoClassId, TimeStampUTC, vrtigo::Trailer::none, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
     PacketType packet(buffer.data());
@@ -278,7 +279,8 @@ TEST_F(TimeStampTest, PacketIntegration) {
 }
 
 TEST_F(TimeStampTest, BuilderIntegration) {
-    using PacketType = SignalDataPacket<vrtigo::NoClassId, TimeStampUTC, vrtigo::Trailer::none, 256>;
+    using PacketType =
+        SignalDataPacket<vrtigo::NoClassId, TimeStampUTC, vrtigo::Trailer::none, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 

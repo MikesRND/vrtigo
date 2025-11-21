@@ -19,10 +19,10 @@ The builder pattern provides a fluent API for packet creation.
 
     // Define packet type with UTC timestamp
     using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId,     // No class ID
-                                               vrtigo::TimeStampUTC,  // Include UTC timestamp
-                                               vrtigo::Trailer::none, // No trailer
-                                               2                     // Max payload words (8 bytes)
-                                               >;
+                                                vrtigo::TimeStampUTC,  // Include UTC timestamp
+                                                vrtigo::Trailer::none, // No trailer
+                                                2 // Max payload words (8 bytes)
+                                                >;
 
     // Allocate aligned buffer for the packet
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
@@ -32,10 +32,10 @@ The builder pattern provides a fluent API for packet creation.
 
     // Build packet with current timestamp and payload
     auto packet = vrtigo::PacketBuilder<PacketType>(buffer.data())
-                      .stream_id(0x12345678)                 // Set stream identifier
+                      .stream_id(0x12345678)                  // Set stream identifier
                       .timestamp(vrtigo::TimeStampUTC::now()) // Set current time
-                      .packet_count(1)                       // First packet in stream
-                      .payload(payload)                      // Attach payload
+                      .packet_count(1)                        // First packet in stream
+                      .payload(payload)                       // Attach payload
                       .build();
 
     // The packet is now ready to transmit
@@ -54,10 +54,10 @@ signal characteristics.
 
     // Define context packet type with sample rate and bandwidth fields
     using PacketType = vrtigo::ContextPacket<vrtigo::NoTimeStamp, // No timestamp for this example
-                                            vrtigo::NoClassId,   // No class ID
-                                            sample_rate,        // Include sample rate field
-                                            bandwidth           // Include bandwidth field
-                                            >;
+                                             vrtigo::NoClassId,   // No class ID
+                                             sample_rate,         // Include sample rate field
+                                             bandwidth            // Include bandwidth field
+                                             >;
 
     // Allocate aligned buffer for the packet
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};

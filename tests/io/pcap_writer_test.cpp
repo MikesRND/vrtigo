@@ -232,8 +232,8 @@ TEST(PCAPWriterTest, SkipInvalidPacket) {
         // Create InvalidPacket
         vrtigo::detail::DecodedHeader dummy{};
         vrtigo::InvalidPacket invalid_pkt{vrtigo::ValidationError::invalid_packet_type,
-                                         PacketType::signal_data_no_id, dummy,
-                                         std::span<const uint8_t>()};
+                                          PacketType::signal_data_no_id, dummy,
+                                          std::span<const uint8_t>()};
 
         vrtigo::PacketVariant pkt_variant{invalid_pkt};
 

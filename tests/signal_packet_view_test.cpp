@@ -9,7 +9,7 @@ using namespace vrtigo;
 TEST(SignalPacketViewTest, BasicPacketNoStream) {
     using PacketType = SignalDataPacketNoId<vrtigo::NoClassId, NoTimeStamp,
                                             vrtigo::Trailer::none, // no trailer
-                                            64                    // 64 words payload
+                                            64                     // 64 words payload
                                             >;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
@@ -106,7 +106,7 @@ TEST(SignalPacketViewTest, PacketWithTrailer) {
 TEST(SignalPacketViewTest, FullFeaturedPacket) {
     using PacketType = SignalDataPacket<vrtigo::NoClassId, TimeStampUTC,
                                         vrtigo::Trailer::included, // has trailer
-                                        128                       // larger payload
+                                        128                        // larger payload
                                         >;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};

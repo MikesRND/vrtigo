@@ -385,9 +385,10 @@ private:
         }
 
         // Byte-swap all fields from big-endian to host (little-endian)
-        PCAPRecordHeader swapped{
-            vrtigo::detail::byteswap32(header.ts_sec), vrtigo::detail::byteswap32(header.ts_usec),
-            vrtigo::detail::byteswap32(header.incl_len), vrtigo::detail::byteswap32(header.orig_len)};
+        PCAPRecordHeader swapped{vrtigo::detail::byteswap32(header.ts_sec),
+                                 vrtigo::detail::byteswap32(header.ts_usec),
+                                 vrtigo::detail::byteswap32(header.incl_len),
+                                 vrtigo::detail::byteswap32(header.orig_len)};
         return swapped;
     }
 

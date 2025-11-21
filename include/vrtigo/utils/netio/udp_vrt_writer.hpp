@@ -312,7 +312,8 @@ public:
      * @param dest Destination address
      * @return true on success, false on error or invalid packet
      */
-    bool write_packet(const vrtigo::PacketVariant& packet, const struct sockaddr_in& dest) noexcept {
+    bool write_packet(const vrtigo::PacketVariant& packet,
+                      const struct sockaddr_in& dest) noexcept {
         // Check if variant holds InvalidPacket
         if (std::holds_alternative<vrtigo::InvalidPacket>(packet)) {
             status_.state = UDPTransportStatus::State::socket_error;

@@ -14,7 +14,7 @@ int main() {
         std::cout << "Example 1: Creating a signal packet\n";
 
         using Packet = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC,
-                                               vrtigo::Trailer::none, 128>;
+                                                vrtigo::Trailer::none, 128>;
         alignas(4) std::array<uint8_t, Packet::size_bytes> buffer;
 
         // Prepare payload data
@@ -41,8 +41,8 @@ int main() {
     {
         std::cout << "Example 2: Parsing data\n";
 
-        using Packet =
-            vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimeStamp, vrtigo::Trailer::none, 64>;
+        using Packet = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimeStamp,
+                                                vrtigo::Trailer::none, 64>;
         alignas(4) std::array<uint8_t, Packet::size_bytes> buffer;
 
         // Create test data

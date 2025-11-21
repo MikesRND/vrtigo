@@ -11,9 +11,9 @@ int main() {
     // Define a packet type with trailer enabled
     using PacketType =
         vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC, // Using UTC timestamps
-                                vrtigo::Trailer::included,              // Trailer included
-                                128                                    // Payload words
-                                >;
+                                 vrtigo::Trailer::included,               // Trailer included
+                                 128                                      // Payload words
+                                 >;
 
     std::cout << "=== VRTIGO Trailer Fields Example ===\n\n";
 

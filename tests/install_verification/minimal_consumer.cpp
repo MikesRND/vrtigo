@@ -16,8 +16,8 @@ int main() {
     // Create a minimal packet to verify headers compile and link correctly
     using MinimalPacket =
         vrtigo::SignalDataPacketNoId<vrtigo::NoClassId, vrtigo::NoTimeStamp, vrtigo::Trailer::none,
-                                    64 // 256 bytes payload
-                                    >;
+                                     64 // 256 bytes payload
+                                     >;
 
     std::cout << "Creating minimal packet...\n";
     std::cout << "  Packet size: " << MinimalPacket::size_bytes << " bytes\n";

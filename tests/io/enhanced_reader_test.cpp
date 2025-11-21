@@ -285,7 +285,7 @@ TEST(EnhancedReaderTest, InvalidPacketHasErrorInfo) {
 
     vrtigo::detail::DecodedHeader header{};
     vrtigo::InvalidPacket invalid{ValidationError::buffer_too_small, PacketType::signal_data_no_id,
-                                 header, std::span<const uint8_t>{}};
+                                  header, std::span<const uint8_t>{}};
 
     EXPECT_EQ(invalid.error, ValidationError::buffer_too_small);
     EXPECT_FALSE(invalid.error_message().empty());

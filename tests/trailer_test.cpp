@@ -9,7 +9,7 @@
 class TrailerTest : public ::testing::Test {
 protected:
     using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC,
-                                               vrtigo::Trailer::included, 128>;
+                                                vrtigo::Trailer::included, 128>;
 
     std::vector<uint8_t> buffer;
 
@@ -363,7 +363,8 @@ TEST_F(TrailerTest, Builder_FromView) {
     packet.trailer().set_context_packet_count(42);
 
     // Copy to builder and modify
-    auto new_trailer = vrtigo::TrailerBuilder().from_view(packet.trailer()).valid_data(true).value();
+    auto new_trailer =
+        vrtigo::TrailerBuilder().from_view(packet.trailer()).valid_data(true).value();
 
     // Should have original values plus new one
     PacketType packet2(buffer.data());
