@@ -1,6 +1,3 @@
-// Copyright (c) 2025 Michael Smith
-// SPDX-License-Identifier: MIT
-
 #pragma once
 
 #include "vrtio/detail/packet_variant.hpp"
