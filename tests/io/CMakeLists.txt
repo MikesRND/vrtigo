@@ -34,6 +34,30 @@ set_target_properties(enhanced_reader_test PROPERTIES
     CXX_EXTENSIONS OFF
 )
 
+# PCAP reader tests
+add_executable(pcap_reader_test pcap_reader_test.cpp)
+target_link_libraries(pcap_reader_test PRIVATE vrtio GTest::gtest_main)
+add_test(NAME pcap_reader_test COMMAND pcap_reader_test)
+
+# Set C++20 standard
+set_target_properties(pcap_reader_test PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
+)
+
+# PCAP writer tests
+add_executable(pcap_writer_test pcap_writer_test.cpp)
+target_link_libraries(pcap_writer_test PRIVATE vrtio GTest::gtest_main)
+add_test(NAME pcap_writer_test COMMAND pcap_writer_test)
+
+# Set C++20 standard
+set_target_properties(pcap_writer_test PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
+)
+
 # UDP reader tests (Linux/POSIX only)
 if(UNIX)
     add_executable(udp_reader_test udp_reader_test.cpp)

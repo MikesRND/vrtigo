@@ -1,6 +1,3 @@
-// Copyright (c) 2025 Michael Smith
-// SPDX-License-Identifier: MIT
-
 #pragma once
 
 #include "vrtio/utils/detail/writer_concepts.hpp"
