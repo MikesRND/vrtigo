@@ -5,7 +5,7 @@
 
 #include "endian.hpp"
 
-namespace vrtio::detail {
+namespace vrtigo::detail {
 
 /**
  * @brief Endian-safe buffer read/write helpers
@@ -63,4 +63,4 @@ inline void write_u64(uint8_t* buffer, size_t offset, uint64_t value) noexcept {
     std::memcpy(buffer + offset, &value, sizeof(value));
 }
 
-} // namespace vrtio::detail
+} // namespace vrtigo::detail

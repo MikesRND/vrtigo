@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace vrtio {
+namespace vrtigo {
 
 /**
  * @brief VRT packet header bit positions, masks, and manipulation helpers
@@ -76,4 +76,4 @@ inline constexpr uint32_t size_mask = 0xFFFF; // After shift (16 bits)
 
 } // namespace header
 
-} // namespace vrtio
+} // namespace vrtigo

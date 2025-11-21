@@ -3,13 +3,13 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-#include <vrtio/utils/fileio/vrt_file_reader.hpp>
-#include <vrtio/vrtio_io.hpp>
+#include <vrtigo/utils/fileio/vrt_file_reader.hpp>
+#include <vrtigo/vrtigo_io.hpp>
 
 #include "test_utils.hpp"
 
-using namespace vrtio;
-namespace fileio = vrtio::utils::fileio;
+using namespace vrtigo;
+namespace fileio = vrtigo::utils::fileio;
 
 // Test data file paths
 const std::filesystem::path test_data_dir = TEST_DATA_DIR;
@@ -101,7 +101,7 @@ TEST(EnhancedReaderTest, DetectDataPackets) {
             data_packet_count++;
 
             // Verify we can access RuntimeDataPacket methods
-            auto& data_pkt = std::get<vrtio::RuntimeDataPacket>(*pkt);
+            auto& data_pkt = std::get<vrtigo::RuntimeDataPacket>(*pkt);
             EXPECT_TRUE(data_pkt.is_valid());
 
             // Should have a payload
@@ -124,7 +124,7 @@ TEST(EnhancedReaderTest, DetectContextPackets) {
             context_packet_count++;
 
             // Verify we can access RuntimeContextPacket methods
-            auto& ctx_pkt = std::get<vrtio::RuntimeContextPacket>(*pkt);
+            auto& ctx_pkt = std::get<vrtigo::RuntimeContextPacket>(*pkt);
             EXPECT_TRUE(ctx_pkt.is_valid());
         }
     }
@@ -142,7 +142,7 @@ TEST(EnhancedReaderTest, ForEachValidatedPacket) {
 
     size_t callback_count = 0;
 
-    size_t processed = reader.for_each_validated_packet([&](const vrtio::PacketVariant& pkt) {
+    size_t processed = reader.for_each_validated_packet([&](const vrtigo::PacketVariant& pkt) {
         (void)pkt; // Only counting packets in this test
         callback_count++;
         return true; // Continue
@@ -157,7 +157,7 @@ TEST(EnhancedReaderTest, ForEachDataPacket) {
 
     size_t data_count = 0;
 
-    size_t processed = reader.for_each_data_packet([&](const vrtio::RuntimeDataPacket& pkt) {
+    size_t processed = reader.for_each_data_packet([&](const vrtigo::RuntimeDataPacket& pkt) {
         data_count++;
         EXPECT_TRUE(pkt.is_valid());
         return true;
@@ -172,7 +172,7 @@ TEST(EnhancedReaderTest, ForEachContextPacket) {
 
     size_t context_count = 0;
 
-    size_t processed = reader.for_each_context_packet([&](const vrtio::RuntimeContextPacket& pkt) {
+    size_t processed = reader.for_each_context_packet([&](const vrtigo::RuntimeContextPacket& pkt) {
         context_count++;
         EXPECT_TRUE(pkt.is_valid());
         return true;
@@ -188,7 +188,7 @@ TEST(EnhancedReaderTest, EarlyTermination) {
     size_t max_packets = 5;
     size_t count = 0;
 
-    reader.for_each_validated_packet([&](const vrtio::PacketVariant&) {
+    reader.for_each_validated_packet([&](const vrtigo::PacketVariant&) {
         count++;
         return count < max_packets; // Stop after 5 packets
     });
@@ -218,7 +218,7 @@ TEST(EnhancedReaderTest, FilterByStreamId) {
     reader.rewind();
 
     size_t matching_count = 0;
-    reader.for_each_packet_with_stream_id(*target_stream_id, [&](const vrtio::PacketVariant& pkt) {
+    reader.for_each_packet_with_stream_id(*target_stream_id, [&](const vrtigo::PacketVariant& pkt) {
         matching_count++;
         auto sid = stream_id(pkt);
         if (sid.has_value()) {
@@ -246,10 +246,10 @@ TEST(EnhancedReaderTest, VisitPacketVariant) {
         [&](auto&& p) {
             using T = std::decay_t<decltype(p)>;
 
-            if constexpr (std::is_same_v<T, vrtio::RuntimeDataPacket>) {
+            if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
                 visited = true;
                 EXPECT_TRUE(p.is_valid());
-            } else if constexpr (std::is_same_v<T, vrtio::RuntimeContextPacket>) {
+            } else if constexpr (std::is_same_v<T, vrtigo::RuntimeContextPacket>) {
                 visited = true;
                 EXPECT_TRUE(p.is_valid());
             } else if constexpr (std::is_same_v<T, InvalidPacket>) {
@@ -283,8 +283,8 @@ TEST(EnhancedReaderTest, EOFHandling) {
 TEST(EnhancedReaderTest, InvalidPacketHasErrorInfo) {
     // This test just verifies the InvalidPacket structure works
 
-    vrtio::detail::DecodedHeader header{};
-    vrtio::InvalidPacket invalid{ValidationError::buffer_too_small, PacketType::signal_data_no_id,
+    vrtigo::detail::DecodedHeader header{};
+    vrtigo::InvalidPacket invalid{ValidationError::buffer_too_small, PacketType::signal_data_no_id,
                                  header, std::span<const uint8_t>{}};
 
     EXPECT_EQ(invalid.error, ValidationError::buffer_too_small);

@@ -1,6 +1,6 @@
 #pragma once
 
-// VRTIO - Lightweight VITA Radio Transport Library
+// VRTIGO - Lightweight VITA Radio Transport Library
 //
 // A header-only C++20 library for creating and parsing VITA 49.2 VRT packets
 // with zero allocation and compile-time validation.
@@ -28,33 +28,33 @@
 // ====================
 
 // Core types and enums (users need these for parameters and return values)
-#include "vrtio/types.hpp"
+#include "vrtigo/types.hpp"
 
 // Timestamp types (users instantiate these directly)
-#include "vrtio/timestamp.hpp"
+#include "vrtigo/timestamp.hpp"
 
 // ClassId types (users instantiate these directly)
-#include "vrtio/class_id.hpp"
+#include "vrtigo/class_id.hpp"
 
 // Field tags for context packet field access
-#include "vrtio/field_tags.hpp"
+#include "vrtigo/field_tags.hpp"
 
 // ====================
 // Implementation
 // ====================
 
 // Packet implementations (exposed via this header but users don't include detail/ directly)
-#include "vrtio/detail/builder.hpp"
-#include "vrtio/detail/context_packet.hpp"
-#include "vrtio/detail/data_packet.hpp"
-#include "vrtio/detail/runtime_context_packet.hpp"
-#include "vrtio/detail/runtime_data_packet.hpp"
+#include "vrtigo/detail/builder.hpp"
+#include "vrtigo/detail/context_packet.hpp"
+#include "vrtigo/detail/data_packet.hpp"
+#include "vrtigo/detail/runtime_context_packet.hpp"
+#include "vrtigo/detail/runtime_data_packet.hpp"
 
 // ====================
 // Convenience Aliases
 // ====================
 
-namespace vrtio {
+namespace vrtigo {
 
 // Convenient aliases for common packet types
 template <typename ClassIdType, typename TimeStampType, Trailer TrailerType, size_t PayloadWords>
@@ -65,4 +65,4 @@ template <typename ClassIdType, typename TimeStampType, Trailer TrailerType, siz
 using ExtensionDataPacket =
     DataPacket<PacketType::extension_data, ClassIdType, TimeStampType, TrailerType, PayloadWords>;
 
-} // namespace vrtio
+} // namespace vrtigo

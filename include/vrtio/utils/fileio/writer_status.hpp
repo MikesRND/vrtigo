@@ -5,7 +5,7 @@
 
 #include <cstdint>
 
-namespace vrtio::utils::fileio {
+namespace vrtigo::utils::fileio {
 
 /**
  * @brief Status codes for VRT file writer operations
@@ -49,4 +49,4 @@ constexpr const char* writer_status_string(WriterStatus status) noexcept {
     return "unknown";
 }
 
-} // namespace vrtio::utils::fileio
+} // namespace vrtigo::utils::fileio

@@ -2,13 +2,13 @@
 
 #include <utility>
 
-#include <vrtio/class_id.hpp>
+#include <vrtigo/class_id.hpp>
 
 #include "data_packet.hpp"
 #include "packet_concepts.hpp"
 #include "trailer_view.hpp"
 
-namespace vrtio {
+namespace vrtigo {
 
 // Forward declaration
 template <typename PacketType>
@@ -265,4 +265,4 @@ auto make_builder(uint8_t* buffer) noexcept {
     return PacketBuilder<PacketType>(buffer);
 }
 
-} // namespace vrtio
+} // namespace vrtigo

@@ -6,7 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace vrtio {
+namespace vrtigo {
 
 // Marker types for ClassId presence/absence
 struct NoClassId {}; // Indicates packet has no ClassId field
@@ -89,4 +89,4 @@ concept ValidClassIdType = requires {
 template <typename T>
 concept HasClassId = ValidClassIdType<T> && ClassIdTraits<T>::has_class_id;
 
-} // namespace vrtio
+} // namespace vrtigo

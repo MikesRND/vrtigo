@@ -1,9 +1,9 @@
 #include <iomanip>
 #include <iostream>
 
-#include <vrtio/vrtio_io.hpp>
+#include <vrtigo/vrtigo_io.hpp>
 
-using namespace vrtio;
+using namespace vrtigo;
 
 /**
  * @brief Packet processor functor with internal state

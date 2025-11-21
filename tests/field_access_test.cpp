@@ -1,10 +1,10 @@
 #include <iostream>
 
 #include <cassert>
-#include <vrtio.hpp>
+#include <vrtigo.hpp>
 
-using namespace vrtio;
-using namespace vrtio::field;
+using namespace vrtigo;
+using namespace vrtigo::field;
 
 // =============================================================================
 // Basic Field Access API Tests

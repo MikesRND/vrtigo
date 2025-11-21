@@ -5,9 +5,9 @@
 
 #include <cstdio>
 #include <cstring>
-#include <vrtio/class_id.hpp>
-#include <vrtio/timestamp.hpp>
-#include <vrtio/types.hpp>
+#include <vrtigo/class_id.hpp>
+#include <vrtigo/timestamp.hpp>
+#include <vrtigo/types.hpp>
 
 #include "buffer_io.hpp"
 #include "concepts.hpp"
@@ -21,7 +21,7 @@
 #include "trailer.hpp"
 #include "trailer_view.hpp"
 
-namespace vrtio {
+namespace vrtigo {
 
 template <PacketType Type, typename ClassIdType = NoClassId, typename TimeStampType = NoTimeStamp,
           Trailer HasTrailer = Trailer::none, size_t PayloadWords = 0>
@@ -325,4 +325,4 @@ using ExtensionDataPacketNoId = DataPacket<PacketType::extension_data_no_id, Cla
                                            TimeStampType, HasTrailer, PayloadWords>;
 
 // Deprecated legacy alias retained for source compatibility. Will be removed in a future release.
-} // namespace vrtio
+} // namespace vrtigo

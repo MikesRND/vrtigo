@@ -12,7 +12,7 @@ ORDER_FILE="$QUICKSTART_DIR/quickstart.order"
 
 # Start with header
 cat > "$OUTPUT_FILE" << 'EOF'
-# VRTIO Quickstart Code Examples
+# VRTIGO Quickstart Code Examples
 
 This file contains executable code snippets automatically extracted from test files in `tests/quickstart/`.
 All code here is tested and guaranteed to compile.

@@ -11,7 +11,7 @@
 #include "runtime_context_packet.hpp"
 #include "runtime_data_packet.hpp"
 
-namespace vrtio::detail {
+namespace vrtigo::detail {
 
 /**
  * @brief Parse and validate a VRT packet from raw bytes (internal implementation)
@@ -28,7 +28,7 @@ namespace vrtio::detail {
  * - Context (4-5) -> RuntimeContextPacket
  * - Command (6-7) -> InvalidPacket (not yet implemented)
  *
- * @note This is an internal implementation. Users should use vrtio::parse_packet()
+ * @note This is an internal implementation. Users should use vrtigo::parse_packet()
  * from the public API instead.
  *
  * @param bytes Raw packet bytes (must remain valid while using returned view)
@@ -43,8 +43,8 @@ inline PacketVariant parse_packet(std::span<const uint8_t> bytes) noexcept {
     }
 
     // 2. Decode header to determine packet type
-    uint32_t header_word = vrtio::detail::read_u32(bytes.data(), 0);
-    auto header = vrtio::detail::decode_header(header_word);
+    uint32_t header_word = vrtigo::detail::read_u32(bytes.data(), 0);
+    auto header = vrtigo::detail::decode_header(header_word);
 
     // 3. Dispatch to appropriate view based on packet type
     uint8_t type_value = static_cast<uint8_t>(header.type);
@@ -94,4 +94,4 @@ inline PacketVariant parse_packet(std::span<const uint8_t> bytes) noexcept {
     }
 }
 
-} // namespace vrtio::detail
+} // namespace vrtigo::detail

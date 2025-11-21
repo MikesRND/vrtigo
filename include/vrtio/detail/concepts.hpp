@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vrtio/types.hpp"
+#include "vrtigo/types.hpp"
 
 #include <concepts>
 #include <span>
@@ -9,7 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace vrtio {
+namespace vrtigo {
 
 // Concept for types that can provide mutable buffer access
 // Works with standard containers (std::vector, std::array) and custom buffer types
@@ -45,4 +45,4 @@ concept DataPacketType =
     (Type == PacketType::signal_data_no_id || Type == PacketType::signal_data ||
      Type == PacketType::extension_data_no_id || Type == PacketType::extension_data);
 
-} // namespace vrtio
+} // namespace vrtigo

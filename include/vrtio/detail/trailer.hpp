@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace vrtio::trailer {
+namespace vrtigo::trailer {
 
 // VITA 49.2 Section 5.1.6 Trailer field bit positions
 // The trailer is a 32-bit word with enable/indicator bit pairing
@@ -160,4 +160,4 @@ constexpr uint32_t clear_field(uint32_t value) noexcept {
     return value & ~(Mask << Shift);
 }
 
-} // namespace vrtio::trailer
+} // namespace vrtigo::trailer

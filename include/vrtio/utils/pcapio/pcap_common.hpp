@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace vrtio::utils::pcapio {
+namespace vrtigo::utils::pcapio {
 
 // =============================================================================
 // PCAP File Format Constants
@@ -131,4 +131,4 @@ constexpr bool is_nanosecond_precision(uint32_t magic) noexcept {
     return magic == PCAP_MAGIC_NANOSEC_LE || magic == PCAP_MAGIC_NANOSEC_BE;
 }
 
-} // namespace vrtio::utils::pcapio
+} // namespace vrtigo::utils::pcapio

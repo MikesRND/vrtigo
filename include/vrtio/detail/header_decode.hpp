@@ -1,11 +1,11 @@
 #pragma once
 
 #include <cstdint>
-#include <vrtio/types.hpp>
+#include <vrtigo/types.hpp>
 
 #include "header.hpp"
 
-namespace vrtio::detail {
+namespace vrtigo::detail {
 
 /**
  * @brief Decoded VRT packet header information with type-aware interpretation
@@ -58,7 +58,7 @@ struct DecodedHeader {
  *
  * Extracts all fields from a VRT packet header according to VITA 49.2 and interprets
  * the packet-specific indicator bits based on the packet type.
- * This is the single source of truth for header parsing in VRTIO.
+ * This is the single source of truth for header parsing in VRTIGO.
  *
  * Header format (32 bits):
  * - Bits 31-28: Packet type
@@ -219,4 +219,4 @@ inline constexpr bool is_command_packet(PacketType type) noexcept {
     return t == 6 || t == 7;
 }
 
-} // namespace vrtio::detail
+} // namespace vrtigo::detail

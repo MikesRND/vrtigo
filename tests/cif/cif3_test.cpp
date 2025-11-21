@@ -2,7 +2,7 @@
 
 TEST_F(ContextPacketTest, CIF3FieldsBasic) {
     // Test a selection of 1-word and 2-word CIF3 fields using field-based API
-    using namespace vrtio::field;
+    using namespace vrtigo::field;
     using TestContext =
         ContextPacket<NoTimeStamp, NoClassId, network_id, tropospheric_state, jitter, pulse_width>;
 
@@ -37,8 +37,8 @@ TEST_F(ContextPacketTest, RuntimeParseCIF3) {
     cif::write_u32_safe(buffer.data(), 8, cif0_val);
 
     // CIF3 with network_id field
-    using namespace vrtio::field;
-    uint32_t cif3_val = vrtio::detail::field_bitmask<network_id>();
+    using namespace vrtigo::field;
+    uint32_t cif3_val = vrtigo::detail::field_bitmask<network_id>();
     cif::write_u32_safe(buffer.data(), 12, cif3_val);
 
     // Network ID value
@@ -50,7 +50,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF3) {
     EXPECT_TRUE(view.is_valid());
 
     // Verify CIF3 is present
-    EXPECT_EQ(view.cif3(), vrtio::detail::field_bitmask<network_id>());
+    EXPECT_EQ(view.cif3(), vrtigo::detail::field_bitmask<network_id>());
 
     // Verify field value
     EXPECT_TRUE(view[field::network_id]);
@@ -58,7 +58,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF3) {
 }
 
 TEST_F(ContextPacketTest, CompileTimeCIF3) {
-    using namespace vrtio::field;
+    using namespace vrtigo::field;
     using TestContext = ContextPacket<NoTimeStamp, NoClassId, network_id, tropospheric_state>;
 
     TestContext packet(buffer.data());
@@ -68,8 +68,8 @@ TEST_F(ContextPacketTest, CompileTimeCIF3) {
     packet[tropospheric_state].set_encoded(0x22222222);
 
     // Verify CIF3 word is written correctly
-    constexpr uint32_t expected_cif3 = vrtio::detail::field_bitmask<network_id>() |
-                                       vrtio::detail::field_bitmask<tropospheric_state>();
+    constexpr uint32_t expected_cif3 = vrtigo::detail::field_bitmask<network_id>() |
+                                       vrtigo::detail::field_bitmask<tropospheric_state>();
     EXPECT_EQ(packet.cif3(), expected_cif3);
 
     // Verify field values are correct (not overwriting CIF3 word)

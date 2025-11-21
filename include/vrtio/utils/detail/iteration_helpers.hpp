@@ -10,7 +10,7 @@
 #include "../../detail/runtime_context_packet.hpp"
 #include "../../detail/runtime_data_packet.hpp"
 
-namespace vrtio::utils::detail {
+namespace vrtigo::utils::detail {
 
 /**
  * @brief Concept for packet readers that provide read_next_packet()
@@ -20,7 +20,7 @@ namespace vrtio::utils::detail {
  */
 template <typename T>
 concept PacketReader = requires(T& reader) {
-    { reader.read_next_packet() } -> std::same_as<std::optional<vrtio::PacketVariant>>;
+    { reader.read_next_packet() } -> std::same_as<std::optional<vrtigo::PacketVariant>>;
 };
 
 /**
@@ -58,7 +58,7 @@ size_t for_each_validated_packet(Reader& reader, Callback&& callback) noexcept {
  * and invalid packets. The callback receives a validated RuntimeDataPacket.
  *
  * @tparam Reader Type satisfying PacketReader concept
- * @tparam Callback Function type with signature: bool(const vrtio::RuntimeDataPacket&)
+ * @tparam Callback Function type with signature: bool(const vrtigo::RuntimeDataPacket&)
  * @param reader Reader providing read_next_packet()
  * @param callback Function called for each data packet. Return false to stop.
  * @return Number of data packets processed
@@ -68,7 +68,7 @@ size_t for_each_data_packet(Reader& reader, Callback&& callback) noexcept {
     size_t count = 0;
 
     while (auto pkt = reader.read_next_packet()) {
-        if (auto* data_pkt = std::get_if<vrtio::RuntimeDataPacket>(&(*pkt))) {
+        if (auto* data_pkt = std::get_if<vrtigo::RuntimeDataPacket>(&(*pkt))) {
             bool continue_processing = callback(*data_pkt);
             count++;
 
@@ -88,7 +88,7 @@ size_t for_each_data_packet(Reader& reader, Callback&& callback) noexcept {
  * and invalid packets. The callback receives a validated RuntimeContextPacket.
  *
  * @tparam Reader Type satisfying PacketReader concept
- * @tparam Callback Function type with signature: bool(const vrtio::RuntimeContextPacket&)
+ * @tparam Callback Function type with signature: bool(const vrtigo::RuntimeContextPacket&)
  * @param reader Reader providing read_next_packet()
  * @param callback Function called for each context packet. Return false to stop.
  * @return Number of context packets processed
@@ -98,7 +98,7 @@ size_t for_each_context_packet(Reader& reader, Callback&& callback) noexcept {
     size_t count = 0;
 
     while (auto pkt = reader.read_next_packet()) {
-        if (auto* ctx_pkt = std::get_if<vrtio::RuntimeContextPacket>(&(*pkt))) {
+        if (auto* ctx_pkt = std::get_if<vrtigo::RuntimeContextPacket>(&(*pkt))) {
             bool continue_processing = callback(*ctx_pkt);
             count++;
 
@@ -130,7 +130,7 @@ size_t for_each_packet_with_stream_id(Reader& reader, uint32_t stream_id_filter,
     size_t count = 0;
 
     while (auto pkt = reader.read_next_packet()) {
-        auto sid = vrtio::stream_id(*pkt);
+        auto sid = vrtigo::stream_id(*pkt);
         if (sid && *sid == stream_id_filter) {
             bool continue_processing = callback(*pkt);
             count++;
@@ -144,4 +144,4 @@ size_t for_each_packet_with_stream_id(Reader& reader, uint32_t stream_id_filter,
     return count;
 }
 
-} // namespace vrtio::utils::detail
+} // namespace vrtigo::utils::detail

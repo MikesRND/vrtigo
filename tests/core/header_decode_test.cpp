@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
-#include <vrtio/detail/header_decode.hpp>
+#include <vrtigo/detail/header_decode.hpp>
 
-using namespace vrtio;
-using namespace vrtio::detail;
+using namespace vrtigo;
+using namespace vrtigo::detail;
 
 // Test 1: Decode signal packet type 0 (no stream ID)
 TEST(HeaderDecodeTest, DecodeSignalPacketType0) {

@@ -1,6 +1,6 @@
 {
-    // C++ IntelliSense configuration for VRTIO
-    // Defines VRTIO_HAS_IO_HELPERS to enable I/O helper code completion
+    // C++ IntelliSense configuration for VRTIGO
+    // Defines VRTIGO_HAS_IO_HELPERS to enable I/O helper code completion
     "configurations": [
         {
             "name": "Linux",
@@ -9,7 +9,7 @@
                 "${workspaceFolder}/build/_deps/**"
             ],
             "defines": [
-                "VRTIO_HAS_IO_HELPERS"
+                "VRTIGO_HAS_IO_HELPERS"
             ],
             "compilerPath": "/usr/bin/g++",
             "cStandard": "c17",

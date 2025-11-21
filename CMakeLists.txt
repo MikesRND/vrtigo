@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 project(
-    vrtio
+    vrtigo
     VERSION 0.0.1
     DESCRIPTION "Header-only C++20 library for VRT (VITA 49.2) packets"
     LANGUAGES CXX
@@ -13,9 +13,9 @@ endif()
 include(GNUInstallDirs)
 
 # Header-only library
-add_library(vrtio INTERFACE)
-add_library(vrtio::vrtio ALIAS vrtio)
-target_include_directories(vrtio INTERFACE
+add_library(vrtigo INTERFACE)
+add_library(vrtigo::vrtigo ALIAS vrtigo)
+target_include_directories(vrtigo INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
@@ -24,16 +24,16 @@ target_include_directories(vrtio INTERFACE
 # Generate version header
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.hpp.in
-    ${CMAKE_CURRENT_BINARY_DIR}/include/vrtio/version.hpp
+    ${CMAKE_CURRENT_BINARY_DIR}/include/vrtigo/version.hpp
     @ONLY
 )
 
 # Require C++20 for consumers
-target_compile_features(vrtio INTERFACE cxx_std_20)
-set_property(TARGET vrtio PROPERTY CXX_EXTENSIONS OFF)
+target_compile_features(vrtigo INTERFACE cxx_std_20)
+set_property(TARGET vrtigo PROPERTY CXX_EXTENSIONS OFF)
 
 # Compiler warnings
-target_compile_options(vrtio INTERFACE
+target_compile_options(vrtigo INTERFACE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
 )
@@ -41,17 +41,17 @@ target_compile_options(vrtio INTERFACE
 # I/O helpers are always available (no optional toggle)
 
 # Optional: Build tests
-option(VRTIO_BUILD_TESTS "Build tests" OFF)
+option(VRTIGO_BUILD_TESTS "Build tests" OFF)
 # Allow fetching optional dependencies (e.g., GTest) via FetchContent
-option(VRTIO_FETCH_DEPENDENCIES "Fetch optional dependencies when not found locally" OFF)
-if(VRTIO_BUILD_TESTS)
+option(VRTIGO_FETCH_DEPENDENCIES "Fetch optional dependencies when not found locally" OFF)
+if(VRTIGO_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
 
 # Optional: Build examples
-option(VRTIO_BUILD_EXAMPLES "Build examples" OFF)
-if(VRTIO_BUILD_EXAMPLES)
+option(VRTIGO_BUILD_EXAMPLES "Build examples" OFF)
+if(VRTIGO_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
 
@@ -64,47 +64,47 @@ add_custom_target(quickstart ALL
 )
 
 # Installation
-install(DIRECTORY include/vrtio
+install(DIRECTORY include/vrtigo
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     FILES_MATCHING PATTERN "*.hpp"
 )
 
-install(FILES include/vrtio.hpp
+install(FILES include/vrtigo.hpp
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/include/vrtio/version.hpp
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vrtio
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/include/vrtigo/version.hpp
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vrtigo
 )
 
-install(TARGETS vrtio
-    EXPORT vrtioTargets
+install(TARGETS vrtigo
+    EXPORT vrtigoTargets
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-install(EXPORT vrtioTargets
-    FILE vrtioTargets.cmake
-    NAMESPACE vrtio::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/vrtio
+install(EXPORT vrtigoTargets
+    FILE vrtigoTargets.cmake
+    NAMESPACE vrtigo::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/vrtigo
 )
 
 # Configure and install package config files
 include(CMakePackageConfigHelpers)
 
 configure_package_config_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/vrtioConfig.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/vrtioConfig.cmake
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/vrtio
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/vrtigoConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/vrtigoConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/vrtigo
 )
 
 write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/vrtioConfigVersion.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/vrtigoConfigVersion.cmake
     VERSION ${PROJECT_VERSION}
     COMPATIBILITY SameMajorVersion
 )
 
 install(FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/vrtioConfig.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/vrtioConfigVersion.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/vrtio
+    ${CMAKE_CURRENT_BINARY_DIR}/vrtigoConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/vrtigoConfigVersion.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/vrtigo
 )

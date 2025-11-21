@@ -4,9 +4,9 @@
 #include <thread>
 
 #include <ctime>
-#include <vrtio.hpp>
+#include <vrtigo.hpp>
 
-using namespace vrtio;
+using namespace vrtigo;
 
 // Helper function to print timestamp details
 void printTimeStamp(const TimeStampUTC& ts, const std::string& label) {
@@ -26,7 +26,7 @@ void printTimeStamp(const TimeStampUTC& ts, const std::string& label) {
 }
 
 int main() {
-    std::cout << "VRTIO TimeStamp Examples\n";
+    std::cout << "VRTIGO TimeStamp Examples\n";
     std::cout << "=======================\n\n";
 
     // Example 1: Creating timestamps
@@ -58,7 +58,7 @@ int main() {
     std::cout << "---------------------------------\n";
 
     // Define packet type with UTC timestamps and real-time picoseconds
-    using PacketType = SignalDataPacket<vrtio::NoClassId, TimeStampUTC,
+    using PacketType = SignalDataPacket<vrtigo::NoClassId, TimeStampUTC,
                                         Trailer::none, // No trailer
                                         256            // payload words
                                         >;
@@ -148,7 +148,7 @@ int main() {
     // Use TimeStamp<gps, real_time> to configure packet structure correctly
     // This sets TSI=2 (GPS) and TSF=2 (real_time) in the packet header
     using GPSPacket =
-        SignalDataPacket<vrtio::NoClassId,
+        SignalDataPacket<vrtigo::NoClassId,
                          TimeStamp<TsiType::gps, TsfType::real_time>, // GPS timestamp configuration
                          Trailer::none,                               // No trailer
                          256>;
@@ -218,7 +218,7 @@ int main() {
     // TAI and other non-standard timestamps use TsiType::other
     // The specific time reference is application-defined
     using TAIPacket =
-        SignalDataPacket<vrtio::NoClassId,
+        SignalDataPacket<vrtigo::NoClassId,
                          TimeStamp<TsiType::other, TsfType::real_time>, // "Other" TSI for TAI
                          Trailer::none,                                 // No trailer
                          128>;

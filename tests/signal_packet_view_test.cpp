@@ -1,14 +1,14 @@
 #include <array>
 
 #include <gtest/gtest.h>
-#include <vrtio.hpp>
+#include <vrtigo.hpp>
 
-using namespace vrtio;
+using namespace vrtigo;
 
 // Test basic signal packet without stream ID
 TEST(SignalPacketViewTest, BasicPacketNoStream) {
-    using PacketType = SignalDataPacketNoId<vrtio::NoClassId, NoTimeStamp,
-                                            vrtio::Trailer::none, // no trailer
+    using PacketType = SignalDataPacketNoId<vrtigo::NoClassId, NoTimeStamp,
+                                            vrtigo::Trailer::none, // no trailer
                                             64                    // 64 words payload
                                             >;
 
@@ -20,7 +20,7 @@ TEST(SignalPacketViewTest, BasicPacketNoStream) {
 
     EXPECT_TRUE(view.is_valid());
     EXPECT_EQ(view.error(), ValidationError::none);
-    EXPECT_EQ(view.type(), vrtio::PacketType::signal_data_no_id);
+    EXPECT_EQ(view.type(), vrtigo::PacketType::signal_data_no_id);
     EXPECT_FALSE(view.has_stream_id());
     EXPECT_FALSE(view.has_trailer());
     EXPECT_FALSE(view.has_timestamp_integer());
@@ -31,7 +31,7 @@ TEST(SignalPacketViewTest, BasicPacketNoStream) {
 
 // Test signal packet with stream ID
 TEST(SignalPacketViewTest, PacketWithStreamID) {
-    using PacketType = SignalDataPacket<vrtio::NoClassId, NoTimeStamp, vrtio::Trailer::none, 64>;
+    using PacketType = SignalDataPacket<vrtigo::NoClassId, NoTimeStamp, vrtigo::Trailer::none, 64>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
@@ -42,7 +42,7 @@ TEST(SignalPacketViewTest, PacketWithStreamID) {
     SignalPacketView view(buffer.data(), buffer.size());
 
     EXPECT_TRUE(view.is_valid());
-    EXPECT_EQ(view.type(), vrtio::PacketType::signal_data);
+    EXPECT_EQ(view.type(), vrtigo::PacketType::signal_data);
     EXPECT_TRUE(view.has_stream_id());
 
     auto id = view.stream_id();
@@ -52,7 +52,7 @@ TEST(SignalPacketViewTest, PacketWithStreamID) {
 
 // Test signal packet with timestamps
 TEST(SignalPacketViewTest, PacketWithTimestamps) {
-    using PacketType = SignalDataPacket<vrtio::NoClassId, TimeStampUTC, vrtio::Trailer::none, 64>;
+    using PacketType = SignalDataPacket<vrtigo::NoClassId, TimeStampUTC, vrtigo::Trailer::none, 64>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
@@ -80,13 +80,13 @@ TEST(SignalPacketViewTest, PacketWithTimestamps) {
 
 // Test signal packet with trailer
 TEST(SignalPacketViewTest, PacketWithTrailer) {
-    using PacketType = SignalDataPacket<vrtio::NoClassId, NoTimeStamp,
-                                        vrtio::Trailer::included, // has trailer
+    using PacketType = SignalDataPacket<vrtigo::NoClassId, NoTimeStamp,
+                                        vrtigo::Trailer::included, // has trailer
                                         64>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
-    auto trailer_cfg = vrtio::TrailerBuilder{0xDEADBEEF};
+    auto trailer_cfg = vrtigo::TrailerBuilder{0xDEADBEEF};
 
     [[maybe_unused]] auto packet =
         PacketBuilder<PacketType>(buffer.data()).stream_id(0x11111111).trailer(trailer_cfg).build();
@@ -104,8 +104,8 @@ TEST(SignalPacketViewTest, PacketWithTrailer) {
 
 // Test full-featured packet (stream ID + timestamps + trailer)
 TEST(SignalPacketViewTest, FullFeaturedPacket) {
-    using PacketType = SignalDataPacket<vrtio::NoClassId, TimeStampUTC,
-                                        vrtio::Trailer::included, // has trailer
+    using PacketType = SignalDataPacket<vrtigo::NoClassId, TimeStampUTC,
+                                        vrtigo::Trailer::included, // has trailer
                                         128                       // larger payload
                                         >;
 
@@ -124,7 +124,7 @@ TEST(SignalPacketViewTest, FullFeaturedPacket) {
     SignalPacketView view(buffer.data(), buffer.size());
 
     EXPECT_TRUE(view.is_valid());
-    EXPECT_EQ(view.type(), vrtio::PacketType::signal_data);
+    EXPECT_EQ(view.type(), vrtigo::PacketType::signal_data);
     EXPECT_TRUE(view.has_stream_id());
     EXPECT_TRUE(view.has_timestamp_integer());
     EXPECT_TRUE(view.has_timestamp_fractional());
@@ -139,7 +139,7 @@ TEST(SignalPacketViewTest, FullFeaturedPacket) {
 
 // Test payload access
 TEST(SignalPacketViewTest, PayloadAccess) {
-    using PacketType = SignalDataPacketNoId<vrtio::NoClassId, NoTimeStamp, vrtio::Trailer::none,
+    using PacketType = SignalDataPacketNoId<vrtigo::NoClassId, NoTimeStamp, vrtigo::Trailer::none,
                                             16 // 16 words = 64 bytes
                                             >;
 
@@ -171,7 +171,7 @@ TEST(SignalPacketViewTest, PayloadAccess) {
 // Test validation: buffer too small
 TEST(SignalPacketViewTest, ValidationBufferTooSmall) {
     using PacketType =
-        SignalDataPacketNoId<vrtio::NoClassId, NoTimeStamp, vrtio::Trailer::none, 64>;
+        SignalDataPacketNoId<vrtigo::NoClassId, NoTimeStamp, vrtigo::Trailer::none, 64>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
     PacketType packet(buffer.data());
@@ -216,8 +216,8 @@ TEST(SignalPacketViewTest, ValidationNullBuffer) {
 // Test round-trip: build → parse → verify
 TEST(SignalPacketViewTest, RoundTripBuildParse) {
     using PacketType =
-        SignalDataPacket<vrtio::NoClassId, TimeStamp<TsiType::gps, TsfType::real_time>,
-                         vrtio::Trailer::included, 256>;
+        SignalDataPacket<vrtigo::NoClassId, TimeStamp<TsiType::gps, TsfType::real_time>,
+                         vrtigo::Trailer::included, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
@@ -227,7 +227,7 @@ TEST(SignalPacketViewTest, RoundTripBuildParse) {
         payload_data[i] = static_cast<uint8_t>((i * 7) & 0xFF);
     }
 
-    auto trailer_cfg = vrtio::TrailerBuilder{0x12345678};
+    auto trailer_cfg = vrtigo::TrailerBuilder{0x12345678};
 
     using GPSTimeStamp = TimeStamp<TsiType::gps, TsfType::real_time>;
     auto ts = GPSTimeStamp::from_components(2000000000, 999999999999ULL);
@@ -244,7 +244,7 @@ TEST(SignalPacketViewTest, RoundTripBuildParse) {
 
     // Verify all fields
     EXPECT_TRUE(view.is_valid());
-    EXPECT_EQ(view.type(), vrtio::PacketType::signal_data);
+    EXPECT_EQ(view.type(), vrtigo::PacketType::signal_data);
     EXPECT_TRUE(view.has_stream_id());
     EXPECT_TRUE(view.has_timestamp_integer());
     EXPECT_TRUE(view.has_timestamp_fractional());

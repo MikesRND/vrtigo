@@ -7,14 +7,14 @@
 #include "buffer_io.hpp"
 #include "endian.hpp"
 
-namespace vrtio {
+namespace vrtigo {
 namespace cif {
 
 // FieldInfo struct - describes each CIF field
 struct FieldInfo {
     uint8_t size_words; // Size in 32-bit words (0 for variable)
     bool is_variable;   // True for variable-length fields
-    bool is_supported;  // True if VRTIO supports this field
+    bool is_supported;  // True if VRTIGO supports this field
     const char* name;   // Field name for documentation
 };
 
@@ -578,4 +578,4 @@ constexpr size_t calculate_context_size_ct() {
 
 } // namespace cif
 
-} // namespace vrtio
+} // namespace vrtigo

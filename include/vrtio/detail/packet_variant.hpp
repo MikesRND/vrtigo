@@ -9,7 +9,7 @@
 #include "runtime_context_packet.hpp"
 #include "runtime_data_packet.hpp"
 
-namespace vrtio {
+namespace vrtigo {
 
 /**
  * @brief Error result when a packet fails validation
@@ -118,4 +118,4 @@ inline bool is_context_packet(const PacketVariant& pkt) noexcept {
     return std::holds_alternative<RuntimeContextPacket>(pkt);
 }
 
-} // namespace vrtio
+} // namespace vrtigo

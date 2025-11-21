@@ -210,7 +210,7 @@ Context packets don't have a traditional "payload" - instead they encode CIF-bas
 |--------|---------------|-------------------|
 | `operator[](field_tag)` | ✓ mutable `FieldProxy` | ✓ const `FieldProxy` |
 
-**Usage**: Access context fields via field tags from `vrtio::field` namespace (e.g., `packet[field::bandwidth]`).
+**Usage**: Access context fields via field tags from `vrtigo::field` namespace (e.g., `packet[field::bandwidth]`).
 
 **Internal helpers** (do not call directly; for FieldProxy use only):
 - `context_buffer()` / `mutable_context_buffer()` - Raw buffer pointers to CIF field area
@@ -333,7 +333,7 @@ The returned view provides typed access to all trailer status and error fields.
 For implementation details and exact signatures, see:
 
 ### Data Packets (Compile-Time)
-- **File**: `include/vrtio/detail/data_packet.hpp`
+- **File**: `include/vrtigo/detail/data_packet.hpp`
 - **Class**: `DataPacket<PacketType Type, ClassIdType ClassId, TimeStampType TimeStamp, Trailer HasTrailer, size_t PayloadWords>`
 - **Key sections**:
   - Header accessors (packet_count) and static size constants (`size_words`, `size_bytes`)
@@ -345,7 +345,7 @@ For implementation details and exact signatures, see:
   - Validation method
 
 ### Data Packets (Runtime)
-- **File**: `include/vrtio/detail/runtime_data_packet.hpp`
+- **File**: `include/vrtigo/detail/runtime_data_packet.hpp`
 - **Class**: `RuntimeDataPacket`
 - **Key sections**:
   - Automatic validation on construction
@@ -356,7 +356,7 @@ For implementation details and exact signatures, see:
   - Payload and size queries (dynamic spans)
 
 ### Context Packets (Compile-Time)
-- **File**: `include/vrtio/detail/context_packet.hpp`
+- **File**: `include/vrtigo/detail/context_packet.hpp`
 - **Class**: `ContextPacketBase<...>` (aliased as `ContextPacket<...>`)
 - **Key sections**:
   - Stream ID (always present)
@@ -367,7 +367,7 @@ For implementation details and exact signatures, see:
   - Validation method
 
 ### Context Packets (Runtime)
-- **File**: `include/vrtio/detail/runtime_context_packet.hpp`
+- **File**: `include/vrtigo/detail/runtime_context_packet.hpp`
 - **Class**: `RuntimeContextPacket`
 - **Key sections**:
   - Automatic validation on construction
@@ -380,17 +380,17 @@ For implementation details and exact signatures, see:
   - Size queries
 
 ### Header Views
-- **File**: `include/vrtio/detail/packet_header_accessor.hpp`
+- **File**: `include/vrtigo/detail/packet_header_accessor.hpp`
 - **Classes**: `HeaderView`, `MutableHeaderView`
 - **Documentation**: [Header View API](header_view.md)
 
 ### Trailer Views
-- **File**: `include/vrtio/detail/trailer_view.hpp`
+- **File**: `include/vrtigo/detail/trailer_view.hpp`
 - **Classes**: `TrailerView`, `MutableTrailerView`
 - **Documentation**: [Trailer View API](trailer_view.md)
 
 ### Field Proxy
-- **File**: `include/vrtio/detail/field_proxy.hpp`
+- **File**: `include/vrtigo/detail/field_proxy.hpp`
 - **Template**: `FieldProxy<FieldTag, PacketType>`
 - **Methods**: bytes, encoded, value (with corresponding setters for mutable packets)
 

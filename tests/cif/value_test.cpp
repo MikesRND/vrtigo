@@ -2,10 +2,10 @@
 
 #include <cmath>
 #include <gtest/gtest.h>
-#include <vrtio.hpp>
+#include <vrtigo.hpp>
 
-using namespace vrtio;
-using namespace vrtio::field;
+using namespace vrtigo;
+using namespace vrtigo::field;
 
 // =============================================================================
 // Interpreted Value Tests - Q52.12 Fixed-Point ↔ Hz Conversion

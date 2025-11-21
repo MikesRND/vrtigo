@@ -2,20 +2,20 @@
 #include <iostream>
 #include <vector>
 
-#include <vrtio.hpp>
-#include <vrtio/detail/trailer_view.hpp>
+#include <vrtigo.hpp>
+#include <vrtigo/detail/trailer_view.hpp>
 
 // Example demonstrating trailer field usage
 
 int main() {
     // Define a packet type with trailer enabled
     using PacketType =
-        vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC, // Using UTC timestamps
-                                vrtio::Trailer::included,              // Trailer included
+        vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC, // Using UTC timestamps
+                                vrtigo::Trailer::included,              // Trailer included
                                 128                                    // Payload words
                                 >;
 
-    std::cout << "=== VRTIO Trailer Fields Example ===\n\n";
+    std::cout << "=== VRTIGO Trailer Fields Example ===\n\n";
 
     // Allocate buffer for packet
     std::vector<uint8_t> buffer(PacketType::size_bytes);
@@ -24,10 +24,10 @@ int main() {
     std::cout << "Example 1: Building a packet with good status\n";
     std::cout << "----------------------------------------------\n";
 
-    auto good_status = vrtio::TrailerBuilder{}.valid_data(true).calibrated_time(true);
+    auto good_status = vrtigo::TrailerBuilder{}.valid_data(true).calibrated_time(true);
 
-    auto ts1 = vrtio::TimeStampUTC::from_components(1000000, 0);
-    auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
+    auto ts1 = vrtigo::TimeStampUTC::from_components(1000000, 0);
+    auto packet = vrtigo::PacketBuilder<PacketType>(buffer.data())
                       .stream_id(0x12345678)
                       .timestamp(ts1)
                       .trailer(good_status) // Apply reusable trailer configuration
@@ -48,11 +48,11 @@ int main() {
     std::cout << "----------------------------------------------\n";
 
     auto inline_trailer =
-        vrtio::TrailerBuilder{}.clear().reference_lock(true).context_packet_count(5).valid_data(
+        vrtigo::TrailerBuilder{}.clear().reference_lock(true).context_packet_count(5).valid_data(
             true);
 
-    auto ts2 = vrtio::TimeStampUTC::from_components(1500000, 0);
-    auto inline_packet = vrtio::PacketBuilder<PacketType>(buffer.data())
+    auto ts2 = vrtigo::TimeStampUTC::from_components(1500000, 0);
+    auto inline_packet = vrtigo::PacketBuilder<PacketType>(buffer.data())
                              .stream_id(0x12345678)
                              .timestamp(ts2)
                              .trailer(inline_trailer)
@@ -70,8 +70,8 @@ int main() {
     std::cout << "Example 3: Indicating error conditions\n";
     std::cout << "---------------------------------------\n";
 
-    auto ts3 = vrtio::TimeStampUTC::from_components(2000000, 0);
-    auto error_packet = vrtio::PacketBuilder<PacketType>(buffer.data())
+    auto ts3 = vrtigo::TimeStampUTC::from_components(2000000, 0);
+    auto error_packet = vrtigo::PacketBuilder<PacketType>(buffer.data())
                             .stream_id(0xAABBCCDD)
                             .timestamp(ts3)
                             .trailer_valid_data(false) // Data not valid
@@ -93,14 +93,14 @@ int main() {
     std::cout << "Example 4: Bulk status configuration\n";
     std::cout << "-------------------------------------\n";
 
-    auto status_trailer = vrtio::TrailerBuilder{}
+    auto status_trailer = vrtigo::TrailerBuilder{}
                               .valid_data(true)
                               .calibrated_time(true)
                               .reference_lock(true)
                               .context_packet_count(10);
 
-    auto ts4 = vrtio::TimeStampUTC::from_components(3000000, 0);
-    auto status_packet = vrtio::PacketBuilder<PacketType>(buffer.data())
+    auto ts4 = vrtigo::TimeStampUTC::from_components(3000000, 0);
+    auto status_packet = vrtigo::PacketBuilder<PacketType>(buffer.data())
                              .stream_id(0x11111111)
                              .timestamp(ts4)
                              .trailer(status_trailer)
@@ -123,8 +123,8 @@ int main() {
     std::cout << "---------------------------------------\n";
 
     // Simulate receiving a packet
-    auto ts5 = vrtio::TimeStampUTC::from_components(4000000, 0);
-    auto rx_packet = vrtio::PacketBuilder<PacketType>(buffer.data())
+    auto ts5 = vrtigo::TimeStampUTC::from_components(4000000, 0);
+    auto rx_packet = vrtigo::PacketBuilder<PacketType>(buffer.data())
                          .stream_id(0xFEDCBA98)
                          .timestamp(ts5)
                          .trailer_valid_data(true)

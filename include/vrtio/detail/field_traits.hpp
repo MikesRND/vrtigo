@@ -7,7 +7,7 @@
 #include "cif.hpp"
 #include "field_values.hpp"
 
-namespace vrtio::detail {
+namespace vrtigo::detail {
 
 /// Base FieldTraits template - must be specialized for each field
 template <uint8_t Cif, uint8_t Bit>
@@ -1493,4 +1493,4 @@ struct FieldTraits<3, 31> {
     }
 };
 
-} // namespace vrtio::detail
+} // namespace vrtigo::detail

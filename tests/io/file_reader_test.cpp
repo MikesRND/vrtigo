@@ -5,15 +5,15 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-#include <vrtio/vrtio_utils.hpp>
+#include <vrtigo/vrtigo_utils.hpp>
 
 #include "test_utils.hpp"
 
-using namespace vrtio::utils::fileio;
-using namespace vrtio::detail;
-using vrtio::PacketType;
-using vrtio::RuntimeContextPacket;
-using vrtio::ValidationError;
+using namespace vrtigo::utils::fileio;
+using namespace vrtigo::detail;
+using vrtigo::PacketType;
+using vrtigo::RuntimeContextPacket;
+using vrtigo::ValidationError;
 
 // Test data file paths
 const std::filesystem::path test_data_dir = TEST_DATA_DIR;

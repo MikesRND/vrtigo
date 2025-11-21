@@ -1,6 +1,6 @@
 #include "context_test_fixture.hpp"
 
-using namespace vrtio::field;
+using namespace vrtigo::field;
 
 TEST_F(ContextPacketTest, BasicCompileTimePacket) {
     // Create a simple context packet with bandwidth and sample rate
@@ -66,7 +66,7 @@ TEST_F(ContextPacketTest, RuntimeParserBasic) {
 
     // CIF0 - enable bandwidth and sample rate
     uint32_t cif0_mask =
-        vrtio::detail::field_bitmask<bandwidth>() | vrtio::detail::field_bitmask<sample_rate>();
+        vrtigo::detail::field_bitmask<bandwidth>() | vrtigo::detail::field_bitmask<sample_rate>();
     cif::write_u32_safe(buffer.data(), 8, cif0_mask);
 
     // Bandwidth (64-bit)
@@ -109,7 +109,7 @@ TEST_F(ContextPacketTest, SizeFieldValidation) {
     // Stream ID (always present per spec)
     cif::write_u32_safe(buffer.data(), 4, 0);
 
-    uint32_t cif0_mask = vrtio::detail::field_bitmask<bandwidth>();
+    uint32_t cif0_mask = vrtigo::detail::field_bitmask<bandwidth>();
     cif::write_u32_safe(buffer.data(), 8, cif0_mask);
     cif::write_u64_safe(buffer.data(), 12, 25'000'000);
 
@@ -183,7 +183,7 @@ TEST_F(ContextPacketTest, PacketCountParsing) {
     cif::write_u32_safe(buffer.data(), 4, 0x12345678);
 
     // CIF0 - enable bandwidth
-    uint32_t cif0_mask = vrtio::detail::field_bitmask<bandwidth>();
+    uint32_t cif0_mask = vrtigo::detail::field_bitmask<bandwidth>();
     cif::write_u32_safe(buffer.data(), 8, cif0_mask);
 
     // Bandwidth field (64-bit)

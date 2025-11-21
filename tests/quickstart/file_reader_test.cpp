@@ -9,12 +9,12 @@
 #include <iostream>
 
 #include <gtest/gtest.h>
-#include <vrtio/vrtio_io.hpp>
+#include <vrtigo/vrtigo_io.hpp>
 
 // Test data file paths
 #include <filesystem>
 
-using vrtio::field::sample_rate;
+using vrtigo::field::sample_rate;
 
 const std::filesystem::path test_data_dir = TEST_DATA_DIR;
 const auto sine_wave_file = test_data_dir / "VITA49SineWaveData.bin";
@@ -37,7 +37,7 @@ TEST(QuickstartSnippet, ReadVRTFile) {
     // Read VRT packets from a file
 
     // Open VRT file - that's it!
-    vrtio::VRTFileReader<> reader(sine_wave_file.c_str());
+    vrtigo::VRTFileReader<> reader(sine_wave_file.c_str());
     ASSERT_TRUE(reader.is_open());
 
     // Count packets and samples
@@ -46,22 +46,22 @@ TEST(QuickstartSnippet, ReadVRTFile) {
     size_t total_samples = 0;
 
     // Iterate through all valid packets
-    reader.for_each_validated_packet([&](const vrtio::PacketVariant& pkt) {
-        if (vrtio::is_data_packet(pkt)) {
+    reader.for_each_validated_packet([&](const vrtigo::PacketVariant& pkt) {
+        if (vrtigo::is_data_packet(pkt)) {
             data_packets++;
 
             // Access type-safe data packet view
-            const auto& data = std::get<vrtio::RuntimeDataPacket>(pkt);
+            const auto& data = std::get<vrtigo::RuntimeDataPacket>(pkt);
 
             // Get payload - zero-copy span into file buffer!
             auto payload = data.payload();
             total_samples += payload.size() / 4; // 4 bytes per I/Q sample
 
-        } else if (vrtio::is_context_packet(pkt)) {
+        } else if (vrtigo::is_context_packet(pkt)) {
             context_packets++;
 
             // Access context packet view
-            const auto& ctx = std::get<vrtio::RuntimeContextPacket>(pkt);
+            const auto& ctx = std::get<vrtigo::RuntimeContextPacket>(pkt);
             if (auto sr = ctx[sample_rate]) {
                 std::cout << "Context packet sample rate: " << sr.value() << " Hz\n";
             }
@@ -94,7 +94,7 @@ TEST(QuickstartSnippet, ReadVRTFileManual) {
     // [QUICKSTART-MANUAL]
     // Manual packet iteration with full control
 
-    vrtio::VRTFileReader<> reader(sine_wave_file.c_str());
+    vrtigo::VRTFileReader<> reader(sine_wave_file.c_str());
     ASSERT_TRUE(reader.is_open());
 
     size_t valid_packets = 0;
@@ -102,16 +102,16 @@ TEST(QuickstartSnippet, ReadVRTFileManual) {
 
     // Read packets one at a time
     while (auto pkt = reader.read_next_packet()) {
-        if (vrtio::is_valid(*pkt)) {
+        if (vrtigo::is_valid(*pkt)) {
             valid_packets++;
 
             // Access packet type
-            auto type = vrtio::packet_type(*pkt);
+            auto type = vrtigo::packet_type(*pkt);
             std::cout << "Type: " << static_cast<int>(type) << "\n";
 
             // Process based on type
-            if (vrtio::is_data_packet(*pkt)) {
-                const auto& data = std::get<vrtio::RuntimeDataPacket>(*pkt);
+            if (vrtigo::is_data_packet(*pkt)) {
+                const auto& data = std::get<vrtigo::RuntimeDataPacket>(*pkt);
                 auto payload = data.payload();
                 // Process payload...
                 (void)payload;
@@ -121,7 +121,7 @@ TEST(QuickstartSnippet, ReadVRTFileManual) {
             invalid_packets++;
 
             // Get error details from invalid packet
-            const auto& invalid = std::get<vrtio::InvalidPacket>(*pkt);
+            const auto& invalid = std::get<vrtigo::InvalidPacket>(*pkt);
             auto error = invalid.error;
             // Handle error...
             (void)error;

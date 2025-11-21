@@ -31,13 +31,13 @@ echo ""
 rm -rf "$BUILD_DIR" "$INSTALL_PREFIX"
 mkdir -p "$BUILD_DIR"
 
-# Step 1: Build vrtio library
-echo "Building vrtio..."
+# Step 1: Build vrtigo library
+echo "Building vrtigo..."
 cmake -S . -B "$BUILD_DIR" \
     -DCMAKE_BUILD_TYPE=Release \
-    -DVRTIO_BUILD_TESTS=OFF \
-    -DVRTIO_BUILD_EXAMPLES=OFF \
-    -DVRTIO_BUILD_BENCHMARKS=OFF
+    -DVRTIGO_BUILD_TESTS=OFF \
+    -DVRTIGO_BUILD_EXAMPLES=OFF \
+    -DVRTIGO_BUILD_BENCHMARKS=OFF
 
 cmake --build "$BUILD_DIR" -j"$NPROC"
 

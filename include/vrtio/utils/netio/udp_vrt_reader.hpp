@@ -28,7 +28,7 @@
 #include "../detail/iteration_helpers.hpp"
 #include "udp_transport_status.hpp"
 
-namespace vrtio::utils::netio {
+namespace vrtigo::utils::netio {
 
 /**
  * @brief Blocking UDP VRT packet reader (Linux/POSIX)
@@ -72,7 +72,7 @@ namespace vrtio::utils::netio {
  * while (auto pkt = reader.read_next_packet()) {
  *     std::visit([](auto&& p) {
  *         using T = std::decay_t<decltype(p)>;
- *         if constexpr (std::is_same_v<T, vrtio::RuntimeDataPacket>) {
+ *         if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
  *             auto payload = p.payload();
  *             // Process data...
  *         }
@@ -80,7 +80,7 @@ namespace vrtio::utils::netio {
  * }
  *
  * // Or use filtered iteration (same API as VRTFileReader)
- * reader.for_each_data_packet([](const vrtio::RuntimeDataPacket& pkt) {
+ * reader.for_each_data_packet([](const vrtigo::RuntimeDataPacket& pkt) {
  *     // Process data packet
  *     return true; // continue
  * });
@@ -202,7 +202,7 @@ public:
      * @note The returned view references the internal scratch buffer and is valid
      *       until the next read operation.
      */
-    std::optional<vrtio::PacketVariant> read_next_packet() noexcept {
+    std::optional<vrtigo::PacketVariant> read_next_packet() noexcept {
         auto bytes = read_next_datagram();
 
         if (bytes.empty()) {
@@ -222,21 +222,21 @@ public:
             if (status_.is_truncated()) {
                 if (status_.bytes_received >= 4) {
                     // We have header - create proper InvalidPacket
-                    auto decoded = vrtio::detail::decode_header(status_.header);
-                    return vrtio::PacketVariant{vrtio::InvalidPacket{
+                    auto decoded = vrtigo::detail::decode_header(status_.header);
+                    return vrtigo::PacketVariant{vrtigo::InvalidPacket{
                         ValidationError::buffer_too_small, status_.packet_type, decoded,
                         std::span<const uint8_t>() // No partial data
                     }};
                 }
                 // Truncated with no header - return generic InvalidPacket
                 // Use dummy header with packet size from actual_size
-                vrtio::detail::DecodedHeader dummy{};
+                vrtigo::detail::DecodedHeader dummy{};
                 dummy.type = PacketType::signal_data_no_id;
                 dummy.size_words =
                     static_cast<uint16_t>(std::min(status_.actual_size / 4, size_t(65535)));
                 dummy.has_class_id = false;
                 dummy.trailer_included = false;
-                return vrtio::PacketVariant{vrtio::InvalidPacket{
+                return vrtigo::PacketVariant{vrtigo::InvalidPacket{
                     ValidationError::buffer_too_small, PacketType::signal_data_no_id, dummy,
                     std::span<const uint8_t>()}};
             }
@@ -248,18 +248,18 @@ public:
         // Validate minimum packet size
         if (bytes.size() < 4) {
             // Malformed datagram - return InvalidPacket so iteration continues
-            vrtio::detail::DecodedHeader dummy{};
+            vrtigo::detail::DecodedHeader dummy{};
             dummy.type = PacketType::signal_data_no_id;
             dummy.size_words = static_cast<uint16_t>(bytes.size() / 4);
             dummy.has_class_id = false;
             dummy.trailer_included = false;
-            return vrtio::PacketVariant{vrtio::InvalidPacket{
+            return vrtigo::PacketVariant{vrtigo::InvalidPacket{
                 ValidationError::buffer_too_small, PacketType::signal_data_no_id, dummy,
                 std::span<const uint8_t>(bytes.data(), bytes.size())}};
         }
 
         // Parse and validate the packet
-        return vrtio::detail::parse_packet(bytes);
+        return vrtigo::detail::parse_packet(bytes);
     }
 
     /**
@@ -286,7 +286,7 @@ public:
      * Processes only valid data packets (types 0-3), skipping context packets
      * and invalid packets. The callback receives a validated RuntimeDataPacket.
      *
-     * @tparam Callback Function type with signature: bool(const vrtio::RuntimeDataPacket&)
+     * @tparam Callback Function type with signature: bool(const vrtigo::RuntimeDataPacket&)
      * @param callback Function called for each data packet. Return false to stop.
      * @return Number of data packets processed
      */
@@ -301,7 +301,7 @@ public:
      * Processes only valid context packets (types 4-5), skipping data packets
      * and invalid packets. The callback receives a validated RuntimeContextPacket.
      *
-     * @tparam Callback Function type with signature: bool(const vrtio::RuntimeContextPacket&)
+     * @tparam Callback Function type with signature: bool(const vrtigo::RuntimeContextPacket&)
      * @param callback Function called for each context packet. Return false to stop.
      * @return Number of context packets processed
      */
@@ -477,10 +477,10 @@ private:
             if (scratch_buffer_.size() >= 4) {
                 uint32_t network_header;
                 std::memcpy(&network_header, scratch_buffer_.data(), 4);
-                status_.header = vrtio::detail::network_to_host32(network_header);
+                status_.header = vrtigo::detail::network_to_host32(network_header);
 
                 // Decode packet type from header
-                auto decoded = vrtio::detail::decode_header(status_.header);
+                auto decoded = vrtigo::detail::decode_header(status_.header);
                 status_.packet_type = decoded.type;
             }
 
@@ -495,10 +495,10 @@ private:
         if (bytes >= 4) {
             uint32_t network_header;
             std::memcpy(&network_header, scratch_buffer_.data(), 4);
-            status_.header = vrtio::detail::network_to_host32(network_header);
+            status_.header = vrtigo::detail::network_to_host32(network_header);
 
             // Decode packet type from header
-            auto decoded = vrtio::detail::decode_header(status_.header);
+            auto decoded = vrtigo::detail::decode_header(status_.header);
             status_.packet_type = decoded.type;
         }
 
@@ -511,4 +511,4 @@ private:
     UDPTransportStatus status_;                              ///< Status of last receive operation
 };
 
-} // namespace vrtio::utils::netio
+} // namespace vrtigo::utils::netio

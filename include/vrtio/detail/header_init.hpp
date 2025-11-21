@@ -1,11 +1,11 @@
 #pragma once
 
 #include <cstdint>
-#include <vrtio/types.hpp>
+#include <vrtigo/types.hpp>
 
 #include "header.hpp"
 
-namespace vrtio::detail {
+namespace vrtigo::detail {
 
 /**
  * Build VRT packet header word from component fields
@@ -56,4 +56,4 @@ inline constexpr uint32_t build_header(uint8_t packet_type, bool has_class_id, b
     return header;
 }
 
-} // namespace vrtio::detail
+} // namespace vrtigo::detail

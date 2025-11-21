@@ -16,10 +16,10 @@
 #include <unistd.h>
 
 // Linux/POSIX socket headers
-#include "vrtio/detail/packet_concepts.hpp"
-#include "vrtio/detail/packet_variant.hpp"
-#include "vrtio/utils/detail/writer_concepts.hpp"
-#include "vrtio/utils/netio/udp_transport_status.hpp"
+#include "vrtigo/detail/packet_concepts.hpp"
+#include "vrtigo/detail/packet_variant.hpp"
+#include "vrtigo/utils/detail/writer_concepts.hpp"
+#include "vrtigo/utils/netio/udp_transport_status.hpp"
 
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -27,7 +27,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-namespace vrtio::utils::netio {
+namespace vrtigo::utils::netio {
 
 /**
  * @brief UDP VRT packet writer (Linux/POSIX)
@@ -71,9 +71,9 @@ namespace vrtio::utils::netio {
  * UDPVRTWriter writer("192.168.1.100", 12345);
  *
  * // Create packet
- * using PacketType = vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::NoTimeStamp,
- * vrtio::Trailer::none, 64>; alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{}; auto
- * packet = vrtio::PacketBuilder<PacketType>(buffer.data()) .stream_id(0x1234) .packet_count(1)
+ * using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimeStamp,
+ * vrtigo::Trailer::none, 64>; alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{}; auto
+ * packet = vrtigo::PacketBuilder<PacketType>(buffer.data()) .stream_id(0x1234) .packet_count(1)
  *     .build();
  *
  * writer.write_packet(packet);
@@ -93,8 +93,8 @@ namespace vrtio::utils::netio {
  *
  * // Convert to variant for per-destination API
  * auto bytes = packet.as_bytes();
- * vrtio::RuntimeDataPacket packet_view{bytes.data(), bytes.size()};
- * vrtio::PacketVariant variant = packet_view;
+ * vrtigo::RuntimeDataPacket packet_view{bytes.data(), bytes.size()};
+ * vrtigo::PacketVariant variant = packet_view;
  *
  * multi_writer.write_packet(variant, dest1);
  * multi_writer.write_packet(variant, dest2);
@@ -237,9 +237,9 @@ public:
      * @param packet The packet variant to write
      * @return true on success, false on error or invalid packet
      */
-    bool write_packet(const vrtio::PacketVariant& packet) noexcept {
+    bool write_packet(const vrtigo::PacketVariant& packet) noexcept {
         // Check if variant holds InvalidPacket
-        if (std::holds_alternative<vrtio::InvalidPacket>(packet)) {
+        if (std::holds_alternative<vrtigo::InvalidPacket>(packet)) {
             status_.state = UDPTransportStatus::State::socket_error;
             status_.errno_value = EINVAL;
             return false;
@@ -251,11 +251,11 @@ public:
                 using T = std::decay_t<decltype(pkt)>;
 
                 // InvalidPacket already handled above
-                if constexpr (std::is_same_v<T, vrtio::InvalidPacket>) {
+                if constexpr (std::is_same_v<T, vrtigo::InvalidPacket>) {
                     return false; // Should never reach here
-                } else if constexpr (std::is_same_v<T, vrtio::RuntimeDataPacket>) {
+                } else if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
                     return this->write_packet_impl(pkt.as_bytes());
-                } else if constexpr (std::is_same_v<T, vrtio::RuntimeContextPacket>) {
+                } else if constexpr (std::is_same_v<T, vrtigo::RuntimeContextPacket>) {
                     // RuntimeContextPacket uses context_buffer() instead of as_bytes()
                     std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.packet_size_bytes()};
                     return this->write_packet_impl(bytes);
@@ -272,7 +272,7 @@ public:
      * @param packet The data packet to write
      * @return true on success, false on error
      */
-    bool write_packet(const vrtio::RuntimeDataPacket& packet) noexcept {
+    bool write_packet(const vrtigo::RuntimeDataPacket& packet) noexcept {
         return write_packet_impl(packet.as_bytes());
     }
 
@@ -282,7 +282,7 @@ public:
      * @param packet The context packet to write
      * @return true on success, false on error
      */
-    bool write_packet(const vrtio::RuntimeContextPacket& packet) noexcept {
+    bool write_packet(const vrtigo::RuntimeContextPacket& packet) noexcept {
         // RuntimeContextPacket uses context_buffer() instead of as_bytes()
         std::span<const uint8_t> bytes{packet.context_buffer(), packet.packet_size_bytes()};
         return write_packet_impl(bytes);
@@ -296,7 +296,7 @@ public:
      * @return true on success, false on error
      */
     template <typename PacketType>
-        requires vrtio::CompileTimePacket<PacketType>
+        requires vrtigo::CompileTimePacket<PacketType>
     bool write_packet(const PacketType& packet) noexcept {
         return write_packet_impl(packet.as_bytes());
     }
@@ -312,9 +312,9 @@ public:
      * @param dest Destination address
      * @return true on success, false on error or invalid packet
      */
-    bool write_packet(const vrtio::PacketVariant& packet, const struct sockaddr_in& dest) noexcept {
+    bool write_packet(const vrtigo::PacketVariant& packet, const struct sockaddr_in& dest) noexcept {
         // Check if variant holds InvalidPacket
-        if (std::holds_alternative<vrtio::InvalidPacket>(packet)) {
+        if (std::holds_alternative<vrtigo::InvalidPacket>(packet)) {
             status_.state = UDPTransportStatus::State::socket_error;
             status_.errno_value = EINVAL;
             return false;
@@ -325,11 +325,11 @@ public:
             [this, &dest](auto&& pkt) -> bool {
                 using T = std::decay_t<decltype(pkt)>;
 
-                if constexpr (std::is_same_v<T, vrtio::InvalidPacket>) {
+                if constexpr (std::is_same_v<T, vrtigo::InvalidPacket>) {
                     return false; // Should never reach here
-                } else if constexpr (std::is_same_v<T, vrtio::RuntimeDataPacket>) {
+                } else if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
                     return this->write_packet_to(pkt.as_bytes(), dest);
-                } else if constexpr (std::is_same_v<T, vrtio::RuntimeContextPacket>) {
+                } else if constexpr (std::is_same_v<T, vrtigo::RuntimeContextPacket>) {
                     // RuntimeContextPacket uses context_buffer() instead of as_bytes()
                     std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.packet_size_bytes()};
                     return this->write_packet_to(bytes, dest);
@@ -537,4 +537,4 @@ private:
     UDPTransportStatus status_;    ///< Transport status
 };
 
-} // namespace vrtio::utils::netio
+} // namespace vrtigo::utils::netio

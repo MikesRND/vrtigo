@@ -1,4 +1,4 @@
-# VRTIO Quickstart Code Examples
+# VRTIGO Quickstart Code Examples
 
 This file contains executable code snippets automatically extracted from test files in `tests/quickstart/`.
 All code here is tested and guaranteed to compile.
@@ -18,9 +18,9 @@ The builder pattern provides a fluent API for packet creation.
     // Create a VRT Signal Data Packet with timestamp and payload
 
     // Define packet type with UTC timestamp
-    using PacketType = vrtio::SignalDataPacket<vrtio::NoClassId,     // No class ID
-                                               vrtio::TimeStampUTC,  // Include UTC timestamp
-                                               vrtio::Trailer::none, // No trailer
+    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId,     // No class ID
+                                               vrtigo::TimeStampUTC,  // Include UTC timestamp
+                                               vrtigo::Trailer::none, // No trailer
                                                2                     // Max payload words (8 bytes)
                                                >;
 
@@ -31,9 +31,9 @@ The builder pattern provides a fluent API for packet creation.
     std::array<uint8_t, 8> payload{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
 
     // Build packet with current timestamp and payload
-    auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
+    auto packet = vrtigo::PacketBuilder<PacketType>(buffer.data())
                       .stream_id(0x12345678)                 // Set stream identifier
-                      .timestamp(vrtio::TimeStampUTC::now()) // Set current time
+                      .timestamp(vrtigo::TimeStampUTC::now()) // Set current time
                       .packet_count(1)                       // First packet in stream
                       .payload(payload)                      // Attach payload
                       .build();
@@ -50,11 +50,11 @@ signal characteristics.
 
 ```cpp
     // Create a VRT Context Packet with signal parameters
-    using namespace vrtio::field; // Enable short field syntax
+    using namespace vrtigo::field; // Enable short field syntax
 
     // Define context packet type with sample rate and bandwidth fields
-    using PacketType = vrtio::ContextPacket<vrtio::NoTimeStamp, // No timestamp for this example
-                                            vrtio::NoClassId,   // No class ID
+    using PacketType = vrtigo::ContextPacket<vrtigo::NoTimeStamp, // No timestamp for this example
+                                            vrtigo::NoClassId,   // No class ID
                                             sample_rate,        // Include sample rate field
                                             bandwidth           // Include bandwidth field
                                             >;
@@ -87,7 +87,7 @@ This example demonstrates reading a VRT file with the high-level reader:
     // Read VRT packets from a file
 
     // Open VRT file - that's it!
-    vrtio::VRTFileReader<> reader(sine_wave_file.c_str());
+    vrtigo::VRTFileReader<> reader(sine_wave_file.c_str());
     ASSERT_TRUE(reader.is_open());
 
     // Count packets and samples
@@ -96,22 +96,22 @@ This example demonstrates reading a VRT file with the high-level reader:
     size_t total_samples = 0;
 
     // Iterate through all valid packets
-    reader.for_each_validated_packet([&](const vrtio::PacketVariant& pkt) {
-        if (vrtio::is_data_packet(pkt)) {
+    reader.for_each_validated_packet([&](const vrtigo::PacketVariant& pkt) {
+        if (vrtigo::is_data_packet(pkt)) {
             data_packets++;
 
             // Access type-safe data packet view
-            const auto& data = std::get<vrtio::RuntimeDataPacket>(pkt);
+            const auto& data = std::get<vrtigo::RuntimeDataPacket>(pkt);
 
             // Get payload - zero-copy span into file buffer!
             auto payload = data.payload();
             total_samples += payload.size() / 4; // 4 bytes per I/Q sample
 
-        } else if (vrtio::is_context_packet(pkt)) {
+        } else if (vrtigo::is_context_packet(pkt)) {
             context_packets++;
 
             // Access context packet view
-            const auto& ctx = std::get<vrtio::RuntimeContextPacket>(pkt);
+            const auto& ctx = std::get<vrtigo::RuntimeContextPacket>(pkt);
             if (auto sr = ctx[sample_rate]) {
                 std::cout << "Context packet sample rate: " << sr.value() << " Hz\n";
             }

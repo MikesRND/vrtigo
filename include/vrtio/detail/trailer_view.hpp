@@ -8,7 +8,7 @@
 #include "endian.hpp"
 #include "trailer.hpp"
 
-namespace vrtio {
+namespace vrtigo {
 
 /**
  * Read-only view over a trailer word stored in network byte order.
@@ -529,4 +529,4 @@ private:
     uint32_t value_ = 0;
 };
 
-} // namespace vrtio
+} // namespace vrtigo

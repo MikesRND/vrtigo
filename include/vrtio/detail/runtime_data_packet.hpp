@@ -4,15 +4,15 @@
 #include <span>
 
 #include <cstring>
-#include <vrtio/class_id.hpp>
-#include <vrtio/types.hpp>
+#include <vrtigo/class_id.hpp>
+#include <vrtigo/types.hpp>
 
 #include "buffer_io.hpp"
 #include "endian.hpp"
 #include "header_decode.hpp"
 #include "packet_header_accessor.hpp"
 
-namespace vrtio {
+namespace vrtigo {
 
 /**
  * Runtime parser for data packets (signal and extension data)
@@ -368,4 +368,4 @@ private:
 // User-facing type alias for convenient usage
 using SignalPacketView = RuntimeDataPacket;
 
-} // namespace vrtio
+} // namespace vrtigo

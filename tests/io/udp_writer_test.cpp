@@ -7,22 +7,22 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-#include <vrtio/vrtio_utils.hpp>
+#include <vrtigo/vrtigo_utils.hpp>
 
-using namespace vrtio::utils::netio;
+using namespace vrtigo::utils::netio;
 
-// Import specific types from vrtio namespace to avoid ambiguity
-using vrtio::ContextPacket;
-using vrtio::InvalidPacket;
-using vrtio::NoClassId;
-using vrtio::NoTimeStamp;
-using vrtio::PacketBuilder;
-using vrtio::PacketVariant;
-using vrtio::RuntimeContextPacket;
-using vrtio::RuntimeDataPacket;
-using vrtio::SignalDataPacket;
-using vrtio::TimeStampUTC;
-using vrtio::Trailer;
+// Import specific types from vrtigo namespace to avoid ambiguity
+using vrtigo::ContextPacket;
+using vrtigo::InvalidPacket;
+using vrtigo::NoClassId;
+using vrtigo::NoTimeStamp;
+using vrtigo::PacketBuilder;
+using vrtigo::PacketVariant;
+using vrtigo::RuntimeContextPacket;
+using vrtigo::RuntimeDataPacket;
+using vrtigo::SignalDataPacket;
+using vrtigo::TimeStampUTC;
+using vrtigo::Trailer;
 
 // Test fixture for UDP writer tests
 class UDPWriterTest : public ::testing::Test {
@@ -55,7 +55,7 @@ TEST_F(UDPWriterTest, CreateUnboundWriter) {
 
 TEST_F(UDPWriterTest, WriteCompileTimePacket) {
     // Create reader to receive packet
-    vrtio::utils::netio::UDPVRTReader<> reader(test_port);
+    vrtigo::utils::netio::UDPVRTReader<> reader(test_port);
     reader.try_set_timeout(std::chrono::milliseconds(100));
 
     // Create writer
@@ -83,7 +83,7 @@ TEST_F(UDPWriterTest, WriteCompileTimePacket) {
 }
 
 TEST_F(UDPWriterTest, WriteMultiplePackets) {
-    vrtio::utils::netio::UDPVRTReader<> reader(test_port);
+    vrtigo::utils::netio::UDPVRTReader<> reader(test_port);
     reader.try_set_timeout(std::chrono::milliseconds(100));
 
     UDPVRTWriter writer("127.0.0.1", test_port);
@@ -118,7 +118,7 @@ TEST_F(UDPWriterTest, WriteMultiplePackets) {
 // =============================================================================
 
 TEST_F(UDPWriterTest, RoundTripDataPacket) {
-    vrtio::utils::netio::UDPVRTReader<> reader(test_port);
+    vrtigo::utils::netio::UDPVRTReader<> reader(test_port);
     reader.try_set_timeout(std::chrono::milliseconds(100));
 
     UDPVRTWriter writer("127.0.0.1", test_port);
@@ -156,13 +156,13 @@ TEST_F(UDPWriterTest, RoundTripDataPacket) {
 }
 
 TEST_F(UDPWriterTest, RoundTripContextPacket) {
-    vrtio::utils::netio::UDPVRTReader<> reader(test_port);
+    vrtigo::utils::netio::UDPVRTReader<> reader(test_port);
     reader.try_set_timeout(std::chrono::milliseconds(100));
 
     UDPVRTWriter writer("127.0.0.1", test_port);
 
     // Create context packet
-    using PacketType = ContextPacket<NoTimeStamp, NoClassId, vrtio::field::reference_point_id>;
+    using PacketType = ContextPacket<NoTimeStamp, NoClassId, vrtigo::field::reference_point_id>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
     const uint32_t test_stream_id = 0x87654321;
@@ -170,7 +170,7 @@ TEST_F(UDPWriterTest, RoundTripContextPacket) {
 
     PacketType packet(buffer.data());
     packet.set_stream_id(test_stream_id);
-    packet[vrtio::field::reference_point_id].set_encoded(test_ref_point);
+    packet[vrtigo::field::reference_point_id].set_encoded(test_ref_point);
 
     EXPECT_TRUE(writer.write_packet(packet));
 
@@ -192,8 +192,8 @@ TEST_F(UDPWriterTest, RejectInvalidPacket) {
     UDPVRTWriter writer("127.0.0.1", test_port);
 
     // Create InvalidPacket variant
-    InvalidPacket invalid_pkt{.error = vrtio::ValidationError::packet_type_mismatch,
-                              .attempted_type = vrtio::PacketType::signal_data,
+    InvalidPacket invalid_pkt{.error = vrtigo::ValidationError::packet_type_mismatch,
+                              .attempted_type = vrtigo::PacketType::signal_data,
                               .header = {},
                               .raw_bytes = {}};
 
@@ -232,7 +232,7 @@ TEST_F(UDPWriterTest, EnforceMTU) {
 }
 
 TEST_F(UDPWriterTest, MTUAllowsValidPacket) {
-    vrtio::utils::netio::UDPVRTReader<> reader(test_port);
+    vrtigo::utils::netio::UDPVRTReader<> reader(test_port);
     reader.try_set_timeout(std::chrono::milliseconds(100));
 
     UDPVRTWriter writer("127.0.0.1", test_port);
@@ -266,8 +266,8 @@ TEST_F(UDPWriterTest, MTUAllowsValidPacket) {
 
 TEST_F(UDPWriterTest, UnboundModeMultipleDestinations) {
     // Create two readers on different ports
-    vrtio::utils::netio::UDPVRTReader<> reader1(test_port);
-    vrtio::utils::netio::UDPVRTReader<> reader2(test_port_2);
+    vrtigo::utils::netio::UDPVRTReader<> reader1(test_port);
+    vrtigo::utils::netio::UDPVRTReader<> reader2(test_port_2);
     reader1.try_set_timeout(std::chrono::milliseconds(100));
     reader2.try_set_timeout(std::chrono::milliseconds(100));
 
@@ -342,7 +342,7 @@ TEST_F(UDPWriterTest, FlushIsNoOp) {
 // =============================================================================
 
 TEST_F(UDPWriterTest, MoveConstructor) {
-    vrtio::utils::netio::UDPVRTReader<> reader(test_port);
+    vrtigo::utils::netio::UDPVRTReader<> reader(test_port);
     reader.try_set_timeout(std::chrono::milliseconds(100));
 
     UDPVRTWriter writer1("127.0.0.1", test_port);

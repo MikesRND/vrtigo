@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace vrtio::field {
+namespace vrtigo::field {
 
 /// Minimal tag type - self-contained, no dependencies
 /// Tags store only CIF word and bit position as compile-time constants
@@ -152,4 +152,4 @@ inline constexpr field_tag_t<3, 31> timestamp_details;
 // Convenient aliases
 inline constexpr auto& sea_and_swell_state = sea_swell_state;
 
-} // namespace vrtio::field
+} // namespace vrtigo::field

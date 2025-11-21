@@ -3,14 +3,14 @@
 #include <optional>
 #include <type_traits>
 
-#include <vrtio/field_tags.hpp>
+#include <vrtigo/field_tags.hpp>
 
 #include "cif.hpp"
 #include "field_proxy.hpp"
 #include "field_traits.hpp"
 #include "variable_field_dispatch.hpp"
 
-namespace vrtio {
+namespace vrtigo {
 
 namespace detail {
 
@@ -149,4 +149,4 @@ auto make_field_proxy_unchecked(const Packet& packet, field::field_tag_t<CifWord
     return Trait::read(packet.context_buffer(), field_offset);
 }
 
-} // namespace vrtio
+} // namespace vrtigo

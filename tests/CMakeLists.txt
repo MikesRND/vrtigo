@@ -1,6 +1,6 @@
-# Tests for VRTIO
+# Tests for VRTIGO
 
-include(${CMAKE_SOURCE_DIR}/cmake/VrtioBuild.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/VrtigoBuild.cmake)
 
 # Find or fetch GoogleTest
 find_package(GTest CONFIG QUIET)
@@ -9,8 +9,8 @@ if(NOT GTest_FOUND)
 endif()
 
 if(NOT GTest_FOUND)
-    if(NOT VRTIO_FETCH_DEPENDENCIES)
-        message(FATAL_ERROR "GTest not found. Enable VRTIO_FETCH_DEPENDENCIES to fetch it automatically.")
+    if(NOT VRTIGO_FETCH_DEPENDENCIES)
+        message(FATAL_ERROR "GTest not found. Enable VRTIGO_FETCH_DEPENDENCIES to fetch it automatically.")
     endif()
 
     message(STATUS "GTest not found, fetching from GitHub...")
@@ -25,22 +25,22 @@ if(NOT GTest_FOUND)
     FetchContent_MakeAvailable(googletest)
 endif()
 
-vrtio_add_gtest(roundtrip_test roundtrip_test.cpp)
-vrtio_add_gtest(endian_test endian_test.cpp)
-vrtio_add_gtest(builder_test builder_test.cpp)
-vrtio_add_gtest(security_test security_test.cpp)
-vrtio_add_gtest(trailer_test trailer_test.cpp)
-vrtio_add_gtest(timestamp_test timestamp_test.cpp)
-vrtio_add_gtest(signal_packet_view_test signal_packet_view_test.cpp)
-vrtio_add_gtest(packet_concepts_test packet_concepts_test.cpp)
+vrtigo_add_gtest(roundtrip_test roundtrip_test.cpp)
+vrtigo_add_gtest(endian_test endian_test.cpp)
+vrtigo_add_gtest(builder_test builder_test.cpp)
+vrtigo_add_gtest(security_test security_test.cpp)
+vrtigo_add_gtest(trailer_test trailer_test.cpp)
+vrtigo_add_gtest(timestamp_test timestamp_test.cpp)
+vrtigo_add_gtest(signal_packet_view_test signal_packet_view_test.cpp)
+vrtigo_add_gtest(packet_concepts_test packet_concepts_test.cpp)
 
-vrtio_add_gtest(context_basic_test context_basic_test.cpp)
-vrtio_add_gtest(context_validation_test context_validation_test.cpp)
-vrtio_add_gtest(context_variable_test context_variable_test.cpp)
-vrtio_add_gtest(context_timestamp_test context_timestamp_test.cpp)
-vrtio_add_gtest(context_integration_test context_integration_test.cpp)
+vrtigo_add_gtest(context_basic_test context_basic_test.cpp)
+vrtigo_add_gtest(context_validation_test context_validation_test.cpp)
+vrtigo_add_gtest(context_variable_test context_variable_test.cpp)
+vrtigo_add_gtest(context_timestamp_test context_timestamp_test.cpp)
+vrtigo_add_gtest(context_integration_test context_integration_test.cpp)
 
-vrtio_add_test_binary(field_access_test field_access_test.cpp)
+vrtigo_add_test_binary(field_access_test field_access_test.cpp)
 
 # Add core tests subdirectory (header decode utilities, etc.)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/core)

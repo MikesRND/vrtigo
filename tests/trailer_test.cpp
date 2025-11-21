@@ -3,13 +3,13 @@
 
 #include <cstring>
 #include <gtest/gtest.h>
-#include <vrtio.hpp>
+#include <vrtigo.hpp>
 
 // Test fixture for trailer field manipulation
 class TrailerTest : public ::testing::Test {
 protected:
-    using PacketType = vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC,
-                                               vrtio::Trailer::included, 128>;
+    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC,
+                                               vrtigo::Trailer::included, 128>;
 
     std::vector<uint8_t> buffer;
 
@@ -280,7 +280,7 @@ TEST_F(TrailerTest, UserDefined0_DirectAccess) {
 TEST_F(TrailerTest, Builder_ContextPacketCount) {
     PacketType packet(buffer.data());
 
-    vrtio::TrailerBuilder().context_packet_count(25).apply(packet.trailer());
+    vrtigo::TrailerBuilder().context_packet_count(25).apply(packet.trailer());
 
     ASSERT_TRUE(packet.trailer().context_packet_count().has_value());
     EXPECT_EQ(*packet.trailer().context_packet_count(), 25);
@@ -289,7 +289,7 @@ TEST_F(TrailerTest, Builder_ContextPacketCount) {
 TEST_F(TrailerTest, Builder_NamedIndicators) {
     PacketType packet(buffer.data());
 
-    vrtio::TrailerBuilder().calibrated_time(true).valid_data(true).reference_lock(false).apply(
+    vrtigo::TrailerBuilder().calibrated_time(true).valid_data(true).reference_lock(false).apply(
         packet.trailer());
 
     ASSERT_TRUE(packet.trailer().calibrated_time().has_value());
@@ -305,7 +305,7 @@ TEST_F(TrailerTest, Builder_NamedIndicators) {
 TEST_F(TrailerTest, Builder_SampleFrameAndUserDefined) {
     PacketType packet(buffer.data());
 
-    vrtio::TrailerBuilder()
+    vrtigo::TrailerBuilder()
         .sample_frame_1(true)
         .sample_frame_0(false)
         .user_defined_1(true)
@@ -321,7 +321,7 @@ TEST_F(TrailerTest, Builder_SampleFrameAndUserDefined) {
 TEST_F(TrailerTest, Builder_ComplexTrailer) {
     PacketType packet(buffer.data());
 
-    vrtio::TrailerBuilder()
+    vrtigo::TrailerBuilder()
         .context_packet_count(10)
         .calibrated_time(true)
         .valid_data(true)
@@ -346,7 +346,7 @@ TEST_F(TrailerTest, Builder_ComplexTrailer) {
 }
 
 TEST_F(TrailerTest, Builder_ValueMethod) {
-    uint32_t trailer_word = vrtio::TrailerBuilder().calibrated_time(true).valid_data(true).value();
+    uint32_t trailer_word = vrtigo::TrailerBuilder().calibrated_time(true).valid_data(true).value();
 
     // Should have enable bits 31,30 and indicator bits 19,18
     EXPECT_TRUE(trailer_word & (1U << 31));
@@ -363,7 +363,7 @@ TEST_F(TrailerTest, Builder_FromView) {
     packet.trailer().set_context_packet_count(42);
 
     // Copy to builder and modify
-    auto new_trailer = vrtio::TrailerBuilder().from_view(packet.trailer()).valid_data(true).value();
+    auto new_trailer = vrtigo::TrailerBuilder().from_view(packet.trailer()).valid_data(true).value();
 
     // Should have original values plus new one
     PacketType packet2(buffer.data());

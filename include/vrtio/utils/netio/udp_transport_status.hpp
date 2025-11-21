@@ -1,11 +1,11 @@
 #pragma once
 
-#include "vrtio/types.hpp"
+#include "vrtigo/types.hpp"
 
 #include <cstddef>
 #include <cstdint>
 
-namespace vrtio::utils::netio {
+namespace vrtigo::utils::netio {
 
 /**
  * @brief Status information for UDP datagram reception
@@ -118,4 +118,4 @@ constexpr const char* transport_state_string(UDPTransportStatus::State state) no
     }
 }
 
-} // namespace vrtio::utils::netio
+} // namespace vrtigo::utils::netio

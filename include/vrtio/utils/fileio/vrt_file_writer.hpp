@@ -3,18 +3,18 @@
 
 #pragma once
 
-#include "vrtio/detail/packet_concepts.hpp"
-#include "vrtio/detail/packet_variant.hpp"
-#include "vrtio/utils/detail/writer_concepts.hpp"
-#include "vrtio/utils/fileio/raw_vrt_file_writer.hpp"
-#include "vrtio/utils/fileio/writer_status.hpp"
+#include "vrtigo/detail/packet_concepts.hpp"
+#include "vrtigo/detail/packet_variant.hpp"
+#include "vrtigo/utils/detail/writer_concepts.hpp"
+#include "vrtigo/utils/fileio/raw_vrt_file_writer.hpp"
+#include "vrtigo/utils/fileio/writer_status.hpp"
 
 #include <variant>
 
 #include <cerrno>
 #include <cstddef>
 
-namespace vrtio::utils::fileio {
+namespace vrtigo::utils::fileio {
 
 /**
  * @brief High-level VRT file writer with type safety
@@ -93,9 +93,9 @@ public:
                 // InvalidPacket already handled above
                 if constexpr (std::is_same_v<T, InvalidPacket>) {
                     return false; // Should never reach here
-                } else if constexpr (std::is_same_v<T, vrtio::RuntimeDataPacket>) {
+                } else if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
                     return this->write_packet_impl(pkt);
-                } else if constexpr (std::is_same_v<T, vrtio::RuntimeContextPacket>) {
+                } else if constexpr (std::is_same_v<T, vrtigo::RuntimeContextPacket>) {
                     // RuntimeContextPacket uses context_buffer() instead of as_bytes()
                     std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.packet_size_bytes()};
                     return this->raw_writer_.write_packet(bytes);
@@ -119,7 +119,7 @@ public:
      * @param packet The data packet to write
      * @return true on success, false on error
      */
-    bool write_packet(const vrtio::RuntimeDataPacket& packet) noexcept {
+    bool write_packet(const vrtigo::RuntimeDataPacket& packet) noexcept {
         bool result = write_packet_impl(packet);
         if (result) {
             high_level_status_ = WriterStatus::ready;
@@ -133,7 +133,7 @@ public:
      * @param packet The context packet to write
      * @return true on success, false on error
      */
-    bool write_packet(const vrtio::RuntimeContextPacket& packet) noexcept {
+    bool write_packet(const vrtigo::RuntimeContextPacket& packet) noexcept {
         // RuntimeContextPacket uses context_buffer() instead of as_bytes()
         std::span<const uint8_t> bytes{packet.context_buffer(), packet.packet_size_bytes()};
         bool result = raw_writer_.write_packet(bytes);
@@ -154,7 +154,7 @@ public:
      * @return true on success, false on error
      */
     template <typename PacketType>
-        requires vrtio::CompileTimePacket<PacketType>
+        requires vrtigo::CompileTimePacket<PacketType>
     bool write_packet(const PacketType& packet) noexcept {
         auto bytes = packet.as_bytes();
         bool result = raw_writer_.write_packet(bytes);
@@ -300,4 +300,4 @@ private:
     WriterStatus high_level_status_;              ///< High-level validation status
 };
 
-} // namespace vrtio::utils::fileio
+} // namespace vrtigo::utils::fileio

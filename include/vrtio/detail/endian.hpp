@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-namespace vrtio {
+namespace vrtigo {
 namespace detail {
 
 // Platform endianness detection
@@ -65,4 +65,4 @@ constexpr uint64_t network_to_host64(uint64_t value) noexcept {
 }
 
 } // namespace detail
-} // namespace vrtio
+} // namespace vrtigo

@@ -1,7 +1,7 @@
 #include <array>
 
 #include <gtest/gtest.h>
-#include <vrtio.hpp>
+#include <vrtigo.hpp>
 
 // Test fixture for builder tests
 class BuilderTest : public ::testing::Test {
@@ -17,14 +17,14 @@ protected:
 // Test 1: Basic builder usage
 TEST_F(BuilderTest, BasicBuilder) {
     using PacketType =
-        vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC, vrtio::Trailer::none, 256>;
+        vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC, vrtigo::Trailer::none, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
     std::array<uint8_t, 1024> payload;
     fill_payload(payload);
 
-    auto ts = vrtio::TimeStampUTC::from_components(1699000000, 0);
-    auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
+    auto ts = vrtigo::TimeStampUTC::from_components(1699000000, 0);
+    auto packet = vrtigo::PacketBuilder<PacketType>(buffer.data())
                       .stream_id(0x12345678)
                       .timestamp(ts)
                       .packet_count(5)
@@ -38,16 +38,16 @@ TEST_F(BuilderTest, BasicBuilder) {
 
 // Test 2: Fluent chaining
 TEST_F(BuilderTest, FluentChaining) {
-    using PacketType = vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC,
-                                               vrtio::Trailer::included, 128>;
+    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC,
+                                               vrtigo::Trailer::included, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
     // Single expression with all fields
-    auto trailer_cfg = vrtio::TrailerBuilder{}.clear().context_packet_count(1);
+    auto trailer_cfg = vrtigo::TrailerBuilder{}.clear().context_packet_count(1);
 
-    auto ts = vrtio::TimeStampUTC::from_components(1234567890, 500000000000ULL);
-    auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
+    auto ts = vrtigo::TimeStampUTC::from_components(1234567890, 500000000000ULL);
+    auto packet = vrtigo::PacketBuilder<PacketType>(buffer.data())
                       .stream_id(0xABCDEF00)
                       .timestamp(ts)
                       .trailer(trailer_cfg)
@@ -64,18 +64,18 @@ TEST_F(BuilderTest, FluentChaining) {
 }
 
 TEST_F(BuilderTest, TrailerBuilderValueObject) {
-    using PacketType = vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC,
-                                               vrtio::Trailer::included, 64>;
+    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC,
+                                               vrtigo::Trailer::included, 64>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
-    auto trailer_cfg = vrtio::TrailerBuilder{}
+    auto trailer_cfg = vrtigo::TrailerBuilder{}
                            .valid_data(true)
                            .calibrated_time(true)
                            .context_packet_count(7)
                            .reference_lock(true);
 
-    auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
+    auto packet = vrtigo::PacketBuilder<PacketType>(buffer.data())
                       .stream_id(0x0BADBEEF)
                       .trailer(trailer_cfg)
                       .packet_count(2)
@@ -88,19 +88,19 @@ TEST_F(BuilderTest, TrailerBuilderValueObject) {
 }
 
 TEST_F(BuilderTest, TrailerBuilderChaining) {
-    using PacketType = vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC,
-                                               vrtio::Trailer::included, 64>;
+    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC,
+                                               vrtigo::Trailer::included, 64>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
-    auto trailer_cfg = vrtio::TrailerBuilder{}
+    auto trailer_cfg = vrtigo::TrailerBuilder{}
                            .clear()
                            .valid_data(true)
                            .calibrated_time(true)
                            .context_packet_count(3)
                            .over_range(true);
 
-    auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
+    auto packet = vrtigo::PacketBuilder<PacketType>(buffer.data())
                       .stream_id(0x10203040)
                       .trailer(trailer_cfg)
                       .packet_count(4)
@@ -115,12 +115,12 @@ TEST_F(BuilderTest, TrailerBuilderChaining) {
 
 // Explicitly verify the legacy raw-literal setter remains available
 TEST_F(BuilderTest, RawTrailerLiteralStillSupported) {
-    using PacketType = vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC,
-                                               vrtio::Trailer::included, 32>;
+    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC,
+                                               vrtigo::Trailer::included, 32>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
-    auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
+    auto packet = vrtigo::PacketBuilder<PacketType>(buffer.data())
                       .stream_id(0x1234ABCD)
                       .trailer(0xA5A5A5A5)
                       .build();
@@ -131,7 +131,7 @@ TEST_F(BuilderTest, RawTrailerLiteralStillSupported) {
 // Test 3: Builder with span payload
 TEST_F(BuilderTest, BuilderWithSpan) {
     using PacketType =
-        vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::NoTimeStamp, vrtio::Trailer::none, 256>;
+        vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimeStamp, vrtigo::Trailer::none, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
     std::array<uint8_t, 1024> payload_data;
@@ -139,7 +139,7 @@ TEST_F(BuilderTest, BuilderWithSpan) {
 
     std::span<const uint8_t> payload_span(payload_data);
 
-    auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
+    auto packet = vrtigo::PacketBuilder<PacketType>(buffer.data())
                       .stream_id(0xCAFEBABE)
                       .payload(payload_span)
                       .build();
@@ -156,7 +156,7 @@ TEST_F(BuilderTest, BuilderWithSpan) {
 // Test 4: Builder with container payload
 TEST_F(BuilderTest, BuilderWithContainer) {
     using PacketType =
-        vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC, vrtio::Trailer::none, 128>;
+        vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC, vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
     std::vector<uint8_t> payload_vector(512);
@@ -164,8 +164,8 @@ TEST_F(BuilderTest, BuilderWithContainer) {
         payload_vector[i] = static_cast<uint8_t>((i * 3) & 0xFF);
     }
 
-    auto ts = vrtio::TimeStampUTC::from_components(1500000000, 0);
-    auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
+    auto ts = vrtigo::TimeStampUTC::from_components(1500000000, 0);
+    auto packet = vrtigo::PacketBuilder<PacketType>(buffer.data())
                       .stream_id(0xDEADBEEF)
                       .timestamp(ts)
                       .payload(payload_vector)
@@ -182,14 +182,14 @@ TEST_F(BuilderTest, BuilderWithContainer) {
 
 // Test 5: Partial builder (not all optional fields)
 TEST_F(BuilderTest, PartialBuilder) {
-    using PacketType = vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC,
-                                               vrtio::Trailer::included, 256>;
+    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC,
+                                               vrtigo::Trailer::included, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
     // Only set some fields
-    auto ts = vrtio::TimeStampUTC::from_components(1600000000, 0);
-    auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
+    auto ts = vrtigo::TimeStampUTC::from_components(1600000000, 0);
+    auto packet = vrtigo::PacketBuilder<PacketType>(buffer.data())
                       .stream_id(0x11111111)
                       .timestamp(ts)
                       // Skip trailer
@@ -205,11 +205,11 @@ TEST_F(BuilderTest, PartialBuilder) {
 // Test 6: Builder returns reference (no copy)
 TEST_F(BuilderTest, BuilderReturnsReference) {
     using PacketType =
-        vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::NoTimeStamp, vrtio::Trailer::none, 128>;
+        vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimeStamp, vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
-    auto packet1 = vrtio::PacketBuilder<PacketType>(buffer.data()).stream_id(0x12345678).build();
+    auto packet1 = vrtigo::PacketBuilder<PacketType>(buffer.data()).stream_id(0x12345678).build();
 
     // Modify through reference
     packet1.set_stream_id(0x87654321);
@@ -224,12 +224,12 @@ TEST_F(BuilderTest, BuilderReturnsReference) {
 // Test 7: as_bytes() method
 TEST_F(BuilderTest, AsBytesMethod) {
     using PacketType =
-        vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC, vrtio::Trailer::none, 128>;
+        vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC, vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
-    auto ts = vrtio::TimeStampUTC::from_components(1700000000, 0);
-    vrtio::PacketBuilder<PacketType> builder(buffer.data());
+    auto ts = vrtigo::TimeStampUTC::from_components(1700000000, 0);
+    vrtigo::PacketBuilder<PacketType> builder(buffer.data());
     builder.stream_id(0xFEEDFACE).timestamp(ts);
 
     // Get bytes from builder
@@ -242,12 +242,12 @@ TEST_F(BuilderTest, AsBytesMethod) {
 // Test 8: make_builder helper
 TEST_F(BuilderTest, MakeBuilderHelper) {
     using PacketType =
-        vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC, vrtio::Trailer::none, 256>;
+        vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC, vrtigo::Trailer::none, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
-    auto ts = vrtio::TimeStampUTC::from_components(1800000000, 0);
-    auto builder = vrtio::make_builder<PacketType>(buffer.data());
+    auto ts = vrtigo::TimeStampUTC::from_components(1800000000, 0);
+    auto builder = vrtigo::make_builder<PacketType>(buffer.data());
     auto packet = builder.stream_id(0x99999999).timestamp(ts).build();
 
     EXPECT_EQ(packet.stream_id(), 0x99999999);
@@ -256,15 +256,15 @@ TEST_F(BuilderTest, MakeBuilderHelper) {
 
 // Test 9: Builder without optional fields (Type 0)
 TEST_F(BuilderTest, BuilderType0NoStream) {
-    using PacketType = vrtio::SignalDataPacketNoId<vrtio::NoClassId, vrtio::TimeStampUTC,
-                                                   vrtio::Trailer::none, 128>;
+    using PacketType = vrtigo::SignalDataPacketNoId<vrtigo::NoClassId, vrtigo::TimeStampUTC,
+                                                   vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
     // Builder for type 0 - no stream_id() method
-    auto ts = vrtio::TimeStampUTC::from_components(1234567890, 0);
+    auto ts = vrtigo::TimeStampUTC::from_components(1234567890, 0);
     auto packet =
-        vrtio::PacketBuilder<PacketType>(buffer.data()).timestamp(ts).packet_count(3).build();
+        vrtigo::PacketBuilder<PacketType>(buffer.data()).timestamp(ts).packet_count(3).build();
 
     EXPECT_EQ(packet.timestamp().seconds(), 1234567890);
     EXPECT_EQ(packet.packet_count(), 3);
@@ -274,19 +274,19 @@ TEST_F(BuilderTest, BuilderType0NoStream) {
 // Test 10: Multiple builders on different buffers
 TEST_F(BuilderTest, MultipleBuilders) {
     using PacketType =
-        vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC, vrtio::Trailer::none, 128>;
+        vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC, vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer1;
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer2;
 
-    auto ts1 = vrtio::TimeStampUTC::from_components(1000000000, 0);
-    auto packet1 = vrtio::PacketBuilder<PacketType>(buffer1.data())
+    auto ts1 = vrtigo::TimeStampUTC::from_components(1000000000, 0);
+    auto packet1 = vrtigo::PacketBuilder<PacketType>(buffer1.data())
                        .stream_id(0x11111111)
                        .timestamp(ts1)
                        .build();
 
-    auto ts2 = vrtio::TimeStampUTC::from_components(2000000000, 0);
-    auto packet2 = vrtio::PacketBuilder<PacketType>(buffer2.data())
+    auto ts2 = vrtigo::TimeStampUTC::from_components(2000000000, 0);
+    auto packet2 = vrtigo::PacketBuilder<PacketType>(buffer2.data())
                        .stream_id(0x22222222)
                        .timestamp(ts2)
                        .build();
@@ -306,11 +306,11 @@ TEST_F(BuilderTest, MultipleBuilders) {
 // Test 11: Builder build() method returns reference
 TEST_F(BuilderTest, BuilderBuildMethod) {
     using PacketType =
-        vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::NoTimeStamp, vrtio::Trailer::none, 128>;
+        vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimeStamp, vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
-    vrtio::PacketBuilder<PacketType> builder(buffer.data());
+    vrtigo::PacketBuilder<PacketType> builder(buffer.data());
     builder.stream_id(0xAAAAAAAA);
 
     // Build and get packet reference

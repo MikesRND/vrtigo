@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
-#include <vrtio.hpp>
+#include <vrtigo.hpp>
 
-using namespace vrtio;
-using namespace vrtio::field;
+using namespace vrtigo;
+using namespace vrtigo::field;
 
 // Test that SignalPacket satisfies FixedPacketLike concept
 TEST(PacketConceptsTest, SignalPacketIsFixedPacketLike) {

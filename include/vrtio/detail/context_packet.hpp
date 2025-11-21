@@ -3,9 +3,9 @@
 #include <span>
 
 #include <cstring>
-#include <vrtio/class_id.hpp>
-#include <vrtio/field_tags.hpp>
-#include <vrtio/types.hpp>
+#include <vrtigo/class_id.hpp>
+#include <vrtigo/field_tags.hpp>
+#include <vrtigo/types.hpp>
 
 #include "cif.hpp"
 #include "endian.hpp"
@@ -17,7 +17,7 @@
 #include "prologue.hpp"
 #include "timestamp_traits.hpp"
 
-namespace vrtio {
+namespace vrtigo {
 
 // Base compile-time context packet template (low-level API)
 // Creates packets with known structure at compile time using CIF bitmasks
@@ -316,7 +316,7 @@ public:
 // Automatically computes CIF bitmasks from field tags
 //
 // Example usage:
-//     using namespace vrtio::field;
+//     using namespace vrtigo::field;
 //     using MyPacket = ContextPacket<NoTimeStamp, NoClassId,
 //                                     bandwidth, sample_rate, gain>;
 //
@@ -338,4 +338,4 @@ public:
     using Base::Base;
 };
 
-} // namespace vrtio
+} // namespace vrtigo

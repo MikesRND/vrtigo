@@ -4,8 +4,8 @@
 #include <span>
 
 #include <cstring>
-#include <vrtio/class_id.hpp>
-#include <vrtio/types.hpp>
+#include <vrtigo/class_id.hpp>
+#include <vrtigo/types.hpp>
 
 #include "cif.hpp"
 #include "endian.hpp"
@@ -14,7 +14,7 @@
 #include "packet_header_accessor.hpp"
 #include "variable_field_dispatch.hpp"
 
-namespace vrtio {
+namespace vrtigo {
 
 /**
  * Runtime parser for context packets
@@ -515,4 +515,4 @@ public:
     }
 };
 
-} // namespace vrtio
+} // namespace vrtigo

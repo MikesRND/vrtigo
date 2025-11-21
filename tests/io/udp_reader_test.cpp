@@ -8,13 +8,13 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <vrtio/utils/netio/udp_vrt_reader.hpp>
+#include <vrtigo/utils/netio/udp_vrt_reader.hpp>
 
 #include "test_utils.hpp"
 
-using namespace vrtio;
-using namespace vrtio::utils::netio;
-// PacketVariant and related types are now in vrtio namespace
+using namespace vrtigo;
+using namespace vrtigo::utils::netio;
+// PacketVariant and related types are now in vrtigo namespace
 
 // =============================================================================
 // RAII Thread Guard

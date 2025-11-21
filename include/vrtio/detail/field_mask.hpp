@@ -3,9 +3,9 @@
 #include <tuple>
 
 #include <cstdint>
-#include <vrtio/field_tags.hpp>
+#include <vrtigo/field_tags.hpp>
 
-namespace vrtio::detail {
+namespace vrtigo::detail {
 
 // Helper to add a single field tag to the appropriate CIF mask
 template <auto FieldTag>
@@ -59,4 +59,4 @@ constexpr uint32_t field_bitmask() {
     return 1U << decltype(FieldTag)::bit;
 }
 
-} // namespace vrtio::detail
+} // namespace vrtigo::detail

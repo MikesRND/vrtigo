@@ -10,7 +10,7 @@
 #include "../detail/iteration_helpers.hpp"
 #include "raw_vrt_file_reader.hpp"
 
-namespace vrtio::utils::fileio {
+namespace vrtigo::utils::fileio {
 
 /**
  * @brief VRT file reader with automatic validation and type-safe packet views
@@ -48,11 +48,11 @@ namespace vrtio::utils::fileio {
  * while (auto pkt = reader.read_next_packet()) {
  *     std::visit([](auto&& p) {
  *         using T = std::decay_t<decltype(p)>;
- *         if constexpr (std::is_same_v<T, vrtio::RuntimeDataPacket>) {
+ *         if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
  *             auto payload = p.payload();
  *             // Process data...
  *         }
- *         else if constexpr (std::is_same_v<T, vrtio::RuntimeContextPacket>) {
+ *         else if constexpr (std::is_same_v<T, vrtigo::RuntimeContextPacket>) {
  *             if (auto bw = p.bandwidth()) {
  *                 std::cout << "BW: " << bw->raw_value() << " Hz\n";
  *             }
@@ -61,7 +61,7 @@ namespace vrtio::utils::fileio {
  * }
  *
  * // Or use filtered iteration
- * reader.for_each_data_packet([](const vrtio::RuntimeDataPacket& pkt) {
+ * reader.for_each_data_packet([](const vrtigo::RuntimeDataPacket& pkt) {
  *     // Only valid data packets here
  *     return true; // continue
  * });
@@ -111,7 +111,7 @@ public:
      * @note The returned view references the internal reader buffer and is valid
      *       until the next read operation.
      */
-    std::optional<vrtio::PacketVariant> read_next_packet() noexcept {
+    std::optional<vrtigo::PacketVariant> read_next_packet() noexcept {
         auto bytes = reader_.read_next_span();
 
         // Check for EOF
@@ -122,15 +122,15 @@ public:
         // Check for I/O error (not EOF) - convert to InvalidPacket
         if (bytes.empty()) {
             const auto& err = reader_.last_error();
-            auto decoded = vrtio::detail::decode_header(err.header);
-            return vrtio::PacketVariant{vrtio::InvalidPacket{
+            auto decoded = vrtigo::detail::decode_header(err.header);
+            return vrtigo::PacketVariant{vrtigo::InvalidPacket{
                 err.error, err.type, decoded,
                 std::span<const uint8_t>() // Empty span since read failed
             }};
         }
 
         // Parse and validate the packet
-        return vrtio::detail::parse_packet(bytes);
+        return vrtigo::detail::parse_packet(bytes);
     }
 
     /**
@@ -164,13 +164,13 @@ public:
      * Processes only valid data packets (types 0-3), skipping context packets
      * and invalid packets. The callback receives a validated RuntimeDataPacket.
      *
-     * @tparam Callback Function type with signature: bool(const vrtio::RuntimeDataPacket&)
+     * @tparam Callback Function type with signature: bool(const vrtigo::RuntimeDataPacket&)
      * @param callback Function called for each data packet. Return false to stop.
      * @return Number of data packets processed
      *
      * Example:
      * @code
-     * reader.for_each_data_packet([](const vrtio::RuntimeDataPacket& pkt) {
+     * reader.for_each_data_packet([](const vrtigo::RuntimeDataPacket& pkt) {
      *     auto payload = pkt.payload();
      *     process_signal_data(payload);
      *     return true;
@@ -188,13 +188,13 @@ public:
      * Processes only valid context packets (types 4-5), skipping data packets
      * and invalid packets. The callback receives a validated RuntimeContextPacket.
      *
-     * @tparam Callback Function type with signature: bool(const vrtio::RuntimeContextPacket&)
+     * @tparam Callback Function type with signature: bool(const vrtigo::RuntimeContextPacket&)
      * @param callback Function called for each context packet. Return false to stop.
      * @return Number of context packets processed
      *
      * Example:
      * @code
-     * reader.for_each_context_packet([](const vrtio::RuntimeContextPacket& pkt) {
+     * reader.for_each_context_packet([](const vrtigo::RuntimeContextPacket& pkt) {
      *     if (auto bw = pkt.bandwidth()) {
      *         std::cout << "Bandwidth: " << bw->raw_value() << " Hz\n";
      *     }
@@ -277,4 +277,4 @@ private:
     RawVRTFileReader<MaxPacketWords> reader_; ///< Underlying low-level reader
 };
 
-} // namespace vrtio::utils::fileio
+} // namespace vrtigo::utils::fileio

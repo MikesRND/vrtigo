@@ -15,7 +15,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-namespace vrtio::utils::fileio {
+namespace vrtigo::utils::fileio {
 
 /**
  * @brief Low-level VRT file writer with internal buffering
@@ -285,4 +285,4 @@ private:
     int last_errno_;                                ///< Last error number
 };
 
-} // namespace vrtio::utils::fileio
+} // namespace vrtigo::utils::fileio

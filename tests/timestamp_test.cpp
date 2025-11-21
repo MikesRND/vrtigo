@@ -2,9 +2,9 @@
 #include <thread>
 
 #include <gtest/gtest.h>
-#include <vrtio.hpp>
+#include <vrtigo.hpp>
 
-using namespace vrtio;
+using namespace vrtigo;
 
 // Test fixture for TimeStamp tests
 class TimeStampTest : public ::testing::Test {
@@ -262,7 +262,7 @@ TEST_F(TimeStampTest, MaxSafeTimestampDifference) {
 
 // Integration with SignalPacket tests
 TEST_F(TimeStampTest, PacketIntegration) {
-    using PacketType = SignalDataPacket<vrtio::NoClassId, TimeStampUTC, vrtio::Trailer::none, 256>;
+    using PacketType = SignalDataPacket<vrtigo::NoClassId, TimeStampUTC, vrtigo::Trailer::none, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
     PacketType packet(buffer.data());
@@ -278,7 +278,7 @@ TEST_F(TimeStampTest, PacketIntegration) {
 }
 
 TEST_F(TimeStampTest, BuilderIntegration) {
-    using PacketType = SignalDataPacket<vrtio::NoClassId, TimeStampUTC, vrtio::Trailer::none, 256>;
+    using PacketType = SignalDataPacket<vrtigo::NoClassId, TimeStampUTC, vrtigo::Trailer::none, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
@@ -316,8 +316,8 @@ TEST_F(TimeStampTest, GPSTimestampPacketStructure) {
     // GPS timestamps can be used to configure packet structure
     // even though the timestamp type itself is not fully implemented
     using GPSPacket =
-        SignalDataPacket<vrtio::NoClassId, TimeStamp<TsiType::gps, TsfType::real_time>,
-                         vrtio::Trailer::none, 256>;
+        SignalDataPacket<vrtigo::NoClassId, TimeStamp<TsiType::gps, TsfType::real_time>,
+                         vrtigo::Trailer::none, 256>;
 
     // Verify the packet has timestamp support
     static_assert(GPSPacket::has_timestamp);

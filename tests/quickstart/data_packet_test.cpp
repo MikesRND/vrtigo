@@ -8,7 +8,7 @@
 #include <array>
 
 #include <gtest/gtest.h>
-#include <vrtio.hpp>
+#include <vrtigo.hpp>
 
 TEST(QuickstartSnippet, CreateDataPacket) {
     // [QUICKSTART-DESC]
@@ -24,9 +24,9 @@ TEST(QuickstartSnippet, CreateDataPacket) {
     // Create a VRT Signal Data Packet with timestamp and payload
 
     // Define packet type with UTC timestamp
-    using PacketType = vrtio::SignalDataPacket<vrtio::NoClassId,     // No class ID
-                                               vrtio::TimeStampUTC,  // Include UTC timestamp
-                                               vrtio::Trailer::none, // No trailer
+    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId,     // No class ID
+                                               vrtigo::TimeStampUTC,  // Include UTC timestamp
+                                               vrtigo::Trailer::none, // No trailer
                                                2                     // Max payload words (8 bytes)
                                                >;
 
@@ -37,9 +37,9 @@ TEST(QuickstartSnippet, CreateDataPacket) {
     std::array<uint8_t, 8> payload{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
 
     // Build packet with current timestamp and payload
-    auto packet = vrtio::PacketBuilder<PacketType>(buffer.data())
+    auto packet = vrtigo::PacketBuilder<PacketType>(buffer.data())
                       .stream_id(0x12345678)                 // Set stream identifier
-                      .timestamp(vrtio::TimeStampUTC::now()) // Set current time
+                      .timestamp(vrtigo::TimeStampUTC::now()) // Set current time
                       .packet_count(1)                       // First packet in stream
                       .payload(payload)                      // Attach payload
                       .build();

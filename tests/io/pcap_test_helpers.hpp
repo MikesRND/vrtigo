@@ -7,10 +7,10 @@
 
 #include <cstdint>
 #include <cstring>
-#include <vrtio/detail/endian.hpp>
-#include <vrtio/vrtio_utils.hpp>
+#include <vrtigo/detail/endian.hpp>
+#include <vrtigo/vrtigo_utils.hpp>
 
-namespace vrtio::utils::pcapio::test {
+namespace vrtigo::utils::pcapio::test {
 
 // =============================================================================
 // VRT Packet Creation Helpers
@@ -39,13 +39,13 @@ inline std::vector<uint8_t> create_simple_data_packet(uint32_t stream_id,
                       (packet_size_words & 0xFFFF); // Packet size
 
     // Convert to network byte order (big-endian)
-    header = vrtio::detail::host_to_network32(header);
+    header = vrtigo::detail::host_to_network32(header);
     packet.resize(packet_size_words * 4);
 
     std::memcpy(packet.data(), &header, 4);
 
     // Stream ID (network byte order)
-    uint32_t sid = vrtio::detail::host_to_network32(stream_id);
+    uint32_t sid = vrtigo::detail::host_to_network32(stream_id);
     std::memcpy(packet.data() + 4, &sid, 4);
 
     // Payload (zeros for simplicity)
@@ -62,8 +62,8 @@ inline std::vector<uint8_t> create_simple_data_packet(uint32_t stream_id,
  * @param bytes Vector of packet bytes
  * @return PacketVariant (RuntimeDataPacket, RuntimeContextPacket, or InvalidPacket)
  */
-inline vrtio::PacketVariant parse_test_packet(const std::vector<uint8_t>& bytes) {
-    return vrtio::detail::parse_packet(std::span<const uint8_t>(bytes.data(), bytes.size()));
+inline vrtigo::PacketVariant parse_test_packet(const std::vector<uint8_t>& bytes) {
+    return vrtigo::detail::parse_packet(std::span<const uint8_t>(bytes.data(), bytes.size()));
 }
 
 // =============================================================================
@@ -132,12 +132,12 @@ private:
         };
 
         if (big_endian_) {
-            header.version_major = vrtio::detail::byteswap16(header.version_major);
-            header.version_minor = vrtio::detail::byteswap16(header.version_minor);
-            header.thiszone = vrtio::detail::byteswap32(header.thiszone);
-            header.sigfigs = vrtio::detail::byteswap32(header.sigfigs);
-            header.snaplen = vrtio::detail::byteswap32(header.snaplen);
-            header.network = vrtio::detail::byteswap32(header.network);
+            header.version_major = vrtigo::detail::byteswap16(header.version_major);
+            header.version_minor = vrtigo::detail::byteswap16(header.version_minor);
+            header.thiszone = vrtigo::detail::byteswap32(header.thiszone);
+            header.sigfigs = vrtigo::detail::byteswap32(header.sigfigs);
+            header.snaplen = vrtigo::detail::byteswap32(header.snaplen);
+            header.network = vrtigo::detail::byteswap32(header.network);
         }
 
         file.write(reinterpret_cast<const char*>(&header), sizeof(header));
@@ -157,10 +157,10 @@ private:
         };
 
         if (big_endian_) {
-            record_header.ts_sec = vrtio::detail::byteswap32(record_header.ts_sec);
-            record_header.ts_usec = vrtio::detail::byteswap32(record_header.ts_usec);
-            record_header.incl_len = vrtio::detail::byteswap32(record_header.incl_len);
-            record_header.orig_len = vrtio::detail::byteswap32(record_header.orig_len);
+            record_header.ts_sec = vrtigo::detail::byteswap32(record_header.ts_sec);
+            record_header.ts_usec = vrtigo::detail::byteswap32(record_header.ts_usec);
+            record_header.incl_len = vrtigo::detail::byteswap32(record_header.incl_len);
+            record_header.orig_len = vrtigo::detail::byteswap32(record_header.orig_len);
         }
 
         file.write(reinterpret_cast<const char*>(&record_header), sizeof(record_header));
@@ -176,4 +176,4 @@ private:
     }
 };
 
-} // namespace vrtio::utils::pcapio::test
+} // namespace vrtigo::utils::pcapio::test

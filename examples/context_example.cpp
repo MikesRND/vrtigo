@@ -1,4 +1,4 @@
-// Context Packet Example for VRTIO
+// Context Packet Example for VRTIGO
 //
 // Demonstrates creating and parsing VRT context packets using both
 // compile-time templates and runtime parsing.
@@ -8,10 +8,10 @@
 #include <iostream>
 
 #include <cstring>
-#include <vrtio.hpp>
+#include <vrtigo.hpp>
 
-using namespace vrtio;
-using namespace vrtio::field;
+using namespace vrtigo;
+using namespace vrtigo::field;
 
 // Example 1: Creating a context packet at compile time
 void example_compile_time_context() {
@@ -233,7 +233,7 @@ void example_unsupported_rejection() {
 }
 
 int main() {
-    std::cout << "VRTIO Context Packet Examples\n";
+    std::cout << "VRTIGO Context Packet Examples\n";
     std::cout << "=============================\n";
 
     example_compile_time_context();

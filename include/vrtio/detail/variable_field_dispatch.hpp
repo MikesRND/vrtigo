@@ -6,7 +6,7 @@
 #include "cif.hpp"
 #include "field_traits.hpp"
 
-namespace vrtio::detail {
+namespace vrtigo::detail {
 
 /// Dispatch to appropriate FieldTraits::compute_size_words for variable fields
 /// Returns SIZE_MAX if the field is not a known variable field
@@ -134,4 +134,4 @@ inline size_t calculate_field_offset_runtime(uint32_t cif0, uint32_t cif1, uint3
     return base_offset_bytes + (offset_words * 4);
 }
 
-} // namespace vrtio::detail
+} // namespace vrtigo::detail

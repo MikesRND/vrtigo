@@ -6,9 +6,9 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <vrtio/types.hpp>
+#include <vrtigo/types.hpp>
 
-namespace vrtio {
+namespace vrtigo {
 
 /**
  * Base concept - all packet types must satisfy this
@@ -237,4 +237,4 @@ concept HasPacketCount = requires(T& pkt) {
     { std::as_const(pkt).packet_count() } -> std::same_as<uint8_t>;
 };
 
-} // namespace vrtio
+} // namespace vrtigo

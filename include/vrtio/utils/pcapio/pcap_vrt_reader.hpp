@@ -20,7 +20,7 @@
 #include "../detail/iteration_helpers.hpp"
 #include "pcap_common.hpp"
 
-namespace vrtio::utils::pcapio {
+namespace vrtigo::utils::pcapio {
 
 /**
  * @brief Read VRT packets from PCAP capture files
@@ -182,7 +182,7 @@ public:
      * @note Malformed packets (too small, read errors) are skipped and reading continues.
      *       Only true EOF returns std::nullopt.
      */
-    std::optional<vrtio::PacketVariant> read_next_packet() noexcept {
+    std::optional<vrtigo::PacketVariant> read_next_packet() noexcept {
         while (true) {
             // Check for EOF
             if (current_offset_ >= file_size_) {
@@ -243,7 +243,7 @@ public:
 
             // Validate and return VRT packet
             auto bytes = std::span<const uint8_t>(vrt_buffer_.data(), vrt_size);
-            return vrtio::detail::parse_packet(bytes);
+            return vrtigo::detail::parse_packet(bytes);
         }
     }
 
@@ -268,7 +268,7 @@ public:
      * Processes only valid data packets (types 0-3), skipping context packets
      * and invalid packets. The callback receives a validated RuntimeDataPacket.
      *
-     * @tparam Callback Function type with signature: bool(const vrtio::RuntimeDataPacket&)
+     * @tparam Callback Function type with signature: bool(const vrtigo::RuntimeDataPacket&)
      * @param callback Function called for each data packet. Return false to stop.
      * @return Number of data packets processed
      */
@@ -283,7 +283,7 @@ public:
      * Processes only valid context packets (types 4-5), skipping data packets
      * and invalid packets. The callback receives a validated RuntimeContextPacket.
      *
-     * @tparam Callback Function type with signature: bool(const vrtio::RuntimeContextPacket&)
+     * @tparam Callback Function type with signature: bool(const vrtigo::RuntimeContextPacket&)
      * @param callback Function called for each context packet. Return false to stop.
      * @return Number of context packets processed
      */
@@ -386,8 +386,8 @@ private:
 
         // Byte-swap all fields from big-endian to host (little-endian)
         PCAPRecordHeader swapped{
-            vrtio::detail::byteswap32(header.ts_sec), vrtio::detail::byteswap32(header.ts_usec),
-            vrtio::detail::byteswap32(header.incl_len), vrtio::detail::byteswap32(header.orig_len)};
+            vrtigo::detail::byteswap32(header.ts_sec), vrtigo::detail::byteswap32(header.ts_usec),
+            vrtigo::detail::byteswap32(header.incl_len), vrtigo::detail::byteswap32(header.orig_len)};
         return swapped;
     }
 
@@ -422,4 +422,4 @@ private:
     }
 };
 
-} // namespace vrtio::utils::pcapio
+} // namespace vrtigo::utils::pcapio

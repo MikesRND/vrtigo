@@ -1,20 +1,20 @@
-// Basic usage example for VRTIO
+// Basic usage example for VRTIGO
 
 #include <array>
 #include <iostream>
 
-#include <vrtio.hpp>
+#include <vrtigo.hpp>
 
 int main() {
-    std::cout << "VRTIO - Basic Usage Example\n";
+    std::cout << "VRTIGO - Basic Usage Example\n";
     std::cout << "===================================\n\n";
 
     // Example 1: Creating a signal packet with builder
     {
         std::cout << "Example 1: Creating a signal packet\n";
 
-        using Packet = vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::TimeStampUTC,
-                                               vrtio::Trailer::none, 128>;
+        using Packet = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC,
+                                               vrtigo::Trailer::none, 128>;
         alignas(4) std::array<uint8_t, Packet::size_bytes> buffer;
 
         // Prepare payload data
@@ -24,8 +24,8 @@ int main() {
         }
 
         // Use builder pattern for convenient construction
-        auto ts = vrtio::TimeStampUTC::now();
-        auto packet = vrtio::PacketBuilder<Packet>(buffer.data())
+        auto ts = vrtigo::TimeStampUTC::now();
+        auto packet = vrtigo::PacketBuilder<Packet>(buffer.data())
                           .stream_id(0x12345678)
                           .timestamp(ts)
                           .packet_count(1)
@@ -42,7 +42,7 @@ int main() {
         std::cout << "Example 2: Parsing data\n";
 
         using Packet =
-            vrtio::SignalDataPacket<vrtio::NoClassId, vrtio::NoTimeStamp, vrtio::Trailer::none, 64>;
+            vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimeStamp, vrtigo::Trailer::none, 64>;
         alignas(4) std::array<uint8_t, Packet::size_bytes> buffer;
 
         // Create test data
@@ -53,8 +53,8 @@ int main() {
 
         // MUST validate before accessing fields
         auto result = received.validate(buffer.size());
-        if (result != vrtio::ValidationError::none) {
-            std::cerr << "  Validation failed: " << vrtio::validation_error_string(result) << "\n";
+        if (result != vrtigo::ValidationError::none) {
+            std::cerr << "  Validation failed: " << vrtigo::validation_error_string(result) << "\n";
             return 1;
         }
 

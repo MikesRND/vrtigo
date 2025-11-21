@@ -1,16 +1,16 @@
-# Examples for VRTIO
+# Examples for VRTIGO
 
-include(${CMAKE_SOURCE_DIR}/cmake/VrtioBuild.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/VrtigoBuild.cmake)
 
-vrtio_add_example(basic_usage basic_usage.cpp)
-vrtio_add_example(trailer_example trailer_example.cpp)
-vrtio_add_example(timestamp_example timestamp_example.cpp)
-vrtio_add_example(context_example context_example.cpp)
-vrtio_add_example(file_parsing_example file_parsing_example.cpp)
+vrtigo_add_example(basic_usage basic_usage.cpp)
+vrtigo_add_example(trailer_example trailer_example.cpp)
+vrtigo_add_example(timestamp_example timestamp_example.cpp)
+vrtigo_add_example(context_example context_example.cpp)
+vrtigo_add_example(file_parsing_example file_parsing_example.cpp)
 
 # UDP reader example (Linux/POSIX only)
 if(UNIX)
-    vrtio_add_example(udp_reader_example udp_reader_example.cpp)
+    vrtigo_add_example(udp_reader_example udp_reader_example.cpp)
 endif()
 
 # Add custom targets to run examples

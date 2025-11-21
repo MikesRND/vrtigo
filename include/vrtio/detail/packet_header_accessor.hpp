@@ -3,13 +3,13 @@
 #include <variant>
 
 #include <cstdint>
-#include <vrtio/types.hpp>
+#include <vrtigo/types.hpp>
 
 #include "header.hpp"
 #include "header_decode.hpp"
 #include "header_indicators.hpp"
 
-namespace vrtio::detail {
+namespace vrtigo::detail {
 
 /**
  * @brief Read-only accessor for VRT packet header word (first 32 bits)
@@ -250,10 +250,10 @@ public:
     // If needed, they can be added following the same pattern.
 };
 
-} // namespace vrtio::detail
+} // namespace vrtigo::detail
 
 // Public aliases
-namespace vrtio {
+namespace vrtigo {
 using HeaderView = detail::HeaderView;
 using MutableHeaderView = detail::MutableHeaderView;
-} // namespace vrtio
+} // namespace vrtigo

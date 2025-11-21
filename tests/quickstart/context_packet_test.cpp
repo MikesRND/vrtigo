@@ -8,10 +8,10 @@
 #include <array>
 
 #include <gtest/gtest.h>
-#include <vrtio.hpp>
+#include <vrtigo.hpp>
 
 TEST(QuickstartSnippet, CreateContextPacket) {
-    using namespace vrtio::field; // For convenient field access
+    using namespace vrtigo::field; // For convenient field access
 
     // [QUICKSTART-DESC]
     // This example demonstrates creating a VRT context packet to describe
@@ -21,11 +21,11 @@ TEST(QuickstartSnippet, CreateContextPacket) {
 
     // [QUICKSTART]
     // Create a VRT Context Packet with signal parameters
-    using namespace vrtio::field; // Enable short field syntax
+    using namespace vrtigo::field; // Enable short field syntax
 
     // Define context packet type with sample rate and bandwidth fields
-    using PacketType = vrtio::ContextPacket<vrtio::NoTimeStamp, // No timestamp for this example
-                                            vrtio::NoClassId,   // No class ID
+    using PacketType = vrtigo::ContextPacket<vrtigo::NoTimeStamp, // No timestamp for this example
+                                            vrtigo::NoClassId,   // No class ID
                                             sample_rate,        // Include sample rate field
                                             bandwidth           // Include bandwidth field
                                             >;

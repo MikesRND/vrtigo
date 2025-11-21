@@ -1,12 +1,12 @@
 #pragma once
 
-#include "vrtio/detail/packet_variant.hpp"
+#include "vrtigo/detail/packet_variant.hpp"
 
 #include <concepts>
 
 #include <cstddef>
 
-namespace vrtio::utils::detail {
+namespace vrtigo::utils::detail {
 
 /**
  * @brief Concept for types that can write VRT packets
@@ -17,7 +17,7 @@ namespace vrtio::utils::detail {
  * @tparam T The type to check
  */
 template <typename T>
-concept PacketWriter = requires(T& writer, const vrtio::PacketVariant& pv) {
+concept PacketWriter = requires(T& writer, const vrtigo::PacketVariant& pv) {
     { writer.write_packet(pv) } -> std::same_as<bool>;
     { writer.packets_written() } -> std::same_as<size_t>;
 };
@@ -36,4 +36,4 @@ concept FlushableWriter = PacketWriter<T> && requires(T& writer) {
     { writer.flush() } -> std::same_as<bool>;
 };
 
-} // namespace vrtio::utils::detail
+} // namespace vrtigo::utils::detail

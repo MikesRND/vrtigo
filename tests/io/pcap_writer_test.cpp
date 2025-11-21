@@ -5,14 +5,14 @@
 #include <cstdint>
 #include <cstring>
 #include <gtest/gtest.h>
-#include <vrtio/vrtio_utils.hpp>
+#include <vrtigo/vrtigo_utils.hpp>
 
 #include "pcap_test_helpers.hpp"
 
-using namespace vrtio::utils::pcapio;
-using namespace vrtio::utils::pcapio::test;
-using vrtio::PacketType;
-using vrtio::RuntimeDataPacket;
+using namespace vrtigo::utils::pcapio;
+using namespace vrtigo::utils::pcapio::test;
+using vrtigo::PacketType;
+using vrtigo::RuntimeDataPacket;
 
 // =============================================================================
 // Basic Functionality Tests
@@ -230,12 +230,12 @@ TEST(PCAPWriterTest, SkipInvalidPacket) {
         PCAPVRTWriter writer(path.c_str());
 
         // Create InvalidPacket
-        vrtio::detail::DecodedHeader dummy{};
-        vrtio::InvalidPacket invalid_pkt{vrtio::ValidationError::invalid_packet_type,
+        vrtigo::detail::DecodedHeader dummy{};
+        vrtigo::InvalidPacket invalid_pkt{vrtigo::ValidationError::invalid_packet_type,
                                          PacketType::signal_data_no_id, dummy,
                                          std::span<const uint8_t>()};
 
-        vrtio::PacketVariant pkt_variant{invalid_pkt};
+        vrtigo::PacketVariant pkt_variant{invalid_pkt};
 
         // Should return false and not write
         bool result = writer.write_packet(pkt_variant);
@@ -295,7 +295,7 @@ TEST(PCAPWriterTest, ConvertVRTFileToPCAP) {
 
     // Create source VRT file
     {
-        vrtio::VRTFileWriter<> vrt_writer(vrt_path.c_str());
+        vrtigo::VRTFileWriter<> vrt_writer(vrt_path.c_str());
 
         for (uint32_t i = 0; i < 3; i++) {
             auto vrt_pkt = create_simple_data_packet(0x2000 + i);
@@ -306,7 +306,7 @@ TEST(PCAPWriterTest, ConvertVRTFileToPCAP) {
 
     // Convert VRT to PCAP
     {
-        vrtio::VRTFileReader<> reader(vrt_path.c_str());
+        vrtigo::VRTFileReader<> reader(vrt_path.c_str());
         PCAPVRTWriter writer(pcap_path.c_str());
 
         while (auto pkt = reader.read_next_packet()) {

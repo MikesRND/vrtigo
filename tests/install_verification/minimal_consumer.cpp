@@ -1,21 +1,21 @@
-// Minimal consumer to verify vrtio install/package works correctly
-// This is built out-of-tree using find_package(vrtio) to ensure
+// Minimal consumer to verify vrtigo install/package works correctly
+// This is built out-of-tree using find_package(vrtigo) to ensure
 // downstream consumers can use the library as a header-only dependency
 
 #include <array>
 #include <iostream>
 
-#include <vrtio.hpp>
-#include <vrtio/version.hpp>
+#include <vrtigo.hpp>
+#include <vrtigo/version.hpp>
 
 int main() {
-    std::cout << "VRTIO Install Verification\n";
+    std::cout << "VRTIGO Install Verification\n";
     std::cout << "===========================\n";
-    std::cout << "vrtio version: " << vrtio::version_string << "\n\n";
+    std::cout << "vrtigo version: " << vrtigo::version_string << "\n\n";
 
     // Create a minimal packet to verify headers compile and link correctly
     using MinimalPacket =
-        vrtio::SignalDataPacketNoId<vrtio::NoClassId, vrtio::NoTimeStamp, vrtio::Trailer::none,
+        vrtigo::SignalDataPacketNoId<vrtigo::NoClassId, vrtigo::NoTimeStamp, vrtigo::Trailer::none,
                                     64 // 256 bytes payload
                                     >;
 
@@ -36,7 +36,7 @@ int main() {
 
     std::cout << "  Packet count: " << static_cast<int>(packet.packet_count()) << "\n";
     std::cout << "\nInstall verification PASSED!\n";
-    std::cout << "vrtio headers are correctly installed and functional.\n";
+    std::cout << "vrtigo headers are correctly installed and functional.\n";
 
     return 0;
 }

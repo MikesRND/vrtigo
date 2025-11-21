@@ -1,10 +1,10 @@
 #pragma once
 
-#include "vrtio/utils/detail/writer_concepts.hpp"
+#include "vrtigo/utils/detail/writer_concepts.hpp"
 
 #include <cstddef>
 
-namespace vrtio::utils::detail {
+namespace vrtigo::utils::detail {
 
 /**
  * @brief Write all packets from an iterator range
@@ -59,4 +59,4 @@ size_t write_all_packets_and_flush(Writer& writer, Iterator begin, Iterator end)
     return count;
 }
 
-} // namespace vrtio::utils::detail
+} // namespace vrtigo::utils::detail

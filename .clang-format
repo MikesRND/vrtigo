@@ -61,7 +61,7 @@ SortIncludes: CaseSensitive
 IncludeBlocks: Regroup
 IncludeCategories:
   # Project headers
-  - Regex:           '^"vrtio/'
+  - Regex:           '^"vrtigo/'
     Priority:        1
   # C system headers
   - Regex:           '^<(assert|complex|ctype|errno|fenv|float|inttypes|limits|locale|math|setjmp|signal|stdarg|stddef|stdint|stdio|stdlib|string|time|wchar|wctype)\.h>'

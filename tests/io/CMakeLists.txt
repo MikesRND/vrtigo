@@ -2,19 +2,19 @@
 
 set(TEST_DATA_PATH "${CMAKE_SOURCE_DIR}/tests/data")
 
-vrtio_add_gtest(file_reader_test file_reader_test.cpp TEST_DATA_DIR "${TEST_DATA_PATH}")
-vrtio_add_gtest(enhanced_reader_test enhanced_reader_test.cpp TEST_DATA_DIR "${TEST_DATA_PATH}")
-vrtio_add_gtest(pcap_reader_test pcap_reader_test.cpp)
-vrtio_add_gtest(pcap_writer_test pcap_writer_test.cpp)
+vrtigo_add_gtest(file_reader_test file_reader_test.cpp TEST_DATA_DIR "${TEST_DATA_PATH}")
+vrtigo_add_gtest(enhanced_reader_test enhanced_reader_test.cpp TEST_DATA_DIR "${TEST_DATA_PATH}")
+vrtigo_add_gtest(pcap_reader_test pcap_reader_test.cpp)
+vrtigo_add_gtest(pcap_writer_test pcap_writer_test.cpp)
 
 # UDP reader tests (Linux/POSIX only)
 if(UNIX)
-    vrtio_add_gtest(udp_reader_test udp_reader_test.cpp)
+    vrtigo_add_gtest(udp_reader_test udp_reader_test.cpp)
 endif()
 
-vrtio_add_gtest(file_writer_test file_writer_test.cpp)
+vrtigo_add_gtest(file_writer_test file_writer_test.cpp)
 
 # UDP writer tests (Linux/POSIX only)
 if(UNIX)
-    vrtio_add_gtest(udp_writer_test udp_writer_test.cpp)
+    vrtigo_add_gtest(udp_writer_test udp_writer_test.cpp)
 endif()

@@ -1,11 +1,11 @@
 {
-    // Recommended VSCode settings for VRTIO development
+    // Recommended VSCode settings for VRTIGO development
     // These settings enable tests and examples
     // Feel free to customize for your environment
     "cmake.buildDirectory": "${workspaceFolder}/build",
     "cmake.configureSettings": {
-        "VRTIO_BUILD_TESTS": "ON",
-        "VRTIO_BUILD_EXAMPLES": "ON"
+        "VRTIGO_BUILD_TESTS": "ON",
+        "VRTIGO_BUILD_EXAMPLES": "ON"
     },
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
     "C_Cpp.intelliSenseEngine": "default",

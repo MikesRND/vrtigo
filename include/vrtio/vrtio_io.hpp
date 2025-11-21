@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file vrtio_io.hpp
+ * @file vrtigo_io.hpp
  * @brief Convenience header for VRT I/O utilities
  *
  * This header provides I/O types for reading and parsing VRT files and PCAP captures
@@ -22,7 +22,7 @@
 #include "utils/pcapio/pcap_vrt_reader.hpp"
 #include "utils/pcapio/pcap_vrt_writer.hpp"
 
-namespace vrtio {
+namespace vrtigo {
 
 // Primary VRT file reader - returns validated, type-safe packet views (RECOMMENDED)
 template <uint16_t MaxPacketWords = 65535>
@@ -57,9 +57,9 @@ using PCAPVRTWriter = utils::pcapio::PCAPVRTWriter;
  *
  * @example
  * std::span<const uint8_t> bytes = get_packet_bytes();
- * auto pkt = vrtio::parse_packet(bytes);
- * if (vrtio::is_data_packet(pkt)) {
- *     const auto& view = std::get<vrtio::RuntimeDataPacket>(pkt);
+ * auto pkt = vrtigo::parse_packet(bytes);
+ * if (vrtigo::is_data_packet(pkt)) {
+ *     const auto& view = std::get<vrtigo::RuntimeDataPacket>(pkt);
  *     // Process packet...
  * }
  */
@@ -67,4 +67,4 @@ inline PacketVariant parse_packet(std::span<const uint8_t> bytes) noexcept {
     return detail::parse_packet(bytes);
 }
 
-} // namespace vrtio
+} // namespace vrtigo

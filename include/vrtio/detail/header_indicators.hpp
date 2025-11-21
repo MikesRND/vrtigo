@@ -1,12 +1,12 @@
 #pragma once
 
 #include <cstdint>
-#include <vrtio/types.hpp>
+#include <vrtigo/types.hpp>
 
 #include "header.hpp"
 #include "header_decode.hpp"
 
-namespace vrtio::detail {
+namespace vrtigo::detail {
 
 struct DataIndicators {
     bool has_trailer = false;
@@ -93,4 +93,4 @@ inline CommandIndicators decode_command_indicators(const DecodedHeader& header) 
     return indicators;
 }
 
-} // namespace vrtio::detail
+} // namespace vrtigo::detail

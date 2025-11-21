@@ -11,7 +11,7 @@
 
 #include "field_traits.hpp"
 
-namespace vrtio {
+namespace vrtigo {
 
 /**
  * Proxy object for CIF field access
@@ -285,4 +285,4 @@ public:
     }
 };
 
-} // namespace vrtio
+} // namespace vrtigo

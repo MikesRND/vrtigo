@@ -1,4 +1,4 @@
-# VRTIO Design Principles
+# VRTIGO Design Principles
 
 Technical architecture decisions that guide implementation. For code style and formatting, see style.md.
 
@@ -15,7 +15,7 @@ Technical architecture decisions that guide implementation. For code style and f
 - **VITA 49.2 compliance**: Spec rules enforced by type system
 - **No exceptions**: Error codes and optionals for error handling
 
-> **Note:** Optional utilities in `vrtio::utils` (e.g., file reader) do not strictly
+> **Note:** Optional utilities in `vrtigo::utils` (e.g., file reader) do not strictly
 follow these principles, as they may allocate internal scratch buffers and use exceptions
 for system errors so they can integrate cleanly with host I/O abstractions.
 
@@ -73,9 +73,9 @@ for system errors so they can integrate cleanly with host I/O abstractions.
 ## Minimal API
 
 - Only 4 public headers: types.hpp, timestamp.hpp, class_id.hpp, field_tags.hpp
-- Single entry point: vrtio.hpp (includes all public headers and implementations)
-- All implementation in vrtio/detail/ (never include directly)
-- Optional utilities in vrtio/utils/ (may allocate/throw)
+- Single entry point: vrtigo.hpp (includes all public headers and implementations)
+- All implementation in vrtigo/detail/ (never include directly)
+- Optional utilities in vrtigo/utils/ (may allocate/throw)
 - Concept-constrained to prevent misuse
 
 ## Builder Pattern
@@ -96,7 +96,7 @@ for system errors so they can integrate cleanly with host I/O abstractions.
 
 ## Endian Safety
 
-- All buffer I/O through `vrtio/detail/buffer_io.hpp`
+- All buffer I/O through `vrtigo/detail/buffer_io.hpp`
 - Automatic host ↔ network byte order conversion
 - Uses `std::memcpy` + compiler intrinsics for efficiency
 - Alignment-safe on all architectures

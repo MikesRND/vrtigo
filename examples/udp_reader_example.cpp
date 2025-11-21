@@ -3,10 +3,10 @@
 #include <iostream>
 
 #include <csignal>
-#include <vrtio/utils/netio/udp_vrt_reader.hpp>
+#include <vrtigo/utils/netio/udp_vrt_reader.hpp>
 
-using namespace vrtio;
-using namespace vrtio::utils::netio;
+using namespace vrtigo;
+using namespace vrtigo::utils::netio;
 
 // Global flag for graceful shutdown
 std::atomic<bool> keep_running{true};
@@ -35,7 +35,7 @@ public:
      * InvalidPacket)
      * @return true to continue processing, false to stop
      */
-    bool operator()(const vrtio::PacketVariant& pkt) {
+    bool operator()(const vrtigo::PacketVariant& pkt) {
         packet_count_++;
 
         // Check global flag for graceful shutdown
@@ -46,7 +46,7 @@ public:
         std::cout << "\n=== Packet " << packet_count_ << " ===\n";
 
         // Process based on packet type
-        if (vrtio::is_data_packet(pkt)) {
+        if (vrtigo::is_data_packet(pkt)) {
             const auto& view = std::get<RuntimeDataPacket>(pkt);
             data_packet_count_++;
 
@@ -65,7 +65,7 @@ public:
             std::cout << "  Packet Count: " << static_cast<int>(view.packet_count()) << "\n";
             std::cout << "  Payload Size: " << view.payload().size() << " bytes\n";
 
-        } else if (vrtio::is_context_packet(pkt)) {
+        } else if (vrtigo::is_context_packet(pkt)) {
             const auto& view = std::get<RuntimeContextPacket>(pkt);
             context_packet_count_++;
 
@@ -85,7 +85,7 @@ public:
 
         } else {
             // Invalid packet
-            const auto& invalid = std::get<vrtio::InvalidPacket>(pkt);
+            const auto& invalid = std::get<vrtigo::InvalidPacket>(pkt);
             invalid_packet_count_++;
 
             std::cout << "Type: INVALID PACKET\n";

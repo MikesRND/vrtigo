@@ -1,6 +1,6 @@
 #include "../context_test_fixture.hpp"
 
-using namespace vrtio::field;
+using namespace vrtigo::field;
 
 TEST_F(ContextPacketTest, CIF1Fields) {
     // Create packet with CIF1 spectrum field
@@ -52,7 +52,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF1) {
     cif::write_u32_safe(buffer.data(), 8, cif0_mask);
 
     // CIF1 with Aux Frequency enabled
-    uint32_t cif1_mask = vrtio::detail::field_bitmask<aux_frequency>();
+    uint32_t cif1_mask = vrtigo::detail::field_bitmask<aux_frequency>();
     cif::write_u32_safe(buffer.data(), 12, cif1_mask);
 
     // Aux Frequency: 10 MHz = 10,000,000 Hz
@@ -93,5 +93,5 @@ TEST_F(ContextPacketTest, CompileTimeCIF1RuntimeParse) {
     EXPECT_EQ(view.stream_id().value(), 0xAABBCCDD);
     // CIF0 should have CIF1 enable bit set
     EXPECT_EQ(view.cif0() & (1U << cif::CIF1_ENABLE_BIT), (1U << cif::CIF1_ENABLE_BIT));
-    EXPECT_EQ(view.cif1(), vrtio::detail::field_bitmask<aux_frequency>());
+    EXPECT_EQ(view.cif1(), vrtigo::detail::field_bitmask<aux_frequency>());
 }

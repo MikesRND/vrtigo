@@ -9,7 +9,7 @@
 
 #include "endian.hpp"
 
-namespace vrtio {
+namespace vrtigo {
 
 /// Generic view for multi-word CIF fields (zero-copy)
 template <size_t Words>
@@ -119,4 +119,4 @@ public:
     size_t size() const noexcept { return char_count_; }
 };
 
-} // namespace vrtio
+} // namespace vrtigo

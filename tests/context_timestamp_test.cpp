@@ -1,6 +1,6 @@
 #include "context_test_fixture.hpp"
 
-using namespace vrtio::field;
+using namespace vrtigo::field;
 
 TEST_F(ContextPacketTest, TimestampInitialization) {
     // Note: Context packets always have Stream ID per VITA 49.2 spec

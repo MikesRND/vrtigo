@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace vrtio {
+namespace vrtigo {
 
 // VRT packet types (VITA 49.2 standard)
 enum class PacketType : uint8_t {
@@ -163,4 +163,4 @@ constexpr const char* validation_error_string(ValidationError err) noexcept {
     }
 }
 
-} // namespace vrtio
+} // namespace vrtigo

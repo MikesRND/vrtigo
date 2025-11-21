@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vrtio/types.hpp"
+#include "vrtigo/types.hpp"
 
 #include <chrono>
 #include <compare>
@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <ctime>
 
-namespace vrtio {
+namespace vrtigo {
 
 // Marker type for no timestamp
 struct NoTimeStamp {};
@@ -305,4 +305,4 @@ private:
 // Convenient type alias
 using TimeStampUTC = TimeStamp<TsiType::utc, TsfType::real_time>;
 
-} // namespace vrtio
+} // namespace vrtigo

@@ -8,12 +8,12 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <vrtio/types.hpp>
+#include <vrtigo/types.hpp>
 
 #include "../../detail/endian.hpp"
 #include "../../detail/header_decode.hpp"
 
-namespace vrtio::utils::fileio {
+namespace vrtigo::utils::fileio {
 
 /**
  * @brief Low-level VRT file reader returning raw packet bytes
@@ -179,13 +179,13 @@ public:
         }
 
         // Early validation: decode header
-        uint32_t header_host = vrtio::detail::network_to_host32(header_raw);
-        auto decoded = vrtio::detail::decode_header(header_host);
+        uint32_t header_host = vrtigo::detail::network_to_host32(header_raw);
+        auto decoded = vrtigo::detail::decode_header(header_host);
         result.header = header_host;
         result.type = decoded.type;
 
         // Validate packet type
-        if (!vrtio::detail::is_valid_packet_type(decoded.type)) {
+        if (!vrtigo::detail::is_valid_packet_type(decoded.type)) {
             result.error = ValidationError::invalid_packet_type;
             current_offset_ += vrt_word_size;
             return result;
@@ -364,4 +364,4 @@ private:
     ReadResult last_error_; ///< Last error from read_next_span()
 };
 
-} // namespace vrtio::utils::fileio
+} // namespace vrtigo::utils::fileio

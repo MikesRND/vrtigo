@@ -20,7 +20,7 @@
 #include "../../types.hpp"
 #include "pcap_common.hpp"
 
-namespace vrtio::utils::pcapio {
+namespace vrtigo::utils::pcapio {
 
 /**
  * @brief Write VRT packets to PCAP capture files
@@ -174,9 +174,9 @@ public:
      * @note InvalidPacket variants are skipped and return false
      * @note Timestamps are generated automatically using system time
      */
-    bool write_packet(const vrtio::PacketVariant& pkt) noexcept {
+    bool write_packet(const vrtigo::PacketVariant& pkt) noexcept {
         // Skip InvalidPacket
-        if (std::holds_alternative<vrtio::InvalidPacket>(pkt)) {
+        if (std::holds_alternative<vrtigo::InvalidPacket>(pkt)) {
             return false;
         }
 
@@ -185,9 +185,9 @@ public:
         std::visit(
             [&vrt_bytes](auto&& p) {
                 using T = std::decay_t<decltype(p)>;
-                if constexpr (std::is_same_v<T, vrtio::RuntimeDataPacket>) {
+                if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
                     vrt_bytes = p.as_bytes();
-                } else if constexpr (std::is_same_v<T, vrtio::RuntimeContextPacket>) {
+                } else if constexpr (std::is_same_v<T, vrtigo::RuntimeContextPacket>) {
                     vrt_bytes = std::span<const uint8_t>{p.context_buffer(), p.packet_size_bytes()};
                 }
             },
@@ -353,4 +353,4 @@ private:
     }
 };
 
-} // namespace vrtio::utils::pcapio
+} // namespace vrtigo::utils::pcapio

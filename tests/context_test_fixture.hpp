@@ -4,9 +4,9 @@
 
 #include <cstring>
 #include <gtest/gtest.h>
-#include <vrtio.hpp>
+#include <vrtigo.hpp>
 
-using namespace vrtio;
+using namespace vrtigo;
 
 // Shared test fixture for all context packet tests
 class ContextPacketTest : public ::testing::Test {

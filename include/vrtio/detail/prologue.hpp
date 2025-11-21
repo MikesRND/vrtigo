@@ -5,9 +5,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <vrtio/class_id.hpp>
-#include <vrtio/timestamp.hpp>
-#include <vrtio/types.hpp>
+#include <vrtigo/class_id.hpp>
+#include <vrtigo/timestamp.hpp>
+#include <vrtigo/types.hpp>
 
 #include "buffer_io.hpp"
 #include "header.hpp"
@@ -15,7 +15,7 @@
 #include "header_init.hpp"
 #include "timestamp_traits.hpp"
 
-namespace vrtio {
+namespace vrtigo {
 
 /**
  * @brief Consolidates the common prologue fields for VRT packets
@@ -283,4 +283,4 @@ private:
     uint8_t* buffer_;
 };
 
-} // namespace vrtio
+} // namespace vrtigo

@@ -1,6 +1,6 @@
 #include "context_test_fixture.hpp"
 
-using namespace vrtio::field;
+using namespace vrtigo::field;
 
 TEST_F(ContextPacketTest, GPSASCIIVariableField) {
     // Manually create packet with GPS ASCII field
@@ -13,7 +13,7 @@ TEST_F(ContextPacketTest, GPSASCIIVariableField) {
     cif::write_u32_safe(buffer.data(), 4, 0x12345678);
 
     // CIF0 with GPS ASCII bit
-    uint32_t cif0_mask = vrtio::detail::field_bitmask<gps_ascii>();
+    uint32_t cif0_mask = vrtigo::detail::field_bitmask<gps_ascii>();
     cif::write_u32_safe(buffer.data(), 8, cif0_mask);
 
     // GPS ASCII field: count + data
@@ -53,7 +53,7 @@ TEST_F(ContextPacketTest, ContextAssociationLists) {
     cif::write_u32_safe(buffer.data(), 4, 0x12345678);
 
     // CIF0 with context association bit
-    uint32_t cif0_mask = vrtio::detail::field_bitmask<context_association_lists>();
+    uint32_t cif0_mask = vrtigo::detail::field_bitmask<context_association_lists>();
     cif::write_u32_safe(buffer.data(), 8, cif0_mask);
 
     // Context association: two 16-bit counts + IDs

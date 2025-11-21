@@ -1,4 +1,4 @@
-# VRTIO Makefile - Convenience wrapper for CMake
+# VRTIGO Makefile - Convenience wrapper for CMake
 
 .PHONY: all clean configure debug release examples help check
 .PHONY: test run install uninstall quickstart
@@ -8,9 +8,9 @@
 # Default build directory
 BUILD_DIR ?= build
 BUILD_TYPE ?= Debug
-VRTIO_BUILD_TESTS ?= ON
-VRTIO_BUILD_EXAMPLES ?= ON
-VRTIO_FETCH_DEPENDENCIES ?= ON
+VRTIGO_BUILD_TESTS ?= ON
+VRTIGO_BUILD_EXAMPLES ?= ON
+VRTIGO_FETCH_DEPENDENCIES ?= ON
 
 # Parallel build jobs
 NPROC := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
@@ -25,9 +25,9 @@ configure:
 	@cd $(BUILD_DIR) && cmake .. \
 		-DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
 		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-		-DVRTIO_BUILD_TESTS=$(VRTIO_BUILD_TESTS) \
-		-DVRTIO_BUILD_EXAMPLES=$(VRTIO_BUILD_EXAMPLES) \
-		-DVRTIO_FETCH_DEPENDENCIES=$(VRTIO_FETCH_DEPENDENCIES)
+		-DVRTIGO_BUILD_TESTS=$(VRTIGO_BUILD_TESTS) \
+		-DVRTIGO_BUILD_EXAMPLES=$(VRTIGO_BUILD_EXAMPLES) \
+		-DVRTIGO_FETCH_DEPENDENCIES=$(VRTIGO_FETCH_DEPENDENCIES)
 
 # Debug build (default)
 debug:
@@ -151,9 +151,9 @@ install: all
 # Uninstall (requires sudo for system-wide)
 uninstall:
 	@if [ -f $(BUILD_DIR)/install_manifest.txt ]; then \
-		echo "Uninstalling VRTIO..."; \
+		echo "Uninstalling VRTIGO..."; \
 		xargs rm -f < $(BUILD_DIR)/install_manifest.txt; \
-		echo "✓ VRTIO uninstalled"; \
+		echo "✓ VRTIGO uninstalled"; \
 	else \
 		echo "Error: No install manifest found. Have you run 'make install' yet?"; \
 		exit 1; \
@@ -199,7 +199,7 @@ clang-tidy-fix:
 
 help:
 	@echo "╔════════════════════════════════════════════════════════════════╗"
-	@echo "║                    VRTIO Build System                           ║"
+	@echo "║                    VRTIGO Build System                           ║"
 	@echo "╚════════════════════════════════════════════════════════════════╝"
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

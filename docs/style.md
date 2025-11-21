@@ -1,4 +1,4 @@
-# VRTIO Style Guide
+# VRTIGO Style Guide
 
 Items not specified here should generally follow the C++ Core Guidelines
 
@@ -12,13 +12,13 @@ Items not specified here should generally follow the C++ Core Guidelines
 ## Namespace Organization
 
 ### Structure
-- `vrtio` - Main namespace for all public APIs
-- `vrtio::field` - Field tag definitions (kept flat for convenience)
-- `vrtio::cif`, `vrtio::trailer` - Narrow structs/enums kept separate for clarity
-- `vrtio::utils::fileio` - High-level I/O helpers (allocates, uses exceptions)
-- `vrtio::utils::netio` - UDP transport helpers (may allocate/throw)
-- `vrtio::utils::detail` - Shared iteration helpers (still considered internal)
-- `vrtio::detail` - Implementation details (never access directly; anything not listed above should live here)
+- `vrtigo` - Main namespace for all public APIs
+- `vrtigo::field` - Field tag definitions (kept flat for convenience)
+- `vrtigo::cif`, `vrtigo::trailer` - Narrow structs/enums kept separate for clarity
+- `vrtigo::utils::fileio` - High-level I/O helpers (allocates, uses exceptions)
+- `vrtigo::utils::netio` - UDP transport helpers (may allocate/throw)
+- `vrtigo::utils::detail` - Shared iteration helpers (still considered internal)
+- `vrtigo::detail` - Implementation details (never access directly; anything not listed above should live here)
 
 
 ## Accessor Methods

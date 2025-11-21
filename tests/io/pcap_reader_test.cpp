@@ -6,15 +6,15 @@
 #include <cstdint>
 #include <cstring>
 #include <gtest/gtest.h>
-#include <vrtio/vrtio_utils.hpp>
+#include <vrtigo/vrtigo_utils.hpp>
 
 #include "pcap_test_helpers.hpp"
 
-using namespace vrtio::utils::pcapio;
-using namespace vrtio::utils::pcapio::test;
-using vrtio::PacketType;
-using vrtio::RuntimeDataPacket;
-using vrtio::ValidationError;
+using namespace vrtigo::utils::pcapio;
+using namespace vrtigo::utils::pcapio::test;
+using vrtigo::PacketType;
+using vrtigo::RuntimeDataPacket;
+using vrtigo::ValidationError;
 
 // =============================================================================
 // Basic Functionality Tests

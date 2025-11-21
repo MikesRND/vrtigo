@@ -2,9 +2,9 @@
 
 #include <type_traits>
 
-#include <vrtio/types.hpp>
+#include <vrtigo/types.hpp>
 
-namespace vrtio {
+namespace vrtigo {
 
 // Forward declaration
 template <TsiType TSI, TsfType TSF>
@@ -59,4 +59,4 @@ concept ValidTimestampType = TimestampTraits<T>::is_valid;
 template <typename T>
 concept HasTimestamp = TimestampTraits<T>::has_timestamp;
 
-} // namespace vrtio
+} // namespace vrtigo

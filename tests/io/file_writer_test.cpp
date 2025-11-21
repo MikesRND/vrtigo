@@ -7,30 +7,30 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-#include <vrtio/vrtio_utils.hpp>
+#include <vrtigo/vrtigo_utils.hpp>
 
-// PacketVariant and related types are now in vrtio namespace
-using namespace vrtio::utils::fileio;
+// PacketVariant and related types are now in vrtigo namespace
+using namespace vrtigo::utils::fileio;
 
-// Import specific types from vrtio namespace to avoid ambiguity
-using vrtio::ContextPacket;
-using vrtio::InvalidPacket;
-using vrtio::NoClassId;
-using vrtio::NoTimeStamp;
-using vrtio::PacketBuilder;
-using vrtio::PacketVariant;
-using vrtio::RuntimeContextPacket;
-using vrtio::RuntimeDataPacket;
-using vrtio::SignalDataPacket;
-using vrtio::TimeStampUTC;
-using vrtio::Trailer;
+// Import specific types from vrtigo namespace to avoid ambiguity
+using vrtigo::ContextPacket;
+using vrtigo::InvalidPacket;
+using vrtigo::NoClassId;
+using vrtigo::NoTimeStamp;
+using vrtigo::PacketBuilder;
+using vrtigo::PacketVariant;
+using vrtigo::RuntimeContextPacket;
+using vrtigo::RuntimeDataPacket;
+using vrtigo::SignalDataPacket;
+using vrtigo::TimeStampUTC;
+using vrtigo::Trailer;
 
 // Test fixture for file writer tests
 class FileWriterTest : public ::testing::Test {
 protected:
     void SetUp() override {
         // Create temp directory for test outputs
-        temp_dir_ = std::filesystem::temp_directory_path() / "vrtio_writer_test";
+        temp_dir_ = std::filesystem::temp_directory_path() / "vrtigo_writer_test";
         std::filesystem::create_directories(temp_dir_);
     }
 
@@ -212,8 +212,8 @@ TEST_F(FileWriterTest, RoundTripContextPacket) {
     auto test_file = temp_dir_ / "test_roundtrip_context.vrt";
 
     // Write context packet
-    using PacketType = ContextPacket<NoTimeStamp, NoClassId, vrtio::field::reference_point_id,
-                                     vrtio::field::bandwidth>;
+    using PacketType = ContextPacket<NoTimeStamp, NoClassId, vrtigo::field::reference_point_id,
+                                     vrtigo::field::bandwidth>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
     const uint32_t test_stream_id = 0x87654321;
@@ -221,8 +221,8 @@ TEST_F(FileWriterTest, RoundTripContextPacket) {
 
     PacketType write_packet(buffer.data());
     write_packet.set_stream_id(test_stream_id);
-    write_packet[vrtio::field::reference_point_id].set_encoded(test_ref_point);
-    write_packet[vrtio::field::bandwidth].set_value(1000000.0); // 1 MHz
+    write_packet[vrtigo::field::reference_point_id].set_encoded(test_ref_point);
+    write_packet[vrtigo::field::bandwidth].set_value(1000000.0); // 1 MHz
 
     {
         VRTFileWriter<> writer(test_file.string());
@@ -250,8 +250,8 @@ TEST_F(FileWriterTest, RejectInvalidPacket) {
     auto test_file = temp_dir_ / "test_invalid.vrt";
 
     // Create InvalidPacket variant
-    InvalidPacket invalid_pkt{.error = vrtio::ValidationError::packet_type_mismatch,
-                              .attempted_type = vrtio::PacketType::signal_data,
+    InvalidPacket invalid_pkt{.error = vrtigo::ValidationError::packet_type_mismatch,
+                              .attempted_type = vrtigo::PacketType::signal_data,
                               .header = {},
                               .raw_bytes = {}};
 
