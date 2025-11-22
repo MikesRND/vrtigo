@@ -24,9 +24,9 @@ TEST(QuickstartSnippet, CreateDataPacket) {
     // Create a VRT Signal Data Packet with timestamp and payload
 
     // Define packet type with UTC timestamp
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId,     // No class ID
-                                                vrtigo::TimeStampUTC,  // Include UTC timestamp
-                                                vrtigo::Trailer::none, // No trailer
+    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId,        // No class ID
+                                                vrtigo::UtcRealTimestamp, // Include UTC timestamp
+                                                vrtigo::Trailer::none,    // No trailer
                                                 2 // Max payload words (8 bytes)
                                                 >;
 
@@ -38,10 +38,10 @@ TEST(QuickstartSnippet, CreateDataPacket) {
 
     // Build packet with current timestamp and payload
     auto packet = vrtigo::PacketBuilder<PacketType>(buffer.data())
-                      .stream_id(0x12345678)                  // Set stream identifier
-                      .timestamp(vrtigo::TimeStampUTC::now()) // Set current time
-                      .packet_count(1)                        // First packet in stream
-                      .payload(payload)                       // Attach payload
+                      .stream_id(0x12345678)                      // Set stream identifier
+                      .timestamp(vrtigo::UtcRealTimestamp::now()) // Set current time
+                      .packet_count(1)                            // First packet in stream
+                      .payload(payload)                           // Attach payload
                       .build();
 
     // The packet is now ready to transmit

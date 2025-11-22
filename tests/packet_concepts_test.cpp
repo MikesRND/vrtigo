@@ -7,7 +7,7 @@ using namespace vrtigo::field;
 // Test that SignalPacket satisfies FixedPacketLike concept
 TEST(PacketConceptsTest, SignalPacketIsFixedPacketLike) {
     using PacketType =
-        DataPacket<PacketType::signal_data, NoClassId, TimeStampUTC, Trailer::included, 64>;
+        DataPacket<PacketType::signal_data, NoClassId, UtcRealTimestamp, Trailer::included, 64>;
 
     static_assert(PacketBase<PacketType>);
     static_assert(FixedPacketLike<PacketType>);
@@ -34,7 +34,7 @@ TEST(PacketConceptsTest, SignalPacketViewIsFixedPacketViewLike) {
 // Test that ContextPacket satisfies VariablePacketLike concept
 TEST(PacketConceptsTest, ContextPacketIsVariablePacketLike) {
     // Note: Context packets always have Stream ID per VITA 49.2 spec
-    using PacketType = ContextPacket<NoTimeStamp, NoClassId, bandwidth, sample_rate>;
+    using PacketType = ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate>;
 
     static_assert(PacketBase<PacketType>);
     static_assert(VariablePacketLike<PacketType>);
@@ -61,11 +61,11 @@ TEST(PacketConceptsTest, RuntimeContextPacketIsVariablePacketViewLike) {
 // Test helper concepts for PacketBuilder
 TEST(PacketConceptsTest, SignalPacketHelperConcepts) {
     using WithStreamId =
-        DataPacket<PacketType::signal_data, NoClassId, NoTimeStamp, Trailer::none, 64>;
+        DataPacket<PacketType::signal_data, NoClassId, NoTimestamp, Trailer::none, 64>;
     using NoStreamId =
-        DataPacket<PacketType::signal_data_no_id, NoClassId, NoTimeStamp, Trailer::none, 64>;
+        DataPacket<PacketType::signal_data_no_id, NoClassId, NoTimestamp, Trailer::none, 64>;
     using WithTrailer =
-        DataPacket<PacketType::signal_data, NoClassId, NoTimeStamp, Trailer::included, 64>;
+        DataPacket<PacketType::signal_data, NoClassId, NoTimestamp, Trailer::included, 64>;
 
     // Stream ID
     static_assert(HasStreamId<WithStreamId>);
@@ -87,8 +87,8 @@ TEST(PacketConceptsTest, SignalPacketHelperConcepts) {
 // Test that concepts properly distinguish packet categories
 TEST(PacketConceptsTest, ConceptsMutuallyExclusive) {
     using SignalPkt =
-        DataPacket<PacketType::signal_data, NoClassId, NoTimeStamp, Trailer::none, 64>;
-    using ContextPkt = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
+        DataPacket<PacketType::signal_data, NoClassId, NoTimestamp, Trailer::none, 64>;
+    using ContextPkt = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     // Signal is Fixed, not Variable
     static_assert(FixedPacketLike<SignalPkt>);
@@ -145,7 +145,7 @@ TEST(PacketConceptsTest, NonPacketTypesRejected) {
 TEST(PacketConceptsTest, RuntimeBehaviorConsistency) {
     // Create signal packet
     using SignalType =
-        DataPacket<PacketType::signal_data, NoClassId, NoTimeStamp, Trailer::none, 32>;
+        DataPacket<PacketType::signal_data, NoClassId, NoTimestamp, Trailer::none, 32>;
     alignas(4) std::array<uint8_t, SignalType::size_bytes> signal_buffer;
     SignalType signal_pkt(signal_buffer.data());
 
@@ -169,7 +169,7 @@ TEST(PacketConceptsTest, RuntimeBehaviorConsistency) {
     });
 
     // Create context packet
-    using ContextType = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
+    using ContextType = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
     alignas(4) std::array<uint8_t, ContextType::size_bytes> context_buffer;
     ContextType context_pkt(context_buffer.data());
 

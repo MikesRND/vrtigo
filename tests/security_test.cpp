@@ -20,7 +20,7 @@ protected:
 
 // Test 1: Valid packet should pass validation
 TEST_F(SecurityTest, ValidPacketPassesValidation) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC,
+    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
                                                 vrtigo::Trailer::included, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
@@ -35,7 +35,7 @@ TEST_F(SecurityTest, ValidPacketPassesValidation) {
 
 // Test 2: Buffer too small
 TEST_F(SecurityTest, BufferTooSmall) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimeStamp,
+    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
                                                 vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
@@ -49,7 +49,7 @@ TEST_F(SecurityTest, BufferTooSmall) {
 
 // Test 3: Wrong packet type
 TEST_F(SecurityTest, PacketTypeMismatch) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimeStamp,
+    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
                                                 vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
@@ -71,7 +71,7 @@ TEST_F(SecurityTest, PacketTypeMismatch) {
 // Test 4: Wrong TSI field
 TEST_F(SecurityTest, TSIMismatch) {
     using PacketType =
-        vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC, // TSI = 1, TSF = none
+        vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp, // TSI = 1, TSF = none
                                  vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
@@ -94,7 +94,7 @@ TEST_F(SecurityTest, TSIMismatch) {
 TEST_F(SecurityTest, TSFMismatch) {
     using PacketType = vrtigo::SignalDataPacket<
         vrtigo::NoClassId,
-        vrtigo::TimeStamp<vrtigo::TsiType::none, vrtigo::TsfType::real_time>, // Unusual combo for
+        vrtigo::Timestamp<vrtigo::TsiType::none, vrtigo::TsfType::real_time>, // Unusual combo for
                                                                               // validation test
         vrtigo::Trailer::none, 128>;
 
@@ -116,7 +116,7 @@ TEST_F(SecurityTest, TSFMismatch) {
 
 // Test 6: Wrong trailer bit
 TEST_F(SecurityTest, TrailerBitMismatch) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimeStamp,
+    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
                                                 vrtigo::Trailer::included, // Has trailer
                                                 128>;
 
@@ -130,7 +130,7 @@ TEST_F(SecurityTest, TrailerBitMismatch) {
 
 // Test 7: No trailer when expected
 TEST_F(SecurityTest, NoTrailerWhenExpected) {
-    using PacketType = vrtigo::SignalDataPacketNoId<vrtigo::NoClassId, vrtigo::NoTimeStamp,
+    using PacketType = vrtigo::SignalDataPacketNoId<vrtigo::NoClassId, vrtigo::NoTimestamp,
                                                     vrtigo::Trailer::none, // No trailer
                                                     128>;
 
@@ -144,7 +144,7 @@ TEST_F(SecurityTest, NoTrailerWhenExpected) {
 
 // Test 8: Wrong size field
 TEST_F(SecurityTest, SizeFieldMismatch) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC,
+    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
                                                 vrtigo::Trailer::none, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
@@ -167,7 +167,7 @@ TEST_F(SecurityTest, SizeFieldMismatch) {
 // Test 9: Minimal packet validation
 TEST_F(SecurityTest, MinimalPacketValidation) {
     using PacketType =
-        vrtigo::SignalDataPacketNoId<vrtigo::NoClassId, vrtigo::NoTimeStamp, vrtigo::Trailer::none,
+        vrtigo::SignalDataPacketNoId<vrtigo::NoClassId, vrtigo::NoTimestamp, vrtigo::Trailer::none,
                                      0 // Zero payload
                                      >;
 
@@ -180,10 +180,10 @@ TEST_F(SecurityTest, MinimalPacketValidation) {
 
 // Test 10: Maximum configuration validation
 TEST_F(SecurityTest, MaximumConfigurationValidation) {
-    using PacketType =
-        vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC, vrtigo::Trailer::included,
-                                 1024 // Large payload
-                                 >;
+    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                                vrtigo::Trailer::included,
+                                                1024 // Large payload
+                                                >;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
     PacketType packet(buffer.data());
@@ -193,7 +193,7 @@ TEST_F(SecurityTest, MaximumConfigurationValidation) {
 
 // Test 11: Multiple validation errors (first error should be reported)
 TEST_F(SecurityTest, MultipleErrors) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC,
+    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
                                                 vrtigo::Trailer::included, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
@@ -229,7 +229,7 @@ TEST_F(SecurityTest, ErrorStringConversion) {
 
 // Test 13: Type 0 packet validation
 TEST_F(SecurityTest, Type0PacketValidation) {
-    using PacketType = vrtigo::SignalDataPacketNoId<vrtigo::NoClassId, vrtigo::TimeStampUTC,
+    using PacketType = vrtigo::SignalDataPacketNoId<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
                                                     vrtigo::Trailer::none, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;
@@ -245,7 +245,7 @@ TEST_F(SecurityTest, Type0PacketValidation) {
 // Test 14: Parsing untrusted network data pattern
 TEST_F(SecurityTest, UntrustedNetworkDataPattern) {
     using PacketType =
-        vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC, vrtigo::Trailer::none,
+        vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp, vrtigo::Trailer::none,
                                  505 // Fits in 2048 byte buffer: (1+1+1+2+505)*4 = 2040 bytes
                                  >;
 
@@ -255,7 +255,7 @@ TEST_F(SecurityTest, UntrustedNetworkDataPattern) {
     // Build valid packet
     PacketType tx_packet(network_buffer.data());
     tx_packet.set_stream_id(0x12345678);
-    auto ts = vrtigo::TimeStampUTC::from_components(1234567890, 999999999999ULL);
+    auto ts = vrtigo::UtcRealTimestamp(1234567890, 999999999999ULL);
     tx_packet.set_timestamp(ts);
 
     // Parse as untrusted data (typical usage pattern)
@@ -269,14 +269,14 @@ TEST_F(SecurityTest, UntrustedNetworkDataPattern) {
         // Safe to use packet data
         EXPECT_EQ(rx_packet.stream_id(), 0x12345678);
         auto read_ts = rx_packet.timestamp();
-        EXPECT_EQ(read_ts.seconds(), 1234567890);
-        EXPECT_EQ(read_ts.fractional(), 999999999999ULL);
+        EXPECT_EQ(read_ts.tsi(), 1234567890);
+        EXPECT_EQ(read_ts.tsf(), 999999999999ULL);
     }
 }
 
 // Test 15: Defense against size field manipulation
 TEST_F(SecurityTest, SizeFieldManipulationDefense) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimeStamp,
+    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
                                                 vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer;

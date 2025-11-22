@@ -5,7 +5,7 @@ using namespace vrtigo::field;
 TEST_F(ContextPacketTest, RoundTrip) {
     // Create packet with template
     // Note: Context packets always have Stream ID per VITA 49.2 spec
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth, gain>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth, gain>;
 
     TestContext tx_packet(buffer.data());
     tx_packet.set_stream_id(0xDEADBEEF);
@@ -24,7 +24,7 @@ TEST_F(ContextPacketTest, RoundTrip) {
 TEST_F(ContextPacketTest, CombinedCIF1AndCIF2CompileTime) {
     // Create packet with both CIF1 and CIF2 fields
     using TestContext =
-        ContextPacket<NoTimeStamp, NoClassId, bandwidth, aux_frequency, controller_uuid>;
+        ContextPacket<NoTimestamp, NoClassId, bandwidth, aux_frequency, controller_uuid>;
 
     // Compile-time assertions: verify both enable bits are auto-set
     static_assert((TestContext::cif0_value & (1U << cif::CIF1_ENABLE_BIT)) != 0,
@@ -113,7 +113,7 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2Runtime) {
 
 TEST_F(ContextPacketTest, MultiWordFieldWrite) {
     // Create a compile-time packet with Data Payload Format (2 words, FieldView<2>)
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, data_payload_format>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
 
     TestContext packet(buffer.data());
 

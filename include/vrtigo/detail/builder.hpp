@@ -50,7 +50,7 @@ public:
         return *this;
     }
 
-    // Timestamp setter (works with packet's TimeStampType)
+    // Timestamp setter (works with packet's TimestampType)
     auto& timestamp(const typename PacketType::timestamp_type& ts) noexcept
         requires requires(PacketType& p, typename PacketType::timestamp_type t) {
             p.set_timestamp(t);

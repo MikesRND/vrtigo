@@ -22,7 +22,7 @@ void example_compile_time_context() {
     //   - Context packets ALWAYS have Stream ID (no template parameter needed)
     //   - Context packets NEVER have Trailer (bit 26 reserved, must be 0)
     using SignalContext =
-        ContextPacket<NoTimeStamp, NoClassId, bandwidth, sample_rate, gain, device_id>;
+        ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate, gain, device_id>;
 
     // Create buffer and packet
     alignas(4) std::array<uint8_t, SignalContext::size_bytes> buffer{};
@@ -53,7 +53,7 @@ void example_with_class_id() {
     std::cout << "\n=== Context Packet with Class ID Example ===\n";
 
     // Note: Context packets always have Stream ID per spec
-    using ClassifiedContext = ContextPacket<NoTimeStamp, ClassId, bandwidth>;
+    using ClassifiedContext = ContextPacket<NoTimestamp, ClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, ClassifiedContext::size_bytes> buffer{};
     ClassifiedContext packet(buffer.data());
@@ -84,7 +84,7 @@ void example_runtime_parsing() {
 
     // Create a context packet using the compile-time API
     // This simulates what a transmitter would send
-    using TxPacket = ContextPacket<NoTimeStamp, NoClassId, bandwidth, sample_rate, temperature>;
+    using TxPacket = ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate, temperature>;
     TxPacket tx_packet(rx_buffer.data());
 
     // Set stream ID and field values

@@ -11,14 +11,11 @@
 namespace vrtigo {
 
 // Marker type for no timestamp
-struct NoTimeStamp {};
-
-// Alias for backwards compatibility
-using Timestamp32Lsb = NoTimeStamp;
+struct NoTimestamp {};
 
 // Primary template - works for ALL timestamp combinations
 template <TsiType TSI, TsfType TSF>
-class TimeStamp {
+class Timestamp {
     // Helper constant for readability and maintenance
     static constexpr bool is_utc_real_time = (TSI == TsiType::utc && TSF == TsfType::real_time);
 
@@ -30,42 +27,46 @@ public:
     static constexpr uint64_t MAX_FRACTIONAL = PICOSECONDS_PER_SECOND - 1;
 
     // Constructors - basic API available for all timestamp types
-    constexpr TimeStamp() noexcept = default;
+    constexpr Timestamp() noexcept = default;
 
-    constexpr TimeStamp(uint32_t sec, uint64_t frac) noexcept : seconds_(sec), fractional_(frac) {
+    constexpr Timestamp(uint32_t sec, uint64_t frac) noexcept : seconds_(sec), fractional_(frac) {
         normalize();
     }
 
-    // Factory methods - basic API
-    static constexpr TimeStamp from_components(uint32_t sec, uint64_t frac) noexcept {
-        return TimeStamp(sec, frac);
+    // Accessors - basic API available for all types
+    constexpr uint32_t tsi() const noexcept { return seconds_; }
+    constexpr uint64_t tsf() const noexcept { return fractional_; }
+
+    constexpr TsiType tsi_kind() const noexcept { return TSI; }
+    constexpr TsfType tsf_kind() const noexcept { return TSF; }
+
+    // Mutator - basic API available for all types
+    constexpr void set(uint32_t tsi, uint64_t tsf) noexcept {
+        seconds_ = tsi;
+        fractional_ = tsf;
+        normalize();
     }
 
-    // Accessors - basic API available for all types
-    constexpr uint32_t seconds() const noexcept { return seconds_; }
-    constexpr uint64_t fractional() const noexcept { return fractional_; }
-
-    constexpr TsiType tsi_type() const noexcept { return TSI; }
-    constexpr TsfType tsf_type() const noexcept { return TSF; }
-
     // Comparison operators - basic API available for all types
-    constexpr auto operator<=>(const TimeStamp& other) const noexcept = default;
+    // UTC-UTC and GPS-GPS comparisons OK.
+    // Mixed-type comparisons not created yet.
+    constexpr auto operator<=>(const Timestamp& other) const noexcept = default;
 
     // UTC-specific factory methods
-    static TimeStamp now() noexcept
+    static Timestamp now() noexcept
         requires(is_utc_real_time)
     {
         auto now = std::chrono::system_clock::now();
         return from_chrono(now);
     }
 
-    static constexpr TimeStamp from_utc_seconds(uint32_t seconds) noexcept
+    static constexpr Timestamp from_utc_seconds(uint32_t seconds) noexcept
         requires(is_utc_real_time)
     {
-        return TimeStamp(seconds, 0);
+        return Timestamp(seconds, 0);
     }
 
-    static TimeStamp from_chrono(std::chrono::system_clock::time_point tp) noexcept
+    static Timestamp from_chrono(std::chrono::system_clock::time_point tp) noexcept
         requires(is_utc_real_time)
     {
         // Convert to duration since epoch
@@ -103,7 +104,7 @@ public:
             }
         }
 
-        return TimeStamp(vrt_seconds, vrt_fractional);
+        return Timestamp(vrt_seconds, vrt_fractional);
     }
 
     // UTC-specific conversion methods
@@ -126,32 +127,8 @@ public:
         return static_cast<std::time_t>(seconds_);
     }
 
-    // UTC-specific utility method
-    constexpr uint64_t total_picoseconds() const noexcept
-        requires(is_utc_real_time)
-    {
-        // Check if multiplication would overflow
-        // UINT64_MAX / PICOSECONDS_PER_SECOND ≈ 18,446,744 seconds (~213 days)
-        constexpr uint32_t MAX_SAFE_SECONDS =
-            static_cast<uint32_t>(UINT64_MAX / PICOSECONDS_PER_SECOND);
-
-        if (seconds_ > MAX_SAFE_SECONDS) {
-            // Would overflow - return saturated value
-            return UINT64_MAX;
-        }
-
-        uint64_t total = static_cast<uint64_t>(seconds_) * PICOSECONDS_PER_SECOND;
-
-        // Check if adding fractional would overflow
-        if (fractional_ > (UINT64_MAX - total)) {
-            return UINT64_MAX;
-        }
-
-        return total + fractional_;
-    }
-
     // UTC-specific arithmetic operations
-    TimeStamp& operator+=(std::chrono::nanoseconds duration) noexcept
+    Timestamp& operator+=(std::chrono::nanoseconds duration) noexcept
         requires(is_utc_real_time)
     {
         // Decompose duration into seconds and nanosecond remainder to avoid overflow
@@ -224,7 +201,7 @@ public:
         return *this;
     }
 
-    TimeStamp& operator-=(std::chrono::nanoseconds duration) noexcept
+    Timestamp& operator-=(std::chrono::nanoseconds duration) noexcept
         requires(is_utc_real_time)
     {
         // Guard against nanoseconds::min() which cannot be negated
@@ -242,21 +219,21 @@ public:
     }
 
     // Friend operators with inline definitions (UTC-specific)
-    friend TimeStamp operator+(TimeStamp ts, std::chrono::nanoseconds duration) noexcept
+    friend Timestamp operator+(Timestamp ts, std::chrono::nanoseconds duration) noexcept
         requires(is_utc_real_time)
     {
         ts += duration;
         return ts;
     }
 
-    friend TimeStamp operator-(TimeStamp ts, std::chrono::nanoseconds duration) noexcept
+    friend Timestamp operator-(Timestamp ts, std::chrono::nanoseconds duration) noexcept
         requires(is_utc_real_time)
     {
         ts -= duration;
         return ts;
     }
 
-    friend std::chrono::nanoseconds operator-(const TimeStamp& lhs, const TimeStamp& rhs) noexcept
+    friend std::chrono::nanoseconds operator-(const Timestamp& lhs, const Timestamp& rhs) noexcept
         requires(is_utc_real_time)
     {
         int64_t sec_diff = static_cast<int64_t>(lhs.seconds_) - static_cast<int64_t>(rhs.seconds_);
@@ -302,7 +279,11 @@ private:
     }
 };
 
-// Convenient type alias
-using TimeStampUTC = TimeStamp<TsiType::utc, TsfType::real_time>;
+// Convenient type alias with TSF template parameter and default
+template <TsfType TSF = TsfType::real_time>
+using UtcTimestamp = Timestamp<TsiType::utc, TSF>;
+
+// Most common case - UTC with real_time TSF
+using UtcRealTimestamp = UtcTimestamp<>;
 
 } // namespace vrtigo

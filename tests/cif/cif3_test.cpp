@@ -4,7 +4,7 @@ TEST_F(ContextPacketTest, CIF3FieldsBasic) {
     // Test a selection of 1-word and 2-word CIF3 fields using field-based API
     using namespace vrtigo::field;
     using TestContext =
-        ContextPacket<NoTimeStamp, NoClassId, network_id, tropospheric_state, jitter, pulse_width>;
+        ContextPacket<NoTimestamp, NoClassId, network_id, tropospheric_state, jitter, pulse_width>;
 
     TestContext packet(buffer.data());
 
@@ -59,7 +59,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF3) {
 
 TEST_F(ContextPacketTest, CompileTimeCIF3) {
     using namespace vrtigo::field;
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, network_id, tropospheric_state>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, network_id, tropospheric_state>;
 
     TestContext packet(buffer.data());
 

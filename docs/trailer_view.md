@@ -187,7 +187,7 @@ All setter methods return `TrailerBuilder&` for chaining:
 
 ```cpp
 // Compile-time packet with trailer
-using PacketType = SignalDataPacket<NoClassId, TimeStampUTC, Trailer::included, 128>;
+using PacketType = SignalDataPacket<NoClassId, UtcRealTimestamp, Trailer::included, 128>;
 PacketType packet(buffer.data());
 
 // Check named indicators (returns std::optional<bool>)
@@ -244,7 +244,7 @@ packet.trailer().clear();                      // All bits = 0
 
 ```cpp
 // Build packet with comprehensive status
-using PacketType = SignalDataPacket<NoClassId, TimeStampUTC, Trailer::included, 128>;
+using PacketType = SignalDataPacket<NoClassId, UtcRealTimestamp, Trailer::included, 128>;
 std::vector<uint8_t> buffer(PacketType::size_bytes);
 
 // Compose trailer configuration
@@ -255,7 +255,7 @@ auto good_status = TrailerBuilder{}
     .context_packet_count(2);
 
 // Build packet
-auto ts = TimeStampUTC::from_components(1000000, 0);
+auto ts = UtcRealTimestamp(1000000, 0);
 auto packet = PacketBuilder<PacketType>(buffer.data())
     .stream_id(0x12345678)
     .timestamp(ts)

@@ -45,8 +45,8 @@ Header views are obtained through packet accessors:
 
 | Method | Return Type | Description |
 |--------|-------------|-------------|
-| `tsi_type()` | `TsiType` | Timestamp integer format type (bits 23-22) |
-| `tsf_type()` | `TsfType` | Timestamp fractional format type (bits 21-20) |
+| `tsi_kind()` | `TsiType` | Timestamp integer format type (bits 23-22) |
+| `tsf_kind()` | `TsfType` | Timestamp fractional format type (bits 21-20) |
 | `has_timestamp_integer()` | `bool` | Convenience: TSI ≠ none |
 | `has_timestamp_fractional()` | `bool` | Convenience: TSF ≠ none |
 
@@ -146,7 +146,7 @@ packet.header().set_packet_size(100); // 100 words = 400 bytes
 auto hdr = packet.header();
 if (hdr.has_timestamp_integer()) {
     // Packet has integer timestamp component
-    TsiType format = hdr.tsi_type(); // UTC, GPS, etc.
+    TsiType format = hdr.tsi_kind(); // UTC, GPS, etc.
 }
 
 // Access actual timestamp values via packet

@@ -57,12 +57,12 @@
 namespace vrtigo {
 
 // Convenient aliases for common packet types
-template <typename ClassIdType, typename TimeStampType, Trailer TrailerType, size_t PayloadWords>
+template <typename ClassIdType, typename TimestampType, Trailer TrailerType, size_t PayloadWords>
 using SignalDataPacket =
-    DataPacket<PacketType::signal_data, ClassIdType, TimeStampType, TrailerType, PayloadWords>;
+    DataPacket<PacketType::signal_data, ClassIdType, TimestampType, TrailerType, PayloadWords>;
 
-template <typename ClassIdType, typename TimeStampType, Trailer TrailerType, size_t PayloadWords>
+template <typename ClassIdType, typename TimestampType, Trailer TrailerType, size_t PayloadWords>
 using ExtensionDataPacket =
-    DataPacket<PacketType::extension_data, ClassIdType, TimeStampType, TrailerType, PayloadWords>;
+    DataPacket<PacketType::extension_data, ClassIdType, TimestampType, TrailerType, PayloadWords>;
 
 } // namespace vrtigo

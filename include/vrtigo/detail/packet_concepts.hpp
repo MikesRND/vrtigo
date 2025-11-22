@@ -45,7 +45,7 @@ concept PacketBase = (
  * - Fixed payload size (template parameter)
  * - No variable-length fields
  * - Zero-copy mutable view over user buffer
- * - Direct field accessors (stream_id(), getTimeStamp(), etc.)
+ * - Direct field accessors (stream_id(), getTimestamp(), etc.)
  *
  * Examples: SignalPacket<...>
  */

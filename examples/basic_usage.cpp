@@ -13,7 +13,7 @@ int main() {
     {
         std::cout << "Example 1: Creating a signal packet\n";
 
-        using Packet = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC,
+        using Packet = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
                                                 vrtigo::Trailer::none, 128>;
         alignas(4) std::array<uint8_t, Packet::size_bytes> buffer;
 
@@ -24,7 +24,7 @@ int main() {
         }
 
         // Use builder pattern for convenient construction
-        auto ts = vrtigo::TimeStampUTC::now();
+        auto ts = vrtigo::UtcRealTimestamp::now();
         auto packet = vrtigo::PacketBuilder<Packet>(buffer.data())
                           .stream_id(0x12345678)
                           .timestamp(ts)
@@ -33,7 +33,7 @@ int main() {
                           .build();
 
         std::cout << "  Stream ID: 0x" << std::hex << packet.stream_id() << std::dec << "\n";
-        std::cout << "  Timestamp: " << packet.timestamp().seconds() << "s\n";
+        std::cout << "  Timestamp: " << packet.timestamp().tsi() << "s\n";
         std::cout << "  Payload: " << packet.payload().size() << " bytes\n\n";
     }
 
@@ -41,7 +41,7 @@ int main() {
     {
         std::cout << "Example 2: Parsing data\n";
 
-        using Packet = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimeStamp,
+        using Packet = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
                                                 vrtigo::Trailer::none, 64>;
         alignas(4) std::array<uint8_t, Packet::size_bytes> buffer;
 

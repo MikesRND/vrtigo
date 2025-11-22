@@ -22,7 +22,7 @@ protected:
 // =============================================================================
 
 TEST_F(InterpretedValueTest, BandwidthInterpretedRead) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
@@ -39,7 +39,7 @@ TEST_F(InterpretedValueTest, BandwidthInterpretedRead) {
 }
 
 TEST_F(InterpretedValueTest, BandwidthInterpretedWrite) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
@@ -52,7 +52,7 @@ TEST_F(InterpretedValueTest, BandwidthInterpretedWrite) {
 }
 
 TEST_F(InterpretedValueTest, BandwidthRoundTrip) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
@@ -74,7 +74,7 @@ TEST_F(InterpretedValueTest, BandwidthRoundTrip) {
 }
 
 TEST_F(InterpretedValueTest, BandwidthOperatorDereference) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
@@ -89,7 +89,7 @@ TEST_F(InterpretedValueTest, BandwidthOperatorDereference) {
 }
 
 TEST_F(InterpretedValueTest, BandwidthConversionPrecision) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
@@ -109,7 +109,7 @@ TEST_F(InterpretedValueTest, BandwidthConversionPrecision) {
 }
 
 TEST_F(InterpretedValueTest, BandwidthEdgeCases) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
@@ -131,7 +131,7 @@ TEST_F(InterpretedValueTest, BandwidthEdgeCases) {
 // =============================================================================
 
 TEST_F(InterpretedValueTest, SampleRateInterpretedRead) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, sample_rate>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
     TestContext packet(buffer.data());
 
@@ -148,7 +148,7 @@ TEST_F(InterpretedValueTest, SampleRateInterpretedRead) {
 }
 
 TEST_F(InterpretedValueTest, SampleRateInterpretedWrite) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, sample_rate>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
     TestContext packet(buffer.data());
 
@@ -161,7 +161,7 @@ TEST_F(InterpretedValueTest, SampleRateInterpretedWrite) {
 }
 
 TEST_F(InterpretedValueTest, SampleRateRoundTrip) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, sample_rate>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
     TestContext packet(buffer.data());
 
@@ -184,7 +184,7 @@ TEST_F(InterpretedValueTest, SampleRateRoundTrip) {
 }
 
 TEST_F(InterpretedValueTest, SampleRateOperatorDereference) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, sample_rate>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
     TestContext packet(buffer.data());
 
@@ -199,7 +199,7 @@ TEST_F(InterpretedValueTest, SampleRateOperatorDereference) {
 }
 
 TEST_F(InterpretedValueTest, SampleRateConversionPrecision) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, sample_rate>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
     TestContext packet(buffer.data());
 
@@ -219,7 +219,7 @@ TEST_F(InterpretedValueTest, SampleRateConversionPrecision) {
 }
 
 TEST_F(InterpretedValueTest, SampleRateTypicalADCRates) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, sample_rate>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
     TestContext packet(buffer.data());
 
@@ -244,7 +244,7 @@ TEST_F(InterpretedValueTest, SampleRateTypicalADCRates) {
 }
 
 TEST_F(InterpretedValueTest, SampleRateEdgeCases) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, sample_rate>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
     TestContext packet(buffer.data());
 
@@ -272,7 +272,7 @@ TEST_F(InterpretedValueTest, SampleRateEdgeCases) {
 
 TEST_F(InterpretedValueTest, BandwidthAndSampleRateTogether) {
     // Typical use case: both bandwidth and sample rate in same packet
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth, sample_rate>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate>;
 
     TestContext packet(buffer.data());
 
@@ -293,7 +293,7 @@ TEST_F(InterpretedValueTest, BandwidthAndSampleRateTogether) {
 
 TEST_F(InterpretedValueTest, RuntimeParserIntegration) {
     // Build packet with compile-time type
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth, sample_rate>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate>;
 
     TestContext tx_packet(buffer.data());
 

@@ -136,7 +136,7 @@ public:
      *
      * @return TSI type from header
      */
-    TsiType tsi_type() const noexcept { return structure_.header.tsi; }
+    TsiType tsi_kind() const noexcept { return structure_.header.tsi; }
 
     /**
      * Get timestamp fractional format type (TSF field)
@@ -146,7 +146,7 @@ public:
      *
      * @return TSF type from header
      */
-    TsfType tsf_type() const noexcept { return structure_.header.tsf; }
+    TsfType tsf_kind() const noexcept { return structure_.header.tsf; }
 
     /**
      * Check if packet has integer timestamp
