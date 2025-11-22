@@ -24,7 +24,7 @@ TEST(QuickstartSnippet, CreateContextPacket) {
     using namespace vrtigo::field; // Enable short field syntax
 
     // Define context packet type with sample rate and bandwidth fields
-    using PacketType = vrtigo::ContextPacket<vrtigo::NoTimeStamp, // No timestamp for this example
+    using PacketType = vrtigo::ContextPacket<vrtigo::NoTimestamp, // No timestamp for this example
                                              vrtigo::NoClassId,   // No class ID
                                              sample_rate,         // Include sample rate field
                                              bandwidth            // Include bandwidth field

@@ -5,7 +5,7 @@ using namespace vrtigo::field;
 TEST_F(ContextPacketTest, BasicCompileTimePacket) {
     // Create a simple context packet with bandwidth and sample rate
     // Note: Context packets always have Stream ID per VITA 49.2 spec
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth, sample_rate>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate>;
 
     TestContext packet(buffer.data());
 
@@ -26,7 +26,7 @@ TEST_F(ContextPacketTest, BasicCompileTimePacket) {
 }
 
 TEST_F(ContextPacketTest, PacketWithClassId) {
-    using TestContext = ContextPacket<NoTimeStamp, ClassId, bandwidth>;
+    using TestContext = ContextPacket<NoTimestamp, ClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
@@ -138,7 +138,7 @@ TEST_F(ContextPacketTest, InvalidPacketType) {
 
 TEST_F(ContextPacketTest, PacketCountAccessors) {
     // Test packet_count getter/setter for compile-time context packets
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 

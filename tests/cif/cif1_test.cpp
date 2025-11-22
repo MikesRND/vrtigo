@@ -5,7 +5,7 @@ using namespace vrtigo::field;
 TEST_F(ContextPacketTest, CIF1Fields) {
     // Create packet with CIF1 spectrum field
     // Note: Context packets always have Stream ID per VITA 49.2 spec
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, spectrum>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, spectrum>;
 
     TestContext packet(buffer.data());
 
@@ -15,7 +15,7 @@ TEST_F(ContextPacketTest, CIF1Fields) {
 }
 
 TEST_F(ContextPacketTest, NewCIF1Fields) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, health_status, phase_offset,
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, health_status, phase_offset,
                                       polarization, pointing_vector_3d_single>;
 
     TestContext packet(buffer.data());
@@ -75,7 +75,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF1) {
 
 TEST_F(ContextPacketTest, CompileTimeCIF1RuntimeParse) {
     // Create packet with CIF1 field at compile time
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, aux_frequency>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, aux_frequency>;
 
     // Compile-time assertion: verify CIF1 enable bit is auto-set
     static_assert((TestContext::cif0_value & (1U << cif::CIF1_ENABLE_BIT)) != 0,

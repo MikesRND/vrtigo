@@ -8,7 +8,7 @@
 // Test fixture for trailer field manipulation
 class TrailerTest : public ::testing::Test {
 protected:
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::TimeStampUTC,
+    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
                                                 vrtigo::Trailer::included, 128>;
 
     std::vector<uint8_t> buffer;

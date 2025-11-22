@@ -32,28 +32,28 @@ namespace vrtigo {
  *
  * @tparam Type The packet type (determines stream ID presence for data packets)
  * @tparam ClassIdType NoClassId or ClassId marker type
- * @tparam TimeStampType NoTimeStamp or TimeStamp<TSI,TSF> type
+ * @tparam TimestampType NoTimestamp or Timestamp<TSI,TSF> type
  * @tparam IsContext True for context packets (stream ID always present)
  */
 template <PacketType Type = PacketType::signal_data_no_id, typename ClassIdType = NoClassId,
-          typename TimeStampType = NoTimeStamp, bool IsContext = false>
+          typename TimestampType = NoTimestamp, bool IsContext = false>
 class Prologue {
 public:
     // Type traits
     static constexpr PacketType packet_type = Type;
     using class_id_type = ClassIdType;
-    using timestamp_type = TimeStampType;
+    using timestamp_type = TimestampType;
 
     // Determine field presence
     static constexpr bool is_context_packet = IsContext;
     static constexpr bool has_stream_id = is_context_packet || (Type == PacketType::signal_data ||
                                                                 Type == PacketType::extension_data);
     static constexpr bool has_class_id = ClassIdTraits<ClassIdType>::has_class_id;
-    static constexpr bool has_timestamp = TimestampTraits<TimeStampType>::has_timestamp;
+    static constexpr bool has_timestamp = TimestampTraits<TimestampType>::has_timestamp;
 
     // Extract timestamp components
-    static constexpr TsiType tsi = TimestampTraits<TimeStampType>::tsi;
-    static constexpr TsfType tsf = TimestampTraits<TimeStampType>::tsf;
+    static constexpr TsiType tsi = TimestampTraits<TimestampType>::tsi;
+    static constexpr TsfType tsf = TimestampTraits<TimestampType>::tsf;
 
     // Field sizes in words
     static constexpr size_t header_words = 1;
@@ -235,27 +235,27 @@ public:
     /**
      * @brief Get the timestamp (if present)
      */
-    TimeStampType timestamp() const noexcept
+    TimestampType timestamp() const noexcept
         requires(has_timestamp)
     {
         uint32_t tsi_val =
             (tsi != TsiType::none) ? detail::read_u32(buffer_, tsi_offset * vrt_word_size) : 0;
         uint64_t tsf_val =
             (tsf != TsfType::none) ? detail::read_u64(buffer_, tsf_offset * vrt_word_size) : 0;
-        return TimeStampType::from_components(tsi_val, tsf_val);
+        return TimestampType(tsi_val, tsf_val);
     }
 
     /**
      * @brief Set the timestamp (if present)
      */
-    void set_timestamp(TimeStampType ts) noexcept
+    void set_timestamp(TimestampType ts) noexcept
         requires(has_timestamp)
     {
         if constexpr (tsi != TsiType::none) {
-            detail::write_u32(buffer_, tsi_offset * vrt_word_size, ts.seconds());
+            detail::write_u32(buffer_, tsi_offset * vrt_word_size, ts.tsi());
         }
         if constexpr (tsf != TsfType::none) {
-            detail::write_u64(buffer_, tsf_offset * vrt_word_size, ts.fractional());
+            detail::write_u64(buffer_, tsf_offset * vrt_word_size, ts.tsf());
         }
     }
 

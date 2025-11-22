@@ -82,7 +82,7 @@ TEST_F(ContextPacketTest, ContextAssociationLists) {
 TEST_F(ContextPacketTest, CompileTimeForbidsVariable) {
     // This should not compile (static_assert failure):
     // constexpr uint32_t bad_cif0 = (1U << 10);  // GPS ASCII
-    // using BadContext = ContextPacket<true, NoTimeStamp, NoClassId,
+    // using BadContext = ContextPacket<true, NoTimestamp, NoClassId,
     //                                   bad_cif0, 0, 0, 0>;
 
     // Test passes by not having the above code compile

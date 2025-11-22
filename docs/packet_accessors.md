@@ -97,8 +97,8 @@ These use compile-time `static constexpr bool` members determined by template pa
 | `has_trailer()` | ✓ returns `bool` | ✓ returns `bool` | Header bit 26 (T bit) for data; always `false` for context |
 | `has_timestamp_integer()` | ✓ returns `bool` | ✓ returns `bool` | TSI ≠ none (delegates to `header()`) |
 | `has_timestamp_fractional()` | ✓ returns `bool` | ✓ returns `bool` | TSF ≠ none (delegates to `header()`) |
-| `tsi_type()` | ✓ returns `TsiType` | ✓ returns `TsiType` | Timestamp integer format metadata |
-| `tsf_type()` | ✓ returns `TsfType` | ✓ returns `TsfType` | Timestamp fractional format metadata |
+| `tsi_kind()` | ✓ returns `TsiType` | ✓ returns `TsiType` | Timestamp integer format metadata |
+| `tsf_kind()` | ✓ returns `TsfType` | ✓ returns `TsfType` | Timestamp fractional format metadata |
 
 **Delegation Strategy**:
 - Header-based queries (`has_class_id`, `has_trailer`, `has_timestamp_*`) delegate to `header()` accessor for single source of truth
@@ -135,8 +135,8 @@ These methods access the optional packet components that appear between the head
 
 | Method | Return Type | Availability |
 |--------|-------------|--------------|
-| `timestamp()` | `TimeStampType` | When `HasTimestamp<TimeStampType>` |
-| `set_timestamp(TimeStampType)` | void | When `HasTimestamp<TimeStampType>` |
+| `timestamp()` | `TimestampType` | When `HasTimestamp<TimestampType>` |
+| `set_timestamp(TimestampType)` | void | When `HasTimestamp<TimestampType>` |
 
 **Runtime Views**:
 
@@ -145,7 +145,7 @@ These methods access the optional packet components that appear between the head
 | `timestamp_integer()` | ✓ `optional<uint32_t>` | ✓ `optional<uint32_t>` |
 | `timestamp_fractional()` | ✓ `optional<uint64_t>` | ✓ `optional<uint64_t>` |
 
-**Note**: Timestamp data is distinct from timestamp format metadata. Use `tsi_type()` and `tsf_type()` (or `header().tsi_type()` / `header().tsf_type()`) to query the timestamp format, and `timestamp_integer()` / `timestamp_fractional()` to access the actual timestamp values.
+**Note**: Timestamp data is distinct from timestamp format metadata. Use `tsi_kind()` and `tsf_kind()` (or `header().tsi_kind()` / `header().tsf_kind()`) to query the timestamp format, and `timestamp_integer()` / `timestamp_fractional()` to access the actual timestamp values.
 
 ### Trailer
 
@@ -334,7 +334,7 @@ For implementation details and exact signatures, see:
 
 ### Data Packets (Compile-Time)
 - **File**: `include/vrtigo/detail/data_packet.hpp`
-- **Class**: `DataPacket<PacketType Type, ClassIdType ClassId, TimeStampType TimeStamp, Trailer HasTrailer, size_t PayloadWords>`
+- **Class**: `DataPacket<PacketType Type, ClassIdType ClassId, TimestampType Timestamp, Trailer HasTrailer, size_t PayloadWords>`
 - **Key sections**:
   - Header accessors (packet_count) and static size constants (`size_words`, `size_bytes`)
   - Stream ID (conditional on has_stream_id)
@@ -351,7 +351,7 @@ For implementation details and exact signatures, see:
   - Automatic validation on construction
   - Validation query methods (error, is_valid)
   - Header accessor (header())
-  - Type and presence queries (type, has_*, tsi_type, tsf_type)
+  - Type and presence queries (type, has_*, tsi_kind, tsf_kind)
   - Optional field accessors (stream_id, class_id, timestamp_*, trailer)
   - Payload and size queries (dynamic spans)
 
@@ -373,7 +373,7 @@ For implementation details and exact signatures, see:
   - Automatic validation on construction
   - Validation query methods
   - Header accessor (header())
-  - Timestamp format metadata accessors (tsi_type, tsf_type, has_timestamp_*)
+  - Timestamp format metadata accessors (tsi_kind, tsf_kind, has_timestamp_*)
   - Optional accessors (stream_id, class_id, timestamp_integer, timestamp_fractional)
   - CIF query methods (cif0-3)
   - FieldProxy access via operator[]

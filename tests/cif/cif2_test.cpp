@@ -4,7 +4,7 @@ TEST_F(ContextPacketTest, CIF2Fields) {
     // Create packet with CIF2 controller UUID using field-based API
     // Note: Context packets always have Stream ID per VITA 49.2 spec
     using namespace vrtigo::field;
-    using TestContext = ContextPacket<NoTimeStamp,      // No timestamp
+    using TestContext = ContextPacket<NoTimestamp,      // No timestamp
                                       NoClassId,        // No class ID
                                       controller_uuid>; // CIF2 field
 
@@ -65,7 +65,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF2) {
 TEST_F(ContextPacketTest, CompileTimeCIF2RuntimeParse) {
     // Create packet with CIF2 field at compile time using field-based API
     using namespace vrtigo::field;
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId,
+    using TestContext = ContextPacket<NoTimestamp, NoClassId,
                                       controller_uuid>; // CIF2 field
 
     // Compile-time assertion: verify CIF2 enable bit is auto-set

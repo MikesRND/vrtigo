@@ -71,7 +71,7 @@ namespace vrtigo::utils::netio {
  * UDPVRTWriter writer("192.168.1.100", 12345);
  *
  * // Create packet
- * using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimeStamp,
+ * using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
  * vrtigo::Trailer::none, 64>; alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{}; auto
  * packet = vrtigo::PacketBuilder<PacketType>(buffer.data()) .stream_id(0x1234) .packet_count(1)
  *     .build();

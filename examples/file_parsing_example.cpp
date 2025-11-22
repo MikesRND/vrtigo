@@ -34,8 +34,8 @@ public:
             std::cout << "  Stream ID: " << (view.has_stream_id() ? "Yes" : "No") << "\n";
             std::cout << "  Class ID: " << (view.has_class_id() ? "Yes" : "No") << "\n";
             std::cout << "  Trailer: " << (view.has_trailer() ? "Yes" : "No") << "\n";
-            std::cout << "  TSI: " << static_cast<int>(view.tsi_type()) << "\n";
-            std::cout << "  TSF: " << static_cast<int>(view.tsf_type()) << "\n";
+            std::cout << "  TSI: " << static_cast<int>(view.tsi_kind()) << "\n";
+            std::cout << "  TSF: " << static_cast<int>(view.tsf_kind()) << "\n";
             std::cout << "  Count: " << static_cast<int>(view.packet_count()) << "\n";
         } else if (is_context_packet(pkt)) {
             const auto& view = std::get<RuntimeContextPacket>(pkt);

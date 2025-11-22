@@ -29,14 +29,14 @@ namespace vrtigo {
 //
 // NOTE: Most users should use the field-based ContextPacket template instead,
 // which automatically computes CIF bitmasks from field tags.
-template <typename TimeStampType = NoTimeStamp, typename ClassIdType = NoClassId, uint32_t CIF0 = 0,
+template <typename TimestampType = NoTimestamp, typename ClassIdType = NoClassId, uint32_t CIF0 = 0,
           uint32_t CIF1 = 0, uint32_t CIF2 = 0, uint32_t CIF3 = 0>
-    requires ValidTimestampType<TimeStampType> && ValidClassIdType<ClassIdType>
+    requires ValidTimestampType<TimestampType> && ValidClassIdType<ClassIdType>
 class ContextPacketBase {
 private:
     uint8_t* buffer_;
     // Use Prologue for common header fields (IsContext = true for always-present stream ID)
-    using prologue_type = Prologue<PacketType::context, ClassIdType, TimeStampType, true>;
+    using prologue_type = Prologue<PacketType::context, ClassIdType, TimestampType, true>;
     mutable prologue_type prologue_;
 
     // Compute actual CIF0 with automatic CIF1/CIF2/CIF3 enable bits
@@ -237,13 +237,13 @@ public:
 
     // Timestamp accessors
 
-    TimeStampType timestamp() const noexcept
+    TimestampType timestamp() const noexcept
         requires(has_timestamp)
     {
         return prologue_.timestamp();
     }
 
-    void set_timestamp(TimeStampType ts) noexcept
+    void set_timestamp(TimestampType ts) noexcept
         requires(has_timestamp)
     {
         prologue_.set_timestamp(ts);
@@ -317,20 +317,20 @@ public:
 //
 // Example usage:
 //     using namespace vrtigo::field;
-//     using MyPacket = ContextPacket<NoTimeStamp, NoClassId,
+//     using MyPacket = ContextPacket<NoTimestamp, NoClassId,
 //                                     bandwidth, sample_rate, gain>;
 //
 // This is the recommended API for most users.
-template <typename TimeStampType = NoTimeStamp, typename ClassIdType = NoClassId, auto... Fields>
-    requires ValidTimestampType<TimeStampType> && ValidClassIdType<ClassIdType>
+template <typename TimestampType = NoTimestamp, typename ClassIdType = NoClassId, auto... Fields>
+    requires ValidTimestampType<TimestampType> && ValidClassIdType<ClassIdType>
 class ContextPacket
-    : public ContextPacketBase<TimeStampType, ClassIdType, detail::FieldMask<Fields...>::cif0,
+    : public ContextPacketBase<TimestampType, ClassIdType, detail::FieldMask<Fields...>::cif0,
                                detail::FieldMask<Fields...>::cif1,
                                detail::FieldMask<Fields...>::cif2,
                                detail::FieldMask<Fields...>::cif3> {
 public:
     using Base =
-        ContextPacketBase<TimeStampType, ClassIdType, detail::FieldMask<Fields...>::cif0,
+        ContextPacketBase<TimestampType, ClassIdType, detail::FieldMask<Fields...>::cif0,
                           detail::FieldMask<Fields...>::cif1, detail::FieldMask<Fields...>::cif2,
                           detail::FieldMask<Fields...>::cif3>;
 

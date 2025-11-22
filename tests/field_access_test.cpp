@@ -15,7 +15,7 @@ using namespace vrtigo::field;
 int main() {
     // Test packet with multiple fields using new field-based API
     // Note: Context packets always have Stream ID per VITA 49.2 spec
-    using TestPacket = ContextPacket<NoTimeStamp,                   // TimeStampType
+    using TestPacket = ContextPacket<NoTimestamp,                   // TimestampType
                                      NoClassId,                     // ClassIdType
                                      bandwidth, sample_rate, gain>; // Fields
 

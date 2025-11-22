@@ -130,7 +130,7 @@ public:
      * Returns the format of the integer timestamp component.
      * This is metadata ABOUT the timestamp, not the timestamp data itself.
      */
-    [[nodiscard]] TsiType tsi_type() const noexcept {
+    [[nodiscard]] TsiType tsi_kind() const noexcept {
         if (auto decoded = std::get_if<const DecodedHeader*>(&source_)) {
             return (*decoded)->tsi;
         }
@@ -144,7 +144,7 @@ public:
      * Returns the format of the fractional timestamp component.
      * This is metadata ABOUT the timestamp, not the timestamp data itself.
      */
-    [[nodiscard]] TsfType tsf_type() const noexcept {
+    [[nodiscard]] TsfType tsf_kind() const noexcept {
         if (auto decoded = std::get_if<const DecodedHeader*>(&source_)) {
             return (*decoded)->tsf;
         }
@@ -158,7 +158,7 @@ public:
      * Derived from TSI field - true if TSI != none.
      */
     [[nodiscard]] bool has_timestamp_integer() const noexcept {
-        return tsi_type() != TsiType::none;
+        return tsi_kind() != TsiType::none;
     }
 
     /**
@@ -167,7 +167,7 @@ public:
      * Derived from TSF field - true if TSF != none.
      */
     [[nodiscard]] bool has_timestamp_fractional() const noexcept {
-        return tsf_type() != TsfType::none;
+        return tsf_kind() != TsfType::none;
     }
 
     /**

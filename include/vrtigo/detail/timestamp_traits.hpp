@@ -8,7 +8,7 @@ namespace vrtigo {
 
 // Forward declaration
 template <TsiType TSI, TsfType TSF>
-class TimeStamp;
+class Timestamp;
 
 /**
  * @brief Traits for extracting timestamp type information
@@ -23,24 +23,24 @@ struct TimestampTraits {
 };
 
 /**
- * @brief Specialization for TimeStamp types
+ * @brief Specialization for Timestamp types
  *
- * Extracts TSI and TSF from TimeStamp template parameters
+ * Extracts TSI and TSF from Timestamp template parameters
  */
 template <TsiType TSI, TsfType TSF>
-struct TimestampTraits<TimeStamp<TSI, TSF>> {
+struct TimestampTraits<Timestamp<TSI, TSF>> {
     static constexpr bool is_valid = true;
     static constexpr bool has_timestamp = true;
     static constexpr TsiType tsi = TSI;
     static constexpr TsfType tsf = TSF;
-    using type = TimeStamp<TSI, TSF>;
+    using type = Timestamp<TSI, TSF>;
 };
 
 /**
- * @brief Specialization for NoTimeStamp marker
+ * @brief Specialization for NoTimestamp marker
  */
 template <>
-struct TimestampTraits<NoTimeStamp> {
+struct TimestampTraits<NoTimestamp> {
     static constexpr bool is_valid = true;
     static constexpr bool has_timestamp = false;
     static constexpr TsiType tsi = TsiType::none;

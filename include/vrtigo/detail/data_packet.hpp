@@ -23,20 +23,20 @@
 
 namespace vrtigo {
 
-template <PacketType Type, typename ClassIdType = NoClassId, typename TimeStampType = NoTimeStamp,
+template <PacketType Type, typename ClassIdType = NoClassId, typename TimestampType = NoTimestamp,
           Trailer HasTrailer = Trailer::none, size_t PayloadWords = 0>
     requires(Type == PacketType::signal_data_no_id || Type == PacketType::signal_data ||
              Type == PacketType::extension_data_no_id || Type == PacketType::extension_data) &&
-            ValidPayloadWords<PayloadWords> && ValidTimestampType<TimeStampType> &&
+            ValidPayloadWords<PayloadWords> && ValidTimestampType<TimestampType> &&
             ValidClassIdType<ClassIdType>
 class DataPacket {
 private:
     // Use Prologue for common header fields
-    using prologue_type = Prologue<Type, ClassIdType, TimeStampType, false>;
+    using prologue_type = Prologue<Type, ClassIdType, TimestampType, false>;
 
 public:
     // Type aliases
-    using timestamp_type = TimeStampType;
+    using timestamp_type = TimestampType;
 
     // Essential packet properties
     static constexpr bool has_stream_id = prologue_type::has_stream_id;
@@ -144,23 +144,23 @@ public:
     // Timestamp accessors
 
     /**
-     * Get timestamp as the packet's TimeStampType.
-     * Only available when packet has a timestamp type (not NoTimeStamp).
-     * @return TimeStampType object containing both integer and fractional parts
+     * Get timestamp as the packet's TimestampType.
+     * Only available when packet has a timestamp type (not NoTimestamp).
+     * @return TimestampType object containing both integer and fractional parts
      */
-    TimeStampType timestamp() const noexcept
-        requires(HasTimestamp<TimeStampType>)
+    TimestampType timestamp() const noexcept
+        requires(HasTimestamp<TimestampType>)
     {
         return prologue_.timestamp();
     }
 
     /**
-     * Set timestamp from the packet's TimeStampType.
-     * Only available when packet has a timestamp type (not NoTimeStamp).
-     * @param ts TimeStampType object to set
+     * Set timestamp from the packet's TimestampType.
+     * Only available when packet has a timestamp type (not NoTimestamp).
+     * @param ts TimestampType object to set
      */
-    void set_timestamp(TimeStampType ts) noexcept
-        requires(HasTimestamp<TimeStampType>)
+    void set_timestamp(TimestampType ts) noexcept
+        requires(HasTimestamp<TimestampType>)
     {
         prologue_.set_timestamp(ts);
     }
@@ -304,25 +304,25 @@ private:
 // User-facing type aliases for convenient usage
 
 // Specific aliases that line up with PacketType enum names
-template <typename ClassIdType = NoClassId, typename TimeStampType = NoTimeStamp,
+template <typename ClassIdType = NoClassId, typename TimestampType = NoTimestamp,
           Trailer HasTrailer = Trailer::none, size_t PayloadWords = 0>
 using SignalDataPacket =
-    DataPacket<PacketType::signal_data, ClassIdType, TimeStampType, HasTrailer, PayloadWords>;
+    DataPacket<PacketType::signal_data, ClassIdType, TimestampType, HasTrailer, PayloadWords>;
 
-template <typename ClassIdType = NoClassId, typename TimeStampType = NoTimeStamp,
+template <typename ClassIdType = NoClassId, typename TimestampType = NoTimestamp,
           Trailer HasTrailer = Trailer::none, size_t PayloadWords = 0>
 using SignalDataPacketNoId =
-    DataPacket<PacketType::signal_data_no_id, ClassIdType, TimeStampType, HasTrailer, PayloadWords>;
+    DataPacket<PacketType::signal_data_no_id, ClassIdType, TimestampType, HasTrailer, PayloadWords>;
 
-template <typename ClassIdType = NoClassId, typename TimeStampType = NoTimeStamp,
+template <typename ClassIdType = NoClassId, typename TimestampType = NoTimestamp,
           Trailer HasTrailer = Trailer::none, size_t PayloadWords = 0>
 using ExtensionDataPacket =
-    DataPacket<PacketType::extension_data, ClassIdType, TimeStampType, HasTrailer, PayloadWords>;
+    DataPacket<PacketType::extension_data, ClassIdType, TimestampType, HasTrailer, PayloadWords>;
 
-template <typename ClassIdType = NoClassId, typename TimeStampType = NoTimeStamp,
+template <typename ClassIdType = NoClassId, typename TimestampType = NoTimestamp,
           Trailer HasTrailer = Trailer::none, size_t PayloadWords = 0>
 using ExtensionDataPacketNoId = DataPacket<PacketType::extension_data_no_id, ClassIdType,
-                                           TimeStampType, HasTrailer, PayloadWords>;
+                                           TimestampType, HasTrailer, PayloadWords>;
 
 // Deprecated legacy alias retained for source compatibility. Will be removed in a future release.
 } // namespace vrtigo

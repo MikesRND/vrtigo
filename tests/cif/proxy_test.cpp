@@ -22,7 +22,7 @@ protected:
 // =============================================================================
 
 TEST_F(FieldProxyTest, BasicSetAndGet) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
@@ -37,7 +37,7 @@ TEST_F(FieldProxyTest, BasicSetAndGet) {
 
 TEST_F(FieldProxyTest, FieldPresenceCheck) {
     // Create packet WITH bandwidth
-    using WithBandwidth = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
+    using WithBandwidth = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     WithBandwidth pkt1(buffer.data());
 
@@ -46,7 +46,7 @@ TEST_F(FieldProxyTest, FieldPresenceCheck) {
 
     // Create packet WITHOUT bandwidth
     using WithoutBandwidth =
-        ContextPacket<NoTimeStamp, NoClassId, sample_rate>; // Has sample_rate, NOT bandwidth
+        ContextPacket<NoTimestamp, NoClassId, sample_rate>; // Has sample_rate, NOT bandwidth
 
     alignas(4) std::array<uint8_t, WithoutBandwidth::size_bytes> buf2{};
     WithoutBandwidth pkt2(buf2.data());
@@ -56,7 +56,7 @@ TEST_F(FieldProxyTest, FieldPresenceCheck) {
 }
 
 TEST_F(FieldProxyTest, UncheckedAccess) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
@@ -73,7 +73,7 @@ TEST_F(FieldProxyTest, UncheckedAccess) {
 // =============================================================================
 
 TEST_F(FieldProxyTest, RawBytesAccess) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
@@ -91,7 +91,7 @@ TEST_F(FieldProxyTest, RawBytesAccess) {
 }
 
 TEST_F(FieldProxyTest, RawBytesManipulation) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
@@ -109,7 +109,7 @@ TEST_F(FieldProxyTest, RawBytesManipulation) {
 }
 
 TEST_F(FieldProxyTest, OffsetAndSize) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
@@ -124,7 +124,7 @@ TEST_F(FieldProxyTest, OffsetAndSize) {
 
 TEST_F(FieldProxyTest, MissingFieldHandling) {
     using TestContext =
-        ContextPacket<NoTimeStamp, NoClassId, sample_rate>; // Has sample_rate, NOT bandwidth
+        ContextPacket<NoTimestamp, NoClassId, sample_rate>; // Has sample_rate, NOT bandwidth
 
     TestContext packet(buffer.data());
 
@@ -138,7 +138,7 @@ TEST_F(FieldProxyTest, MissingFieldHandling) {
 }
 
 TEST_F(FieldProxyTest, DifferentFieldSizes) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth, sample_rate, gain>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate, gain>;
 
     TestContext packet(buffer.data());
 
@@ -156,7 +156,7 @@ TEST_F(FieldProxyTest, DifferentFieldSizes) {
 }
 
 TEST_F(FieldProxyTest, ConditionalPatternCompatibility) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, gain>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, gain>;
 
     TestContext packet(buffer.data());
 
@@ -171,7 +171,7 @@ TEST_F(FieldProxyTest, ConditionalPatternCompatibility) {
 }
 
 TEST_F(FieldProxyTest, MultipleProxiesToSameField) {
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     TestContext packet(buffer.data());
 
@@ -188,7 +188,7 @@ TEST_F(FieldProxyTest, MultipleProxiesToSameField) {
 
 TEST_F(FieldProxyTest, MultiFieldPacket) {
     // Packet with bandwidth + sample_rate + gain
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth, sample_rate, gain>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate, gain>;
 
     TestContext packet(buffer.data());
 
@@ -210,7 +210,7 @@ TEST_F(FieldProxyTest, MultiFieldPacket) {
 TEST_F(FieldProxyTest, MultiCIFWordPacket) {
     // Packet with fields spanning CIF0, CIF1, CIF2
     using TestContext =
-        ContextPacket<NoTimeStamp, NoClassId, bandwidth, aux_frequency, controller_uuid>;
+        ContextPacket<NoTimestamp, NoClassId, bandwidth, aux_frequency, controller_uuid>;
 
     TestContext packet(buffer.data());
 
@@ -228,7 +228,7 @@ TEST_F(FieldProxyTest, MultiCIFWordPacket) {
 
 TEST_F(FieldProxyTest, RuntimeParserIntegration) {
     // Build packet with compile-time type
-    using TestContext = ContextPacket<NoTimeStamp, NoClassId, bandwidth>;
+    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     TestContext tx_packet(buffer.data());
 
