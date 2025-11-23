@@ -31,6 +31,7 @@ vrtigo_add_gtest(builder_test builder_test.cpp)
 vrtigo_add_gtest(security_test security_test.cpp)
 vrtigo_add_gtest(trailer_test trailer_test.cpp)
 vrtigo_add_gtest(timestamp_test timestamp_test.cpp)
+vrtigo_add_gtest(sample_clock_test sample_clock_test.cpp)
 vrtigo_add_gtest(signal_packet_view_test signal_packet_view_test.cpp)
 vrtigo_add_gtest(packet_concepts_test packet_concepts_test.cpp)
 

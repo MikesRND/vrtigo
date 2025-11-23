@@ -65,7 +65,12 @@ clean:
 test: configure
 	@cmake --build $(BUILD_DIR)
 	@echo "Running all tests..."
-	@cd $(BUILD_DIR) && ctest --output-on-failure
+	@cd $(BUILD_DIR) && \
+		if [ "$(VERBOSE)" = "1" ]; then \
+			ctest --output-on-failure -V; \
+		else \
+			ctest --output-on-failure; \
+		fi
 	@echo "✓ All tests passed"
 
 # ============================================================================
