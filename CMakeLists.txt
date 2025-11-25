@@ -63,6 +63,14 @@ add_custom_target(quickstart ALL
     VERBATIM
 )
 
+# Custom target: Extract CIF access examples to docs
+add_custom_target(cif_access_docs ALL
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/extract_cif_access.sh
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Generating CIF access documentation"
+    VERBATIM
+)
+
 # Installation
 install(DIRECTORY include/vrtigo
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}

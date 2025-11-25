@@ -101,6 +101,7 @@ for system errors so they can integrate cleanly with host I/O abstractions.
 - Uses `std::memcpy` + compiler intrinsics for efficiency
 - Alignment-safe on all architectures
 - Single source of truth for buffer access patterns
+- See [`endianness-model.md`](endianness-model.md) for detailed handling rules and BitFieldAccessor usage
 
 ## Performance
 

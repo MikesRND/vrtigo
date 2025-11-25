@@ -36,8 +36,7 @@ echo "Building vrtigo..."
 cmake -S . -B "$BUILD_DIR" \
     -DCMAKE_BUILD_TYPE=Release \
     -DVRTIGO_BUILD_TESTS=OFF \
-    -DVRTIGO_BUILD_EXAMPLES=OFF \
-    -DVRTIGO_BUILD_BENCHMARKS=OFF
+    -DVRTIGO_BUILD_EXAMPLES=OFF
 
 cmake --build "$BUILD_DIR" -j"$NPROC"
 

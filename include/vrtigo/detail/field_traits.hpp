@@ -6,6 +6,7 @@
 
 #include "cif.hpp"
 #include "field_values.hpp"
+#include "payload_format.hpp"
 
 namespace vrtigo::detail {
 
@@ -187,7 +188,8 @@ struct FieldTraits<0, 14> {
 // CIF0 Bit 15: Data Payload Format (2 words)
 template <>
 struct FieldTraits<0, 15> {
-    using value_type = FieldView<2>;
+    using value_type = FieldView<2>;              // Low-level encoded access
+    using interpreted_type = PayloadFormat::View; // High-level structured access
     static constexpr const char* name = "Data Payload Format";
 
     static value_type read(const uint8_t* base, size_t offset) noexcept {
@@ -196,6 +198,14 @@ struct FieldTraits<0, 15> {
 
     static void write(uint8_t* base, size_t offset, const value_type& v) noexcept {
         std::memcpy(base + offset, v.data(), 2 * 4);
+    }
+
+    static interpreted_type to_interpreted(const value_type& v) noexcept {
+        return PayloadFormat::View{const_cast<uint8_t*>(v.data())};
+    }
+
+    static value_type from_interpreted(const interpreted_type& v) noexcept {
+        return FieldView<2>{reinterpret_cast<const uint8_t*>(v.bytes().data()), 0};
     }
 };
 

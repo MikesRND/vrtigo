@@ -215,62 +215,71 @@ TEST_F(TrailerTest, SampleLoss_EnableIndicatorPairing) {
 }
 
 // ============================================================================
-// Sample Frame and User-Defined Indicators (bits 11-8, no enable bits)
+// Sample Frame and User-Defined Indicators (bits 11-8, enable bits 23-20)
 // ============================================================================
 
 TEST_F(TrailerTest, SampleFrame1_DirectAccess) {
     PacketType packet(buffer.data());
 
-    // Initially false
-    EXPECT_FALSE(packet.trailer().sample_frame_1());
+    // Initially not set (enable bit is 0)
+    EXPECT_FALSE(packet.trailer().sample_frame_1().has_value());
 
-    // Set to true
+    // Set to true (sets enable bit 23 and indicator bit 11)
     packet.trailer().set_sample_frame_1(true);
-    EXPECT_TRUE(packet.trailer().sample_frame_1());
-    EXPECT_TRUE(packet.trailer().raw() & (1U << 11));
+    ASSERT_TRUE(packet.trailer().sample_frame_1().has_value());
+    EXPECT_TRUE(*packet.trailer().sample_frame_1());
+    EXPECT_TRUE(packet.trailer().raw() & (1U << 11)); // Indicator bit
+    EXPECT_TRUE(packet.trailer().raw() & (1U << 23)); // Enable bit
 
-    // Set to false
+    // Set to false (enable bit stays 1, indicator bit becomes 0)
     packet.trailer().set_sample_frame_1(false);
-    EXPECT_FALSE(packet.trailer().sample_frame_1());
+    ASSERT_TRUE(packet.trailer().sample_frame_1().has_value());
+    EXPECT_FALSE(*packet.trailer().sample_frame_1());
 }
 
 TEST_F(TrailerTest, SampleFrame0_DirectAccess) {
     PacketType packet(buffer.data());
 
-    EXPECT_FALSE(packet.trailer().sample_frame_0());
+    EXPECT_FALSE(packet.trailer().sample_frame_0().has_value());
 
     packet.trailer().set_sample_frame_0(true);
-    EXPECT_TRUE(packet.trailer().sample_frame_0());
-    EXPECT_TRUE(packet.trailer().raw() & (1U << 10));
+    ASSERT_TRUE(packet.trailer().sample_frame_0().has_value());
+    EXPECT_TRUE(*packet.trailer().sample_frame_0());
+    EXPECT_TRUE(packet.trailer().raw() & (1U << 10)); // Indicator bit
+    EXPECT_TRUE(packet.trailer().raw() & (1U << 22)); // Enable bit
 
     packet.trailer().clear_sample_frame_0();
-    EXPECT_FALSE(packet.trailer().sample_frame_0());
+    EXPECT_FALSE(packet.trailer().sample_frame_0().has_value());
 }
 
 TEST_F(TrailerTest, UserDefined1_DirectAccess) {
     PacketType packet(buffer.data());
 
-    EXPECT_FALSE(packet.trailer().user_defined_1());
+    EXPECT_FALSE(packet.trailer().user_defined_1().has_value());
 
     packet.trailer().set_user_defined_1(true);
-    EXPECT_TRUE(packet.trailer().user_defined_1());
-    EXPECT_TRUE(packet.trailer().raw() & (1U << 9));
+    ASSERT_TRUE(packet.trailer().user_defined_1().has_value());
+    EXPECT_TRUE(*packet.trailer().user_defined_1());
+    EXPECT_TRUE(packet.trailer().raw() & (1U << 9));  // Indicator bit
+    EXPECT_TRUE(packet.trailer().raw() & (1U << 21)); // Enable bit
 
     packet.trailer().clear_user_defined_1();
-    EXPECT_FALSE(packet.trailer().user_defined_1());
+    EXPECT_FALSE(packet.trailer().user_defined_1().has_value());
 }
 
 TEST_F(TrailerTest, UserDefined0_DirectAccess) {
     PacketType packet(buffer.data());
 
-    EXPECT_FALSE(packet.trailer().user_defined_0());
+    EXPECT_FALSE(packet.trailer().user_defined_0().has_value());
 
     packet.trailer().set_user_defined_0(true);
-    EXPECT_TRUE(packet.trailer().user_defined_0());
-    EXPECT_TRUE(packet.trailer().raw() & (1U << 8));
+    ASSERT_TRUE(packet.trailer().user_defined_0().has_value());
+    EXPECT_TRUE(*packet.trailer().user_defined_0());
+    EXPECT_TRUE(packet.trailer().raw() & (1U << 8));  // Indicator bit
+    EXPECT_TRUE(packet.trailer().raw() & (1U << 20)); // Enable bit
 
     packet.trailer().clear_user_defined_0();
-    EXPECT_FALSE(packet.trailer().user_defined_0());
+    EXPECT_FALSE(packet.trailer().user_defined_0().has_value());
 }
 
 // ============================================================================
@@ -312,10 +321,14 @@ TEST_F(TrailerTest, Builder_SampleFrameAndUserDefined) {
         .user_defined_0(false)
         .apply(packet.trailer());
 
-    EXPECT_TRUE(packet.trailer().sample_frame_1());
-    EXPECT_FALSE(packet.trailer().sample_frame_0());
-    EXPECT_TRUE(packet.trailer().user_defined_1());
-    EXPECT_FALSE(packet.trailer().user_defined_0());
+    ASSERT_TRUE(packet.trailer().sample_frame_1().has_value());
+    EXPECT_TRUE(*packet.trailer().sample_frame_1());
+    ASSERT_TRUE(packet.trailer().sample_frame_0().has_value());
+    EXPECT_FALSE(*packet.trailer().sample_frame_0());
+    ASSERT_TRUE(packet.trailer().user_defined_1().has_value());
+    EXPECT_TRUE(*packet.trailer().user_defined_1());
+    ASSERT_TRUE(packet.trailer().user_defined_0().has_value());
+    EXPECT_FALSE(*packet.trailer().user_defined_0());
 }
 
 TEST_F(TrailerTest, Builder_ComplexTrailer) {
@@ -342,7 +355,8 @@ TEST_F(TrailerTest, Builder_ComplexTrailer) {
     ASSERT_TRUE(packet.trailer().over_range().has_value());
     EXPECT_FALSE(*packet.trailer().over_range());
 
-    EXPECT_TRUE(packet.trailer().sample_frame_1());
+    ASSERT_TRUE(packet.trailer().sample_frame_1().has_value());
+    EXPECT_TRUE(*packet.trailer().sample_frame_1());
 }
 
 TEST_F(TrailerTest, Builder_ValueMethod) {
