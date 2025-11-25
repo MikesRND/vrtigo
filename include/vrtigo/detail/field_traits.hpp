@@ -5,7 +5,9 @@
 #include <cstdint>
 
 #include "cif.hpp"
+#include "device_identifier.hpp"
 #include "field_values.hpp"
+#include "fixed_point.hpp"
 #include "payload_format.hpp"
 
 namespace vrtigo::detail {
@@ -225,17 +227,27 @@ struct FieldTraits<0, 16> {
 };
 
 // CIF0 Bit 17: Device ID (2 words)
+// Per VITA 49.2 Section 9.10.1
 template <>
 struct FieldTraits<0, 17> {
-    using value_type = uint64_t;
+    using value_type = FieldView<2>;
+    using interpreted_type = DeviceIdentifier::View;
     static constexpr const char* name = "Device ID";
 
     static value_type read(const uint8_t* base, size_t offset) noexcept {
-        return cif::read_u64_safe(base, offset);
+        return FieldView<2>{base, offset};
     }
 
-    static void write(uint8_t* base, size_t offset, value_type v) noexcept {
-        cif::write_u64_safe(base, offset, v);
+    static void write(uint8_t* base, size_t offset, const value_type& v) noexcept {
+        std::memcpy(base + offset, v.data(), 2 * 4);
+    }
+
+    static interpreted_type to_interpreted(const value_type& v) noexcept {
+        return DeviceIdentifier::View{const_cast<uint8_t*>(v.data())};
+    }
+
+    static value_type from_interpreted(const interpreted_type& v) noexcept {
+        return FieldView<2>{reinterpret_cast<const uint8_t*>(v.bytes().data()), 0};
     }
 };
 
@@ -302,11 +314,11 @@ struct FieldTraits<0, 21> {
     using interpreted_type = double;
 
     static interpreted_type to_interpreted(value_type raw) noexcept {
-        return static_cast<double>(raw) / 4096.0; // Q52.12 → Hz
+        return FixedPoint<52, 12, false>::to_double(raw);
     }
 
     static value_type from_interpreted(interpreted_type hz) noexcept {
-        return static_cast<value_type>(hz * 4096.0 + 0.5); // Round to nearest
+        return FixedPoint<52, 12, false>::from_double(hz);
     }
 };
 
@@ -323,6 +335,17 @@ struct FieldTraits<0, 22> {
     static void write(uint8_t* base, size_t offset, value_type v) noexcept {
         cif::write_u32_safe(base, offset, v);
     }
+
+    // Interpreted support: count value is the value itself (no conversion needed)
+    using interpreted_type = uint32_t;
+
+    static interpreted_type to_interpreted(value_type raw) noexcept {
+        return raw; // Count is the value itself
+    }
+
+    static value_type from_interpreted(interpreted_type count) noexcept {
+        return count; // Direct pass-through
+    }
 };
 
 // CIF0 Bit 23: Gain
@@ -337,6 +360,31 @@ struct FieldTraits<0, 23> {
 
     static void write(uint8_t* base, size_t offset, value_type v) noexcept {
         cif::write_u32_safe(base, offset, v);
+    }
+
+    // Interpreted support: Two Q9.7 fixed-point subfields → dB (GainValue)
+    using interpreted_type = GainValue;
+
+    static interpreted_type to_interpreted(value_type raw) noexcept {
+        // Stage 1 Gain: Lower 16 bits (Q9.7)
+        uint16_t stage1_raw = static_cast<uint16_t>(raw & 0xFFFF);
+        double stage1_db = FixedPoint<9, 7, true, uint16_t>::to_double(stage1_raw);
+
+        // Stage 2 Gain: Upper 16 bits (Q9.7)
+        uint16_t stage2_raw = static_cast<uint16_t>((raw >> 16) & 0xFFFF);
+        double stage2_db = FixedPoint<9, 7, true, uint16_t>::to_double(stage2_raw);
+
+        return {stage1_db, stage2_db};
+    }
+
+    static value_type from_interpreted(interpreted_type gain) noexcept {
+        // Convert Stage 1 gain to Q9.7 (lower 16 bits)
+        uint16_t stage1_raw = FixedPoint<9, 7, true, uint16_t>::from_double(gain.stage1_db);
+
+        // Convert Stage 2 gain to Q9.7 (upper 16 bits)
+        uint16_t stage2_raw = FixedPoint<9, 7, true, uint16_t>::from_double(gain.stage2_db);
+
+        return static_cast<uint32_t>(stage1_raw) | (static_cast<uint32_t>(stage2_raw) << 16);
     }
 };
 
@@ -353,6 +401,21 @@ struct FieldTraits<0, 24> {
     static void write(uint8_t* base, size_t offset, value_type v) noexcept {
         cif::write_u32_safe(base, offset, v);
     }
+
+    // Interpreted support: Q9.7 fixed-point (two's complement) in lower 16 bits → dBm (double)
+    using interpreted_type = double;
+
+    static interpreted_type to_interpreted(value_type raw) noexcept {
+        // Extract lower 16 bits (Q9.7 format) and convert using uint16_t storage
+        uint16_t q9_7_raw = static_cast<uint16_t>(raw & 0xFFFF);
+        return FixedPoint<9, 7, true, uint16_t>::to_double(q9_7_raw);
+    }
+
+    static value_type from_interpreted(interpreted_type dBm) noexcept {
+        // Convert using uint16_t storage, then embed in 32-bit word (upper 16 bits reserved)
+        uint16_t q9_7_value = FixedPoint<9, 7, true, uint16_t>::from_double(dBm);
+        return static_cast<uint32_t>(q9_7_value);
+    }
 };
 
 // CIF0 Bit 25: IF Band Offset (2 words)
@@ -367,6 +430,17 @@ struct FieldTraits<0, 25> {
 
     static void write(uint8_t* base, size_t offset, value_type v) noexcept {
         cif::write_u64_safe(base, offset, v);
+    }
+
+    // Interpreted support: Q44.20 fixed-point (two's complement) → Hz (double)
+    using interpreted_type = double;
+
+    static interpreted_type to_interpreted(value_type raw) noexcept {
+        return FixedPoint<44, 20, true>::to_double(raw);
+    }
+
+    static value_type from_interpreted(interpreted_type hz) noexcept {
+        return FixedPoint<44, 20, true>::from_double(hz);
     }
 };
 
@@ -383,6 +457,17 @@ struct FieldTraits<0, 26> {
     static void write(uint8_t* base, size_t offset, value_type v) noexcept {
         cif::write_u64_safe(base, offset, v);
     }
+
+    // Interpreted support: Q44.20 fixed-point (two's complement) → Hz (double)
+    using interpreted_type = double;
+
+    static interpreted_type to_interpreted(value_type raw) noexcept {
+        return FixedPoint<44, 20, true>::to_double(raw);
+    }
+
+    static value_type from_interpreted(interpreted_type hz) noexcept {
+        return FixedPoint<44, 20, true>::from_double(hz);
+    }
 };
 
 // CIF0 Bit 27: RF Reference Frequency (2 words)
@@ -398,6 +483,17 @@ struct FieldTraits<0, 27> {
     static void write(uint8_t* base, size_t offset, value_type v) noexcept {
         cif::write_u64_safe(base, offset, v);
     }
+
+    // Interpreted support: Q44.20 fixed-point (two's complement) → Hz (double)
+    using interpreted_type = double;
+
+    static interpreted_type to_interpreted(value_type raw) noexcept {
+        return FixedPoint<44, 20, true>::to_double(raw);
+    }
+
+    static value_type from_interpreted(interpreted_type hz) noexcept {
+        return FixedPoint<44, 20, true>::from_double(hz);
+    }
 };
 
 // CIF0 Bit 28: IF Reference Frequency (2 words)
@@ -412,6 +508,17 @@ struct FieldTraits<0, 28> {
 
     static void write(uint8_t* base, size_t offset, value_type v) noexcept {
         cif::write_u64_safe(base, offset, v);
+    }
+
+    // Interpreted support: Q44.20 fixed-point (two's complement) → Hz (double)
+    using interpreted_type = double;
+
+    static interpreted_type to_interpreted(value_type raw) noexcept {
+        return FixedPoint<44, 20, true>::to_double(raw);
+    }
+
+    static value_type from_interpreted(interpreted_type hz) noexcept {
+        return FixedPoint<44, 20, true>::from_double(hz);
     }
 };
 
@@ -433,13 +540,11 @@ struct FieldTraits<0, 29> {
     using interpreted_type = double;
 
     static interpreted_type to_interpreted(value_type raw) noexcept {
-        // Q52.12 format: Divide by 2^12 = 4096
-        return static_cast<double>(raw) / 4096.0;
+        return FixedPoint<52, 12, false>::to_double(raw);
     }
 
     static value_type from_interpreted(interpreted_type hz) noexcept {
-        // Convert Hz to Q52.12 format with rounding
-        return static_cast<value_type>(hz * 4096.0 + 0.5);
+        return FixedPoint<52, 12, false>::from_double(hz);
     }
 };
 
@@ -455,6 +560,17 @@ struct FieldTraits<0, 30> {
 
     static void write(uint8_t* base, size_t offset, value_type v) noexcept {
         cif::write_u32_safe(base, offset, v);
+    }
+
+    // Interpreted support: value is the Stream ID (no conversion needed)
+    using interpreted_type = uint32_t;
+
+    static interpreted_type to_interpreted(value_type raw) noexcept {
+        return raw; // Stream ID is the value itself
+    }
+
+    static value_type from_interpreted(interpreted_type sid) noexcept {
+        return sid; // Direct pass-through
     }
 };
 

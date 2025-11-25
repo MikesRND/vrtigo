@@ -288,6 +288,33 @@ public:
     static constexpr uint32_t cif3() noexcept { return CIF3; }
     static constexpr size_t buffer_size() noexcept { return size_bytes; }
 
+    /// Read the Context Field Change Indicator (CIF0 bit 31)
+    /// Returns true if at least one context field has changed since last packet
+    /// Returns false if all fields are unchanged from previous packets
+    [[nodiscard]] bool change_indicator() const noexcept {
+        const uint8_t* buf = context_buffer();
+        size_t cif0_offset = calculate_cif_offset();
+        uint32_t cif0_word = cif::read_u32_safe(buf, cif0_offset);
+        return (cif0_word & (1U << 31)) != 0;
+    }
+
+    /// Set the Context Field Change Indicator (CIF0 bit 31)
+    /// @param changed true = at least one field has new value
+    ///                false = all fields unchanged from previous packets
+    void set_change_indicator(bool changed) noexcept {
+        uint8_t* buf = mutable_context_buffer();
+        size_t cif0_offset = calculate_cif_offset();
+        uint32_t cif0_word = cif::read_u32_safe(buf, cif0_offset);
+
+        if (changed) {
+            cif0_word |= (1U << 31); // Set bit 31
+        } else {
+            cif0_word &= ~(1U << 31); // Clear bit 31
+        }
+
+        cif::write_u32_safe(buf, cif0_offset, cif0_word);
+    }
+
     // Validation (primarily for testing)
     ValidationError validate(size_t buffer_size) const noexcept {
         if (buffer_size < size_bytes) {
