@@ -1,7 +1,7 @@
 # VRTIGO Makefile - Convenience wrapper for CMake
 
 .PHONY: all clean configure debug release examples help check
-.PHONY: test run install uninstall quickstart
+.PHONY: test run install uninstall quickstart cif_access_docs
 .PHONY: quick-check coverage debug-build clang-build install-verify ci-full clean-all
 .PHONY: format-check format-fix format-diff clang-tidy clang-tidy-fix
 
@@ -52,6 +52,10 @@ examples: configure
 # Extract quickstart documentation
 quickstart: configure
 	@cmake --build $(BUILD_DIR) --target quickstart
+
+# Extract CIF access documentation
+cif_access_docs: configure
+	@cmake --build $(BUILD_DIR) --target cif_access_docs
 
 # Clean build artifacts
 clean:
@@ -214,6 +218,7 @@ help:
 	@echo "  make test             Run all tests"
 	@echo "  make examples         Build examples only"
 	@echo "  make quickstart       Extract quickstart docs to docs/quickstart.md"
+	@echo "  make cif_access_docs  Extract CIF access docs to docs/cif_access/"
 	@echo ""
 	@echo "  make clean            Remove build directory"
 	@echo "  make clean-all        Remove all build dirs"

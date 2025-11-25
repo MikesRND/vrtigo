@@ -250,53 +250,16 @@ Also available via methods:
 
 ## Context Field Access (Context Packets Only)
 
-Both compile-time (`ContextPacket<>`) and runtime (`RuntimeContextPacket`) context packets use `operator[]` to access CIF-encoded fields within the context section of the packet (NOT packet components like stream_id or timestamp). This returns a `FieldProxy` object providing a three-tier access pattern:
+Context packets use `operator[]` with field tags to access CIF-encoded fields, returning a `FieldProxy` that provides a three-tier access pattern: `.bytes()` (raw), `.encoded()` (structured), and `.value()` (interpreted).
 
 ```cpp
-auto proxy = packet[field::bandwidth];
-```
-
-### FieldProxy Methods
-
-| Method | Compile-Time (mutable) | Runtime (const) | Description |
-|--------|----------------------|-----------------|-------------|
-| `bytes()` | ✓ read | ✓ read | Literal on-wire bytes |
-| `set_bytes(span)` | ✓ write | ✗ | Set on-wire bytes in bulk |
-| `encoded()` | ✓ read | ✓ read | Structured format (e.g., Q52.12 as `uint64_t`) |
-| `set_encoded(T)` | ✓ write | ✗ | Set structured value |
-| `value()` | ✓ read | ✓ read | Interpreted units (Hz, dBm, etc.) if defined |
-| `set_value(T)` | ✓ write | ✗ | Set interpreted value |
-| `operator bool()` | ✓ | ✓ | Check field presence |
-
-**Notes**:
-- Variable-length fields include the count word automatically in `bytes()`
-- `value()` methods only available if `FieldTraits` specialization defines interpreted conversions
-- FieldProxy caches offset, size, and presence on creation for efficiency
-
-**Example Usage**:
-```cpp
-// Access Context Fields (not packet components like stream_id or timestamp)
-// Context Fields are CIF-encoded fields within the context section
-
-// Presence check
-if (packet[field::bandwidth]) {  // bandwidth is a Context Field
-    // Read interpreted value (Hz)
-    double bw = packet[field::bandwidth].value();
-
-    // Read encoded structured value (Q52.12 as uint64_t)
-    uint64_t enc = packet[field::bandwidth].encoded();
-
-    // Read raw bytes
-    auto bytes = packet[field::bandwidth].bytes();
+if (packet[field::bandwidth]) {
+    double bw = packet[field::bandwidth].value();  // Interpreted (Hz)
+    uint64_t enc = packet[field::bandwidth].encoded();  // Q52.12 fixed-point
 }
-
-// Set value (compile-time packets only)
-packet[field::bandwidth].set_value(20e6); // 20 MHz
-
-// Note: Packet components like stream_id use direct accessors, not operator[]
-// packet.stream_id();  // Correct for packet component accessor
-// packet[field::stream_id];  // Wrong - stream_id is not a Context Field
 ```
+
+For complete FieldProxy API documentation and detailed usage examples, see the [CIF Field Access Index](cif_access/index.md).
 
 ---
 

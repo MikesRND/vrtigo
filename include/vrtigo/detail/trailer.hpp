@@ -1,5 +1,7 @@
 #pragma once
 
+#include "vrtigo/detail/bitfield.hpp"
+
 #include <cstdint>
 
 namespace vrtigo::trailer {
@@ -82,82 +84,62 @@ inline constexpr uint32_t reference_lock_enable_mask = 1U << reference_lock_enab
 inline constexpr uint32_t valid_data_enable_mask = 1U << valid_data_enable_bit;
 inline constexpr uint32_t calibrated_time_enable_mask = 1U << calibrated_time_enable_bit;
 
-// ============================================================================
-// Helper functions for bit manipulation
-// ============================================================================
-
-/**
- * Extract a single bit value from a trailer word
- * @tparam Bit The bit position (0-31)
- * @param value The trailer word value
- * @return true if bit is set, false otherwise
- */
-template <uint32_t Bit>
-constexpr bool extract_bit(uint32_t value) noexcept {
-    static_assert(Bit < 32, "Bit position must be less than 32");
-    return (value >> Bit) & 0x01;
-}
-
-/**
- * Set a single bit in a trailer word
- * @tparam Bit The bit position (0-31)
- * @param value The trailer word value
- * @param bit_value The bit value to set (true = 1, false = 0)
- * @return Updated trailer word
- */
-template <uint32_t Bit>
-constexpr uint32_t set_bit(uint32_t value, bool bit_value) noexcept {
-    static_assert(Bit < 32, "Bit position must be less than 32");
-    return (value & ~(1U << Bit)) | (bit_value ? (1U << Bit) : 0);
-}
-
-/**
- * Clear a single bit in a trailer word
- * @tparam Bit The bit position (0-31)
- * @param value The trailer word value
- * @return Updated trailer word with bit cleared
- */
-template <uint32_t Bit>
-constexpr uint32_t clear_bit(uint32_t value) noexcept {
-    static_assert(Bit < 32, "Bit position must be less than 32");
-    return value & ~(1U << Bit);
-}
-
-/**
- * Extract a multi-bit field from a trailer word
- * @tparam Shift The starting bit position
- * @tparam Mask The bit mask (after shifting)
- * @param value The trailer word value
- * @return The extracted field value
- */
-template <uint32_t Shift, uint32_t Mask>
-constexpr uint32_t extract_field(uint32_t value) noexcept {
-    return (value >> Shift) & Mask;
-}
-
-/**
- * Set a multi-bit field in a trailer word
- * @tparam Shift The starting bit position
- * @tparam Mask The bit mask (after shifting)
- * @param value The trailer word value
- * @param field_value The field value to set
- * @return Updated trailer word
- */
-template <uint32_t Shift, uint32_t Mask>
-constexpr uint32_t set_field(uint32_t value, uint32_t field_value) noexcept {
-    return (value & ~(Mask << Shift)) | ((field_value & Mask) << Shift);
-}
-
-/**
- * Clear a multi-bit field in a trailer word
- * @tparam Shift The starting bit position
- * @tparam Mask The bit mask (after shifting)
- * @param value The trailer word value
- * @return Updated trailer word with field cleared
- */
-template <uint32_t Shift, uint32_t Mask>
-constexpr uint32_t clear_field(uint32_t value) noexcept {
-    return value & ~(Mask << Shift);
-}
-
 } // namespace vrtigo::trailer
+
+// ============================================================================
+// BitField API Definitions (for migration)
+// ============================================================================
+namespace vrtigo::trailer_fields {
+
+using detail::BitField;
+using detail::BitFieldLayout;
+using detail::BitFlag;
+
+// Context packet count (bits 0-6 = 7-bit field, bit 7 = E bit)
+using ContextPacketCount = BitField<uint32_t, 0, 7>; // 7 bits wide (bits 0-6)
+using EBit = BitFlag<7>;
+
+// Indicators (bits 12-19)
+using UserDefined0Indicator = BitFlag<8>;
+using UserDefined1Indicator = BitFlag<9>;
+using SampleFrame0Indicator = BitFlag<10>;
+using SampleFrame1Indicator = BitFlag<11>;
+using SampleLossIndicator = BitFlag<12>;
+using OverRangeIndicator = BitFlag<13>;
+using SpectralInversionIndicator = BitFlag<14>;
+using DetectedSignalIndicator = BitFlag<15>;
+using AgcMgcIndicator = BitFlag<16>;
+using ReferenceLockIndicator = BitFlag<17>;
+using ValidDataIndicator = BitFlag<18>;
+using CalibratedTimeIndicator = BitFlag<19>;
+
+// Enable bits (20-31) - one enable bit for each indicator
+using UserDefined0Enable = BitFlag<20>;
+using UserDefined1Enable = BitFlag<21>;
+using SampleFrame0Enable = BitFlag<22>;
+using SampleFrame1Enable = BitFlag<23>;
+using SampleLossEnable = BitFlag<24>;
+using OverRangeEnable = BitFlag<25>;
+using SpectralInversionEnable = BitFlag<26>;
+using DetectedSignalEnable = BitFlag<27>;
+using AgcMgcEnable = BitFlag<28>;
+using ReferenceLockEnable = BitFlag<29>;
+using ValidDataEnable = BitFlag<30>;
+using CalibratedTimeEnable = BitFlag<31>;
+
+// Layout for all trailer fields
+using TrailerLayout =
+    BitFieldLayout<ContextPacketCount, EBit,
+
+                   UserDefined0Indicator, UserDefined1Indicator, SampleFrame0Indicator,
+                   SampleFrame1Indicator, SampleLossIndicator, OverRangeIndicator,
+                   SpectralInversionIndicator, DetectedSignalIndicator, AgcMgcIndicator,
+                   ReferenceLockIndicator, ValidDataIndicator, CalibratedTimeIndicator,
+
+                   UserDefined0Enable, UserDefined1Enable, SampleFrame0Enable, SampleFrame1Enable,
+                   SampleLossEnable, OverRangeEnable, SpectralInversionEnable, DetectedSignalEnable,
+                   AgcMgcEnable, ReferenceLockEnable, ValidDataEnable, CalibratedTimeEnable>;
+
+static_assert(TrailerLayout::required_bytes == 4, "Trailer is one VRT word (32 bits)");
+
+} // namespace vrtigo::trailer_fields

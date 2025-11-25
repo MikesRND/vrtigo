@@ -42,6 +42,7 @@ vrtigo_add_gtest(context_timestamp_test context_timestamp_test.cpp)
 vrtigo_add_gtest(context_integration_test context_integration_test.cpp)
 
 vrtigo_add_test_binary(field_access_test field_access_test.cpp)
+vrtigo_add_test_binary(bitfield_test bitfield_test.cpp)
 
 # Add core tests subdirectory (header decode utilities, etc.)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/core)
@@ -61,4 +62,9 @@ endif()
 # Add quickstart documentation tests subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/quickstart)
     add_subdirectory(quickstart)
+endif()
+
+# Add CIF access pattern tests subdirectory
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cif_access)
+    add_subdirectory(cif_access)
 endif()
