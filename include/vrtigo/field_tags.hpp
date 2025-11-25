@@ -43,7 +43,8 @@ inline constexpr field_tag_t<0, 27> rf_reference_frequency;
 inline constexpr field_tag_t<0, 28> if_reference_frequency;
 inline constexpr field_tag_t<0, 29> bandwidth;
 inline constexpr field_tag_t<0, 30> reference_point_id;
-inline constexpr field_tag_t<0, 31> change_indicator;
+// CIF0 bit 31: Change Indicator - accessed via packet.change_indicator()
+// No field tag provided - bit is in CIF0 word itself, not separate data
 
 // Convenient aliases
 inline constexpr auto& context_assoc_lists = context_association_lists;

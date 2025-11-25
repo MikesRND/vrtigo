@@ -119,4 +119,14 @@ public:
     size_t size() const noexcept { return char_count_; }
 };
 
+/// Gain/Attenuation field value (CIF0 bit 23)
+/// Contains two Q9.7 fixed-point gain values in dB
+struct GainValue {
+    double stage1_db; // Front-end or RF gain (lower 16 bits)
+    double stage2_db; // Back-end or IF gain (upper 16 bits)
+
+    /// Calculate total gain (sum of both stages)
+    [[nodiscard]] double total_db() const noexcept { return stage1_db + stage2_db; }
+};
+
 } // namespace vrtigo

@@ -443,6 +443,11 @@ public:
     uint32_t cif2() const noexcept { return structure_.cif2; }
     uint32_t cif3() const noexcept { return structure_.cif3; }
 
+    /// Read the Context Field Change Indicator (CIF0 bit 31)
+    /// Returns true if at least one context field has changed since last packet
+    /// Returns false if all fields are unchanged from previous packets
+    [[nodiscard]] bool change_indicator() const noexcept { return (cif0() & (1U << 31)) != 0; }
+
     // Note: Context packets do not support trailers (bit 26 is Reserved, validated during parse)
 
     // Stream ID accessor
