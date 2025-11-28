@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <compare>
+#include <optional>
 
 #include <cstdint>
 #include <ctime>
@@ -12,6 +13,66 @@ namespace vrtigo {
 
 // Marker type for no timestamp
 struct NoTimestamp {};
+
+// Forward declaration for TimestampValue::as<>()
+template <TsiType TSI, TsfType TSF>
+class Timestamp;
+
+// Forward declaration for TimestampValue friend
+namespace detail {
+class RuntimePacketBase;
+}
+
+/**
+ * Type-erased timestamp value for runtime packet parsing
+ *
+ * TimestampValue is self-describing: it carries both the timestamp data
+ * and format metadata (tsi_kind, tsf_kind). This enables uniform handling
+ * of timestamps regardless of whether they came from compile-time or
+ * runtime packets.
+ *
+ * Use as<TSI, TSF>() to narrow to a typed Timestamp<TSI, TSF> when you
+ * need access to type-specific operations like to_chrono().
+ */
+class TimestampValue {
+public:
+    [[nodiscard]] constexpr uint32_t tsi() const noexcept { return tsi_; }
+    [[nodiscard]] constexpr uint64_t tsf() const noexcept { return tsf_; }
+    [[nodiscard]] constexpr TsiType tsi_kind() const noexcept { return tsi_kind_; }
+    [[nodiscard]] constexpr TsfType tsf_kind() const noexcept { return tsf_kind_; }
+    [[nodiscard]] constexpr bool has_tsi() const noexcept { return tsi_kind_ != TsiType::none; }
+    [[nodiscard]] constexpr bool has_tsf() const noexcept { return tsf_kind_ != TsfType::none; }
+
+    /**
+     * Narrow to typed Timestamp if kinds match exactly
+     *
+     * @tparam TSI Expected integer timestamp type
+     * @tparam TSF Expected fractional timestamp type
+     * @return Typed timestamp if kinds match, nullopt otherwise
+     */
+    template <TsiType TSI, TsfType TSF>
+    [[nodiscard]] constexpr std::optional<Timestamp<TSI, TSF>> as() const noexcept;
+
+    constexpr auto operator<=>(const TimestampValue&) const noexcept = default;
+
+private:
+    // Construction only via Timestamp conversion or runtime packet classes
+    template <TsiType, TsfType>
+    friend class Timestamp;
+    friend class detail::RuntimePacketBase; // Base class for runtime packets
+
+    constexpr TimestampValue(uint32_t tsi, uint64_t tsf, TsiType tsi_kind,
+                             TsfType tsf_kind) noexcept
+        : tsi_(tsi),
+          tsf_(tsf),
+          tsi_kind_(tsi_kind),
+          tsf_kind_(tsf_kind) {}
+
+    uint32_t tsi_{0};
+    uint64_t tsf_{0};
+    TsiType tsi_kind_{TsiType::none};
+    TsfType tsf_kind_{TsfType::none};
+};
 
 // Primary template - works for ALL timestamp combinations
 template <TsiType TSI, TsfType TSF>
@@ -51,6 +112,11 @@ public:
     // UTC-UTC and GPS-GPS comparisons OK.
     // Mixed-type comparisons not created yet.
     constexpr auto operator<=>(const Timestamp& other) const noexcept = default;
+
+    // Conversion to type-erased TimestampValue
+    constexpr operator TimestampValue() const noexcept {
+        return TimestampValue{seconds_, fractional_, TSI, TSF};
+    }
 
     // UTC-specific factory methods
     static Timestamp now() noexcept
@@ -277,6 +343,29 @@ private:
         }
         // No normalization for sample_count, free_running, none
     }
+};
+
+// Out-of-line definition of TimestampValue::as<>() - requires complete Timestamp type
+template <TsiType TSI, TsfType TSF>
+constexpr std::optional<Timestamp<TSI, TSF>> TimestampValue::as() const noexcept {
+    if (tsi_kind_ != TSI || tsf_kind_ != TSF) {
+        return std::nullopt;
+    }
+    return Timestamp<TSI, TSF>{tsi_, tsf_};
+}
+
+/**
+ * Concept for types that provide timestamp accessors
+ *
+ * Satisfied by both Timestamp<TSI, TSF> and TimestampValue, enabling
+ * generic code that works with either type.
+ */
+template <typename T>
+concept TimestampLike = requires(const T& t) {
+    { t.tsi() } -> std::convertible_to<uint32_t>;
+    { t.tsf() } -> std::convertible_to<uint64_t>;
+    { t.tsi_kind() } -> std::convertible_to<TsiType>;
+    { t.tsf_kind() } -> std::convertible_to<TsfType>;
 };
 
 // Convenient type alias with TSF template parameter and default

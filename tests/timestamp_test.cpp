@@ -265,8 +265,8 @@ TEST_F(TimestampTest, PacketIntegration) {
     using PacketType =
         SignalDataPacket<vrtigo::NoClassId, UtcRealTimestamp, vrtigo::Trailer::none, 256>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
-    PacketType packet(buffer.data());
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    PacketType packet(buffer);
 
     // Set timestamp using unified interface
     UtcRealTimestamp ts(test_seconds, test_picoseconds);
@@ -282,12 +282,11 @@ TEST_F(TimestampTest, BuilderIntegration) {
     using PacketType =
         SignalDataPacket<vrtigo::NoClassId, UtcRealTimestamp, vrtigo::Trailer::none, 256>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     UtcRealTimestamp ts(test_seconds, test_picoseconds);
 
-    auto packet =
-        PacketBuilder<PacketType>(buffer.data()).stream_id(0x12345678).timestamp(ts).build();
+    auto packet = PacketBuilder<PacketType>(buffer).stream_id(0x12345678).timestamp(ts).build();
 
     auto read_ts = packet.timestamp();
     EXPECT_EQ(read_ts.tsi(), test_seconds);
@@ -322,10 +321,10 @@ TEST_F(TimestampTest, GPSTimestampPacketStructure) {
                          vrtigo::Trailer::none, 256>;
 
     // Verify the packet has timestamp support
-    static_assert(GPSPacket::has_timestamp);
+    static_assert(GPSPacket::has_timestamp());
 
-    alignas(4) std::array<uint8_t, GPSPacket::size_bytes> buffer{};
-    GPSPacket packet(buffer.data());
+    alignas(4) std::array<uint8_t, GPSPacket::size_bytes()> buffer{};
+    GPSPacket packet(buffer);
 
     // Use typed timestamp methods for GPS values
     uint32_t gps_seconds = 1234567890; // GPS seconds since Jan 6, 1980

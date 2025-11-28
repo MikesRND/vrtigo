@@ -27,8 +27,8 @@ TEST_F(ContextPacketTest, CIF0_15_RealSignal) {
     // [SNIPPET]
     using FormatContext = ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
 
-    alignas(4) std::array<uint8_t, FormatContext::size_bytes> buffer{};
-    FormatContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, FormatContext::size_bytes()> buffer{};
+    FormatContext packet(buffer);
 
     auto format = packet[data_payload_format].value();
 
@@ -62,8 +62,8 @@ TEST_F(ContextPacketTest, CIF0_15_ComplexFloat) {
     // [SNIPPET]
     using FormatContext = ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
 
-    alignas(4) std::array<uint8_t, FormatContext::size_bytes> buffer{};
-    FormatContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, FormatContext::size_bytes()> buffer{};
+    FormatContext packet(buffer);
 
     auto format = packet[data_payload_format].value();
 
@@ -99,8 +99,8 @@ TEST_F(ContextPacketTest, CIF0_15_BatchAccess) {
     // [SNIPPET]
     using FormatContext = ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
 
-    alignas(4) std::array<uint8_t, FormatContext::size_bytes> buffer{};
-    FormatContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, FormatContext::size_bytes()> buffer{};
+    FormatContext packet(buffer);
 
     auto format = packet[data_payload_format].value();
 
@@ -136,8 +136,8 @@ TEST_F(ContextPacketTest, CIF0_15_ParseFormat) {
     // [SNIPPET]
     using FormatContext = ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
 
-    alignas(4) std::array<uint8_t, FormatContext::size_bytes> buffer{};
-    FormatContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, FormatContext::size_bytes()> buffer{};
+    FormatContext packet(buffer);
 
     // Simulate received data with specific format
     auto format = packet[data_payload_format].value();

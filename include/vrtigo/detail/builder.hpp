@@ -1,5 +1,6 @@
 #pragma once
 
+#include <span>
 #include <utility>
 
 #include <vrtigo/class_id.hpp>
@@ -12,7 +13,7 @@ namespace vrtigo {
 
 // Forward declaration
 template <typename PacketType>
-    requires FixedPacketLike<PacketType>
+    requires DataPacketLike<PacketType>
 class PacketBuilder;
 
 /**
@@ -32,20 +33,21 @@ class PacketBuilder;
  * (ContextPacket), use the field access API: get/set(packet, field::name, value).
  */
 template <typename PacketType>
-    requires FixedPacketLike<PacketType>
+    requires DataPacketLike<PacketType>
 class PacketBuilder {
 public:
     // Constructor takes user buffer and initializes it
-    explicit PacketBuilder(uint8_t* buffer) noexcept : buffer_(buffer) {
+    explicit PacketBuilder(std::span<uint8_t, PacketType::size_bytes()> buffer) noexcept
+        : buffer_(buffer.data()) {
         // Initialize the packet header in the user's buffer
-        PacketType packet(buffer_);
+        PacketType packet(buffer_span());
     }
 
     // Stream ID (only available if packet has stream ID)
     auto& stream_id(uint32_t id) noexcept
         requires HasStreamId<PacketType>
     {
-        PacketType packet(buffer_, false); // Don't reinitialize
+        PacketType packet(buffer_span(), false); // Don't reinitialize
         packet.set_stream_id(id);
         return *this;
     }
@@ -56,7 +58,7 @@ public:
             p.set_timestamp(t);
         }
     {
-        PacketType packet(buffer_, false); // Don't reinitialize
+        PacketType packet(buffer_span(), false); // Don't reinitialize
         packet.set_timestamp(ts);
         return *this;
     }
@@ -65,22 +67,22 @@ public:
     auto& class_id(const ClassIdValue& cid) noexcept
         requires requires(PacketType& p, ClassIdValue c) { p.set_class_id(c); }
     {
-        PacketType packet(buffer_, false); // Don't reinitialize
+        PacketType packet(buffer_span(), false); // Don't reinitialize
         packet.set_class_id(cid);
         return *this;
     }
 
     // Trailer (only available if packet has trailer)
     auto& trailer(uint32_t t) noexcept
-        requires HasTrailer<PacketType>
+        requires HasMutableTrailer<PacketType>
     {
-        PacketType packet(buffer_, false); // Don't reinitialize
+        PacketType packet(buffer_span(), false); // Don't reinitialize
         packet.trailer().set_raw(t);
         return *this;
     }
 
     auto& trailer(const TrailerBuilder& builder) noexcept
-        requires HasTrailer<PacketType>
+        requires HasMutableTrailer<PacketType>
     {
         return trailer(builder.value());
     }
@@ -92,9 +94,9 @@ public:
      * @param valid true if data is valid
      */
     auto& trailer_valid_data(bool valid) noexcept
-        requires HasTrailer<PacketType>
+        requires HasMutableTrailer<PacketType>
     {
-        PacketType packet(buffer_, false); // Don't reinitialize
+        PacketType packet(buffer_span(), false); // Don't reinitialize
         packet.trailer().set_valid_data(valid);
         return *this;
     }
@@ -104,9 +106,9 @@ public:
      * @param calibrated true if time is calibrated
      */
     auto& trailer_calibrated_time(bool calibrated) noexcept
-        requires HasTrailer<PacketType>
+        requires HasMutableTrailer<PacketType>
     {
-        PacketType packet(buffer_, false); // Don't reinitialize
+        PacketType packet(buffer_span(), false); // Don't reinitialize
         packet.trailer().set_calibrated_time(calibrated);
         return *this;
     }
@@ -116,9 +118,9 @@ public:
      * @param over_range true if over-range occurred
      */
     auto& trailer_over_range(bool over_range) noexcept
-        requires HasTrailer<PacketType>
+        requires HasMutableTrailer<PacketType>
     {
-        PacketType packet(buffer_, false); // Don't reinitialize
+        PacketType packet(buffer_span(), false); // Don't reinitialize
         packet.trailer().set_over_range(over_range);
         return *this;
     }
@@ -128,9 +130,9 @@ public:
      * @param loss true if sample loss occurred
      */
     auto& trailer_sample_loss(bool loss) noexcept
-        requires HasTrailer<PacketType>
+        requires HasMutableTrailer<PacketType>
     {
-        PacketType packet(buffer_, false); // Don't reinitialize
+        PacketType packet(buffer_span(), false); // Don't reinitialize
         packet.trailer().set_sample_loss(loss);
         return *this;
     }
@@ -140,9 +142,9 @@ public:
      * @param locked true if reference is locked
      */
     auto& trailer_reference_lock(bool locked) noexcept
-        requires HasTrailer<PacketType>
+        requires HasMutableTrailer<PacketType>
     {
-        PacketType packet(buffer_, false); // Don't reinitialize
+        PacketType packet(buffer_span(), false); // Don't reinitialize
         packet.trailer().set_reference_lock(locked);
         return *this;
     }
@@ -152,9 +154,9 @@ public:
      * @param count Number of context packets (0-127)
      */
     auto& trailer_context_packet_count(uint8_t count) noexcept
-        requires HasTrailer<PacketType>
+        requires HasMutableTrailer<PacketType>
     {
-        PacketType packet(buffer_, false); // Don't reinitialize
+        PacketType packet(buffer_span(), false); // Don't reinitialize
         packet.trailer().set_context_packet_count(count);
         return *this;
     }
@@ -164,9 +166,9 @@ public:
      * @param active true if AGC/MGC is active
      */
     auto& trailer_agc_mgc(bool active) noexcept
-        requires HasTrailer<PacketType>
+        requires HasMutableTrailer<PacketType>
     {
-        PacketType packet(buffer_, false); // Don't reinitialize
+        PacketType packet(buffer_span(), false); // Don't reinitialize
         packet.trailer().set_agc_mgc(active);
         return *this;
     }
@@ -176,9 +178,9 @@ public:
      * @param detected true if signal is detected
      */
     auto& trailer_detected_signal(bool detected) noexcept
-        requires HasTrailer<PacketType>
+        requires HasMutableTrailer<PacketType>
     {
-        PacketType packet(buffer_, false); // Don't reinitialize
+        PacketType packet(buffer_span(), false); // Don't reinitialize
         packet.trailer().set_detected_signal(detected);
         return *this;
     }
@@ -188,9 +190,9 @@ public:
      * @param inverted true if spectral inversion is present
      */
     auto& trailer_spectral_inversion(bool inverted) noexcept
-        requires HasTrailer<PacketType>
+        requires HasMutableTrailer<PacketType>
     {
-        PacketType packet(buffer_, false); // Don't reinitialize
+        PacketType packet(buffer_span(), false); // Don't reinitialize
         packet.trailer().set_spectral_inversion(inverted);
         return *this;
     }
@@ -203,7 +205,7 @@ public:
     auto& packet_count(uint8_t count) noexcept
         requires HasPacketCount<PacketType>
     {
-        PacketType packet(buffer_, false); // Don't reinitialize
+        PacketType packet(buffer_span(), false); // Don't reinitialize
         packet.set_packet_count(count);
         return *this;
     }
@@ -213,7 +215,7 @@ public:
     auto& payload(const uint8_t* data, size_t size) noexcept
         requires HasPayload<PacketType>
     {
-        PacketType packet(buffer_, false); // Don't reinitialize
+        PacketType packet(buffer_span(), false); // Don't reinitialize
         packet.set_payload(data, size);
         return *this;
     }
@@ -222,7 +224,7 @@ public:
     auto& payload(std::span<const uint8_t> data) noexcept
         requires HasPayload<PacketType>
     {
-        PacketType packet(buffer_, false); // Don't reinitialize
+        PacketType packet(buffer_span(), false); // Don't reinitialize
         packet.set_payload(data.data(), data.size());
         return *this;
     }
@@ -232,27 +234,33 @@ public:
     template <typename Container>
         requires ConstBuffer<Container> && HasPayload<PacketType>
     auto& payload(const Container& data) noexcept {
-        PacketType packet(buffer_, false); // Don't reinitialize
+        PacketType packet(buffer_span(), false); // Don't reinitialize
         packet.set_payload(data.data(), data.size());
         return *this;
     }
 
     // Build: returns a new packet view over the buffer
     PacketType build() noexcept {
-        return PacketType(buffer_, false); // Return view, don't reinitialize
+        return PacketType(buffer_span(), false); // Return view, don't reinitialize
     }
 
     // Access to buffer
-    std::span<uint8_t, PacketType::size_bytes> as_bytes() noexcept {
-        return std::span<uint8_t, PacketType::size_bytes>(buffer_, PacketType::size_bytes);
+    std::span<uint8_t, PacketType::size_bytes()> as_bytes() noexcept {
+        return std::span<uint8_t, PacketType::size_bytes()>(buffer_, PacketType::size_bytes());
     }
 
-    std::span<const uint8_t, PacketType::size_bytes> as_bytes() const noexcept {
-        return std::span<const uint8_t, PacketType::size_bytes>(buffer_, PacketType::size_bytes);
+    std::span<const uint8_t, PacketType::size_bytes()> as_bytes() const noexcept {
+        return std::span<const uint8_t, PacketType::size_bytes()>(buffer_,
+                                                                  PacketType::size_bytes());
     }
 
 private:
     uint8_t* buffer_; // Just store the buffer pointer, no packet copy!
+
+    // Helper to create span from stored pointer
+    std::span<uint8_t, PacketType::size_bytes()> buffer_span() noexcept {
+        return std::span<uint8_t, PacketType::size_bytes()>(buffer_, PacketType::size_bytes());
+    }
 };
 
 // Deduction guide
@@ -261,7 +269,7 @@ PacketBuilder(PacketType) -> PacketBuilder<PacketType>;
 
 // Helper function to create builder
 template <typename PacketType>
-auto make_builder(uint8_t* buffer) noexcept {
+auto make_builder(std::span<uint8_t, PacketType::size_bytes()> buffer) noexcept {
     return PacketBuilder<PacketType>(buffer);
 }
 

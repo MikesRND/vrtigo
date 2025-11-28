@@ -153,21 +153,31 @@ public:
     }
 
     /**
-     * @brief Check if integer timestamp component is present
+     * @brief Check if a packet type has stream ID field (static utility)
      *
-     * Derived from TSI field - true if TSI != none.
+     * Per VITA 49.2: types 1,3,4,5,6,7 have stream ID; types 0,2 do not.
+     * @param type The packet type to check
+     * @return true if packet type has stream ID field
      */
-    [[nodiscard]] bool has_timestamp_integer() const noexcept {
-        return tsi_kind() != TsiType::none;
+    [[nodiscard]] static constexpr bool has_stream_id(PacketType type) noexcept {
+        uint8_t t = static_cast<uint8_t>(type);
+        return (t != 0) && (t != 2) && (t <= 7);
     }
 
     /**
-     * @brief Check if fractional timestamp component is present
+     * @brief Check if this packet has stream ID field
      *
-     * Derived from TSF field - true if TSF != none.
+     * Derived from packet type: types 1,3,4,5,6,7 have stream ID; types 0,2 do not.
      */
-    [[nodiscard]] bool has_timestamp_fractional() const noexcept {
-        return tsf_kind() != TsfType::none;
+    [[nodiscard]] bool has_stream_id() const noexcept { return has_stream_id(packet_type()); }
+
+    /**
+     * @brief Check if packet has any timestamp component
+     *
+     * Returns true if TSI or TSF is present (not none).
+     */
+    [[nodiscard]] bool has_timestamp() const noexcept {
+        return tsi_kind() != TsiType::none || tsf_kind() != TsfType::none;
     }
 
     /**

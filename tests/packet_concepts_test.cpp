@@ -4,62 +4,118 @@
 using namespace vrtigo;
 using namespace vrtigo::field;
 
-// Test that SignalPacket satisfies FixedPacketLike concept
-TEST(PacketConceptsTest, SignalPacketIsFixedPacketLike) {
-    using PacketType =
+// ============================================================================
+// PacketMetadataLike - shared read-only surface
+// ============================================================================
+
+TEST(PacketConceptsTest, AllPacketsSatisfyPacketMetadataLike) {
+    // Compile-time packets
+    using DataPkt = DataPacket<PacketType::signal_data, NoClassId, NoTimestamp, Trailer::none, 64>;
+    using CtxPkt = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+
+    static_assert(PacketMetadataLike<DataPkt>);
+    static_assert(PacketMetadataLike<CtxPkt>);
+
+    // Runtime packets
+    static_assert(PacketMetadataLike<RuntimeDataPacket>);
+    static_assert(PacketMetadataLike<RuntimeContextPacket>);
+}
+
+// ============================================================================
+// CompileTimePacketLike - static structure, mutable
+// ============================================================================
+
+TEST(PacketConceptsTest, DataPacketSatisfiesCompileTimePacketLike) {
+    using PktType =
         DataPacket<PacketType::signal_data, NoClassId, UtcRealTimestamp, Trailer::included, 64>;
 
-    static_assert(PacketBase<PacketType>);
-    static_assert(FixedPacketLike<PacketType>);
-    static_assert(CompileTimePacket<PacketType>);
-    static_assert(AnyPacketLike<PacketType>);
+    static_assert(PacketMetadataLike<PktType>);
+    static_assert(CompileTimePacketLike<PktType>);
+    static_assert(DataPacketLike<PktType>);
 
-    // Should NOT satisfy variable packet concepts
-    static_assert(!VariablePacketLike<PacketType>);
-    static_assert(!RuntimePacketView<PacketType>);
+    // Should NOT satisfy context or runtime concepts
+    static_assert(!ContextPacketLike<PktType>);
+    static_assert(!RuntimePacketLike<PktType>);
 }
 
-// Test that SignalPacketView satisfies FixedPacketViewLike concept
-TEST(PacketConceptsTest, SignalPacketViewIsFixedPacketViewLike) {
-    static_assert(PacketBase<SignalPacketView>);
-    static_assert(FixedPacketViewLike<SignalPacketView>);
-    static_assert(RuntimePacketView<SignalPacketView>);
-    static_assert(AnyPacketLike<SignalPacketView>);
+TEST(PacketConceptsTest, ContextPacketSatisfiesCompileTimePacketLike) {
+    using PktType = ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate>;
 
-    // Should NOT satisfy variable or compile-time concepts
-    static_assert(!VariablePacketViewLike<SignalPacketView>);
-    static_assert(!CompileTimePacket<SignalPacketView>);
+    static_assert(PacketMetadataLike<PktType>);
+    static_assert(CompileTimePacketLike<PktType>);
+    static_assert(ContextPacketLike<PktType>);
+
+    // Should NOT satisfy data or runtime concepts
+    static_assert(!DataPacketLike<PktType>);
+    static_assert(!RuntimePacketLike<PktType>);
 }
 
-// Test that ContextPacket satisfies VariablePacketLike concept
-TEST(PacketConceptsTest, ContextPacketIsVariablePacketLike) {
-    // Note: Context packets always have Stream ID per VITA 49.2 spec
-    using PacketType = ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate>;
+// ============================================================================
+// RuntimePacketLike - parsed, read-only
+// ============================================================================
 
-    static_assert(PacketBase<PacketType>);
-    static_assert(VariablePacketLike<PacketType>);
-    static_assert(CompileTimePacket<PacketType>);
-    static_assert(AnyPacketLike<PacketType>);
+TEST(PacketConceptsTest, RuntimeDataPacketSatisfiesRuntimePacketLike) {
+    static_assert(PacketMetadataLike<RuntimeDataPacket>);
+    static_assert(RuntimePacketLike<RuntimeDataPacket>);
+    static_assert(RuntimeDataPacketLike<RuntimeDataPacket>);
 
-    // Should NOT satisfy fixed packet concepts
-    static_assert(!FixedPacketLike<PacketType>);
-    static_assert(!RuntimePacketView<PacketType>);
+    // Should NOT satisfy context or compile-time concepts
+    static_assert(!RuntimeContextPacketLike<RuntimeDataPacket>);
+    static_assert(!CompileTimePacketLike<RuntimeDataPacket>);
 }
 
-// Test that RuntimeContextPacket satisfies VariablePacketViewLike concept
-TEST(PacketConceptsTest, RuntimeContextPacketIsVariablePacketViewLike) {
-    static_assert(PacketBase<RuntimeContextPacket>);
-    static_assert(VariablePacketViewLike<RuntimeContextPacket>);
-    static_assert(RuntimePacketView<RuntimeContextPacket>);
-    static_assert(AnyPacketLike<RuntimeContextPacket>);
+TEST(PacketConceptsTest, RuntimeContextPacketSatisfiesRuntimePacketLike) {
+    static_assert(PacketMetadataLike<RuntimeContextPacket>);
+    static_assert(RuntimePacketLike<RuntimeContextPacket>);
+    static_assert(RuntimeContextPacketLike<RuntimeContextPacket>);
 
-    // Should NOT satisfy fixed or compile-time concepts
-    static_assert(!FixedPacketViewLike<RuntimeContextPacket>);
-    static_assert(!CompileTimePacket<RuntimeContextPacket>);
+    // Should NOT satisfy data or compile-time concepts
+    static_assert(!RuntimeDataPacketLike<RuntimeContextPacket>);
+    static_assert(!CompileTimePacketLike<RuntimeContextPacket>);
 }
 
-// Test helper concepts for PacketBuilder
-TEST(PacketConceptsTest, SignalPacketHelperConcepts) {
+// ============================================================================
+// Mutual exclusivity tests
+// ============================================================================
+
+TEST(PacketConceptsTest, CTAndRTMutuallyExclusive) {
+    using DataPkt = DataPacket<PacketType::signal_data, NoClassId, NoTimestamp, Trailer::none, 64>;
+    using CtxPkt = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+
+    // CT packets are NOT RT
+    static_assert(!RuntimePacketLike<DataPkt>);
+    static_assert(!RuntimePacketLike<CtxPkt>);
+
+    // RT packets are NOT CT
+    static_assert(!CompileTimePacketLike<RuntimeDataPacket>);
+    static_assert(!CompileTimePacketLike<RuntimeContextPacket>);
+}
+
+TEST(PacketConceptsTest, DataAndContextMutuallyExclusive) {
+    using DataPkt = DataPacket<PacketType::signal_data, NoClassId, NoTimestamp, Trailer::none, 64>;
+    using CtxPkt = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+
+    // Data is not Context
+    static_assert(DataPacketLike<DataPkt>);
+    static_assert(!ContextPacketLike<DataPkt>);
+
+    // Context is not Data
+    static_assert(ContextPacketLike<CtxPkt>);
+    static_assert(!DataPacketLike<CtxPkt>);
+
+    // Same for runtime
+    static_assert(RuntimeDataPacketLike<RuntimeDataPacket>);
+    static_assert(!RuntimeContextPacketLike<RuntimeDataPacket>);
+
+    static_assert(RuntimeContextPacketLike<RuntimeContextPacket>);
+    static_assert(!RuntimeDataPacketLike<RuntimeContextPacket>);
+}
+
+// ============================================================================
+// Helper concepts for PacketBuilder
+// ============================================================================
+
+TEST(PacketConceptsTest, HelperConceptsForBuilder) {
     using WithStreamId =
         DataPacket<PacketType::signal_data, NoClassId, NoTimestamp, Trailer::none, 64>;
     using NoStreamId =
@@ -72,8 +128,8 @@ TEST(PacketConceptsTest, SignalPacketHelperConcepts) {
     static_assert(!HasStreamId<NoStreamId>);
 
     // Trailer
-    static_assert(HasTrailer<WithTrailer>);
-    static_assert(!HasTrailer<NoStreamId>);
+    static_assert(HasMutableTrailer<WithTrailer>);
+    static_assert(!HasMutableTrailer<NoStreamId>);
 
     // Payload
     static_assert(HasPayload<WithStreamId>);
@@ -84,85 +140,59 @@ TEST(PacketConceptsTest, SignalPacketHelperConcepts) {
     static_assert(HasPacketCount<NoStreamId>);
 }
 
-// Test that concepts properly distinguish packet categories
-TEST(PacketConceptsTest, ConceptsMutuallyExclusive) {
-    using SignalPkt =
-        DataPacket<PacketType::signal_data, NoClassId, NoTimestamp, Trailer::none, 64>;
-    using ContextPkt = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+// ============================================================================
+// Non-packet types rejected
+// ============================================================================
 
-    // Signal is Fixed, not Variable
-    static_assert(FixedPacketLike<SignalPkt>);
-    static_assert(!VariablePacketLike<SignalPkt>);
-
-    // Context is Variable, not Fixed
-    static_assert(VariablePacketLike<ContextPkt>);
-    static_assert(!FixedPacketLike<ContextPkt>);
-
-    // Both are CompileTimePacket
-    static_assert(CompileTimePacket<SignalPkt>);
-    static_assert(CompileTimePacket<ContextPkt>);
-
-    // Neither are RuntimePacketView
-    static_assert(!RuntimePacketView<SignalPkt>);
-    static_assert(!RuntimePacketView<ContextPkt>);
-}
-
-// Test that views are properly distinguished
-TEST(PacketConceptsTest, ViewsMutuallyExclusive) {
-    // SignalPacketView is FixedPacketViewLike, not VariablePacketViewLike
-    static_assert(FixedPacketViewLike<SignalPacketView>);
-    static_assert(!VariablePacketViewLike<SignalPacketView>);
-
-    // RuntimeContextPacket is VariablePacketViewLike, not FixedPacketViewLike
-    static_assert(VariablePacketViewLike<RuntimeContextPacket>);
-    static_assert(!FixedPacketViewLike<RuntimeContextPacket>);
-
-    // Both are RuntimePacketView
-    static_assert(RuntimePacketView<SignalPacketView>);
-    static_assert(RuntimePacketView<RuntimeContextPacket>);
-
-    // Neither are CompileTimePacket
-    static_assert(!CompileTimePacket<SignalPacketView>);
-    static_assert(!CompileTimePacket<RuntimeContextPacket>);
-}
-
-// Test that non-packet types are correctly rejected
 TEST(PacketConceptsTest, NonPacketTypesRejected) {
-    static_assert(!PacketBase<int>);
-    static_assert(!PacketBase<std::string>);
-    static_assert(!PacketBase<std::vector<uint8_t>>);
+    static_assert(!PacketMetadataLike<int>);
+    static_assert(!PacketMetadataLike<std::string>);
+    static_assert(!PacketMetadataLike<std::vector<uint8_t>>);
 
-    static_assert(!FixedPacketLike<int>);
-    static_assert(!VariablePacketLike<std::string>);
-    static_assert(!RuntimePacketView<std::vector<uint8_t>>);
-
-    static_assert(!AnyPacketLike<int>);
-    static_assert(!AnyPacketLike<std::string>);
-    static_assert(!AnyPacketLike<void*>);
+    static_assert(!CompileTimePacketLike<int>);
+    static_assert(!RuntimePacketLike<std::string>);
+    static_assert(!DataPacketLike<std::vector<uint8_t>>);
+    static_assert(!ContextPacketLike<void*>);
 }
 
-// Runtime verification test (concepts are compile-time, but verify behavior)
+// ============================================================================
+// Legacy aliases (for backwards compatibility during transition)
+// ============================================================================
+
+TEST(PacketConceptsTest, LegacyAliasesWork) {
+    using DataPkt = DataPacket<PacketType::signal_data, NoClassId, NoTimestamp, Trailer::none, 64>;
+
+    // PacketLike is alias for PacketMetadataLike
+    static_assert(PacketLike<DataPkt>);
+    static_assert(PacketLike<RuntimeDataPacket>);
+
+    // AnyPacket is alias for PacketMetadataLike
+    static_assert(AnyPacket<DataPkt>);
+    static_assert(AnyPacket<RuntimeContextPacket>);
+}
+
+// ============================================================================
+// Runtime behavior verification
+// ============================================================================
+
 TEST(PacketConceptsTest, RuntimeBehaviorConsistency) {
-    // Create signal packet
+    // Create data packet
     using SignalType =
         DataPacket<PacketType::signal_data, NoClassId, NoTimestamp, Trailer::none, 32>;
-    alignas(4) std::array<uint8_t, SignalType::size_bytes> signal_buffer;
-    SignalType signal_pkt(signal_buffer.data());
+    alignas(4) std::array<uint8_t, SignalType::size_bytes()> signal_buffer;
+    SignalType signal_pkt(signal_buffer);
 
-    // Verify it has expected methods (concepts checked at compile-time)
     EXPECT_NO_THROW({
         signal_pkt.set_stream_id(0x12345678);
         EXPECT_EQ(signal_pkt.stream_id(), 0x12345678);
         EXPECT_EQ(signal_pkt.as_bytes().data(), signal_buffer.data());
-        auto err = signal_pkt.validate(signal_buffer.size());
-        EXPECT_EQ(err, ValidationError::none);
     });
 
-    // Create signal packet view
-    SignalPacketView view(signal_buffer.data(), signal_buffer.size());
+    // Parse as runtime packet
+    auto data_result = RuntimeDataPacket::parse(signal_buffer);
+    ASSERT_TRUE(data_result.ok()) << data_result.error().message();
+    const auto& view = data_result.value();
     EXPECT_NO_THROW({
-        EXPECT_TRUE(view.is_valid());
-        EXPECT_EQ(view.error(), ValidationError::none);
         auto id = view.stream_id();
         ASSERT_TRUE(id.has_value());
         EXPECT_EQ(*id, 0x12345678);
@@ -170,22 +200,17 @@ TEST(PacketConceptsTest, RuntimeBehaviorConsistency) {
 
     // Create context packet
     using ContextType = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
-    alignas(4) std::array<uint8_t, ContextType::size_bytes> context_buffer;
-    ContextType context_pkt(context_buffer.data());
+    alignas(4) std::array<uint8_t, ContextType::size_bytes()> context_buffer;
+    ContextType context_pkt(context_buffer);
 
     EXPECT_NO_THROW({
         context_pkt.set_stream_id(0xABCDEF00);
         EXPECT_EQ(context_pkt.stream_id(), 0xABCDEF00);
-        EXPECT_EQ(context_pkt.cif0(), ContextType::cif0_value);
-        EXPECT_NE(context_pkt.context_buffer(), nullptr);
     });
 
-    // Create context packet view
-    RuntimeContextPacket ctx_view(context_buffer.data(), context_buffer.size());
-    EXPECT_NO_THROW({
-        auto err = ctx_view.error();
-        EXPECT_EQ(err, ValidationError::none);
-        EXPECT_TRUE(ctx_view.is_valid());
-        EXPECT_NE(ctx_view.context_buffer(), nullptr);
-    });
+    // Parse as runtime context packet
+    auto ctx_result = RuntimeContextPacket::parse(context_buffer);
+    ASSERT_TRUE(ctx_result.ok()) << ctx_result.error().message();
+    const auto& ctx_view = ctx_result.value();
+    EXPECT_FALSE(ctx_view.change_indicator());
 }

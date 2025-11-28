@@ -13,7 +13,6 @@ using namespace vrtigo::utils::netio;
 
 // Import specific types from vrtigo namespace to avoid ambiguity
 using vrtigo::ContextPacket;
-using vrtigo::InvalidPacket;
 using vrtigo::NoClassId;
 using vrtigo::NoTimestamp;
 using vrtigo::PacketBuilder;
@@ -63,10 +62,9 @@ TEST_F(UDPWriterTest, WriteCompileTimePacket) {
 
     // Create and send packet
     using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
-    auto packet =
-        PacketBuilder<PacketType>(buffer.data()).stream_id(0x12345678).packet_count(1).build();
+    auto packet = PacketBuilder<PacketType>(buffer).stream_id(0x12345678).packet_count(1).build();
 
     EXPECT_TRUE(writer.write_packet(packet));
     EXPECT_EQ(writer.packets_sent(), 1);
@@ -75,10 +73,10 @@ TEST_F(UDPWriterTest, WriteCompileTimePacket) {
     // Verify reader can receive it
     auto received = reader.read_next_packet();
     ASSERT_TRUE(received.has_value());
-    EXPECT_TRUE(is_valid(*received));
-    EXPECT_TRUE(is_data_packet(*received));
+    ASSERT_TRUE(received->ok()) << received->error().message();
+    EXPECT_TRUE(is_data_packet(received->value()));
 
-    auto data_pkt = std::get<RuntimeDataPacket>(*received);
+    auto data_pkt = std::get<RuntimeDataPacket>(received->value());
     EXPECT_EQ(data_pkt.stream_id(), 0x12345678);
 }
 
@@ -89,11 +87,11 @@ TEST_F(UDPWriterTest, WriteMultiplePackets) {
     UDPVRTWriter writer("127.0.0.1", test_port);
 
     using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     // Send 10 packets
     for (uint32_t i = 0; i < 10; i++) {
-        auto packet = PacketBuilder<PacketType>(buffer.data())
+        auto packet = PacketBuilder<PacketType>(buffer)
                           .stream_id(i)
                           .packet_count(static_cast<uint8_t>(i))
                           .build();
@@ -106,9 +104,9 @@ TEST_F(UDPWriterTest, WriteMultiplePackets) {
     for (uint32_t i = 0; i < 10; i++) {
         auto received = reader.read_next_packet();
         ASSERT_TRUE(received.has_value());
-        EXPECT_TRUE(is_valid(*received));
+        ASSERT_TRUE(received->ok()) << received->error().message();
 
-        auto data_pkt = std::get<RuntimeDataPacket>(*received);
+        auto data_pkt = std::get<RuntimeDataPacket>(received->value());
         EXPECT_EQ(data_pkt.stream_id(), i);
     }
 }
@@ -125,12 +123,12 @@ TEST_F(UDPWriterTest, RoundTripDataPacket) {
 
     // Create packet with stream ID and timestamp
     using PacketType = SignalDataPacket<NoClassId, UtcRealTimestamp, Trailer::none, 64>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     const uint32_t test_stream_id = 0xABCDEF01;
     auto test_timestamp = UtcRealTimestamp::now();
 
-    auto packet = PacketBuilder<PacketType>(buffer.data())
+    auto packet = PacketBuilder<PacketType>(buffer)
                       .stream_id(test_stream_id)
                       .timestamp(test_timestamp)
                       .packet_count(1)
@@ -141,18 +139,15 @@ TEST_F(UDPWriterTest, RoundTripDataPacket) {
     // Read back
     auto received = reader.read_next_packet();
     ASSERT_TRUE(received.has_value());
-    EXPECT_TRUE(is_valid(*received));
+    ASSERT_TRUE(received->ok()) << received->error().message();
 
-    auto data_pkt = std::get<RuntimeDataPacket>(*received);
+    auto data_pkt = std::get<RuntimeDataPacket>(received->value());
     EXPECT_EQ(data_pkt.stream_id(), test_stream_id);
 
-    auto ts_int = data_pkt.timestamp_integer();
-    ASSERT_TRUE(ts_int.has_value());
-    EXPECT_EQ(*ts_int, test_timestamp.tsi());
-
-    auto ts_frac = data_pkt.timestamp_fractional();
-    ASSERT_TRUE(ts_frac.has_value());
-    EXPECT_EQ(*ts_frac, test_timestamp.tsf());
+    auto ts = data_pkt.timestamp();
+    ASSERT_TRUE(ts.has_value());
+    EXPECT_EQ(ts->tsi(), test_timestamp.tsi());
+    EXPECT_EQ(ts->tsf(), test_timestamp.tsf());
 }
 
 TEST_F(UDPWriterTest, RoundTripContextPacket) {
@@ -163,12 +158,12 @@ TEST_F(UDPWriterTest, RoundTripContextPacket) {
 
     // Create context packet
     using PacketType = ContextPacket<NoTimestamp, NoClassId, vrtigo::field::reference_point_id>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     const uint32_t test_stream_id = 0x87654321;
     const uint32_t test_ref_point = 0x12345678;
 
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
     packet.set_stream_id(test_stream_id);
     packet[vrtigo::field::reference_point_id].set_encoded(test_ref_point);
 
@@ -177,33 +172,15 @@ TEST_F(UDPWriterTest, RoundTripContextPacket) {
     // Read back
     auto received = reader.read_next_packet();
     ASSERT_TRUE(received.has_value());
-    EXPECT_TRUE(is_valid(*received));
-    EXPECT_TRUE(is_context_packet(*received));
+    ASSERT_TRUE(received->ok()) << received->error().message();
+    EXPECT_TRUE(is_context_packet(received->value()));
 
-    auto ctx_pkt = std::get<RuntimeContextPacket>(*received);
+    auto ctx_pkt = std::get<RuntimeContextPacket>(received->value());
     EXPECT_EQ(ctx_pkt.stream_id(), test_stream_id);
 }
 
-// =============================================================================
-// InvalidPacket Handling Tests
-// =============================================================================
-
-TEST_F(UDPWriterTest, RejectInvalidPacket) {
-    UDPVRTWriter writer("127.0.0.1", test_port);
-
-    // Create InvalidPacket variant
-    InvalidPacket invalid_pkt{.error = vrtigo::ValidationError::packet_type_mismatch,
-                              .attempted_type = vrtigo::PacketType::signal_data,
-                              .header = {},
-                              .raw_bytes = {}};
-
-    PacketVariant variant = invalid_pkt;
-
-    // Should reject InvalidPacket
-    EXPECT_FALSE(writer.write_packet(variant));
-    EXPECT_EQ(writer.packets_sent(), 0);
-    EXPECT_EQ(writer.transport_status().errno_value, EINVAL);
-}
+// Note: InvalidPacket handling test removed - InvalidPacket is no longer part of PacketVariant.
+// Parse errors are now represented as ParseResult<PacketVariant> with error() method.
 
 // =============================================================================
 // MTU Enforcement Tests
@@ -217,10 +194,10 @@ TEST_F(UDPWriterTest, EnforceMTU) {
 
     // Create packet larger than MTU
     using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 256>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     std::array<uint8_t, 1024> large_payload{};
-    auto packet = PacketBuilder<PacketType>(buffer.data())
+    auto packet = PacketBuilder<PacketType>(buffer)
                       .stream_id(0x99999999)
                       .packet_count(1)
                       .payload(large_payload.data(), large_payload.size())
@@ -242,10 +219,10 @@ TEST_F(UDPWriterTest, MTUAllowsValidPacket) {
 
     // Create packet within MTU
     using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     std::array<uint8_t, 256> payload{};
-    auto packet = PacketBuilder<PacketType>(buffer.data())
+    auto packet = PacketBuilder<PacketType>(buffer)
                       .stream_id(0x11111111)
                       .packet_count(1)
                       .payload(payload.data(), payload.size())
@@ -257,7 +234,7 @@ TEST_F(UDPWriterTest, MTUAllowsValidPacket) {
     // Verify received
     auto received = reader.read_next_packet();
     ASSERT_TRUE(received.has_value());
-    EXPECT_TRUE(is_valid(*received));
+    ASSERT_TRUE(received->ok()) << received->error().message();
 }
 
 // =============================================================================
@@ -276,15 +253,15 @@ TEST_F(UDPWriterTest, UnboundModeMultipleDestinations) {
 
     // Create packet
     using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
-    auto packet =
-        PacketBuilder<PacketType>(buffer.data()).stream_id(0x55555555).packet_count(1).build();
+    auto packet = PacketBuilder<PacketType>(buffer).stream_id(0x55555555).packet_count(1).build();
 
     // Convert to PacketVariant for the per-destination API
     auto packet_bytes = packet.as_bytes();
-    RuntimeDataPacket packet_view{packet_bytes.data(), packet_bytes.size()};
-    PacketVariant variant = packet_view;
+    auto parse_result = RuntimeDataPacket::parse(packet_bytes);
+    ASSERT_TRUE(parse_result.ok()) << parse_result.error().message();
+    PacketVariant variant = parse_result.value();
 
     // Send to first destination
     struct sockaddr_in dest1 {};
@@ -307,11 +284,11 @@ TEST_F(UDPWriterTest, UnboundModeMultipleDestinations) {
     // Verify both readers received
     auto recv1 = reader1.read_next_packet();
     ASSERT_TRUE(recv1.has_value());
-    EXPECT_TRUE(is_valid(*recv1));
+    ASSERT_TRUE(recv1->ok()) << recv1->error().message();
 
     auto recv2 = reader2.read_next_packet();
     ASSERT_TRUE(recv2.has_value());
-    EXPECT_TRUE(is_valid(*recv2));
+    ASSERT_TRUE(recv2->ok()) << recv2->error().message();
 }
 
 // =============================================================================
@@ -326,10 +303,9 @@ TEST_F(UDPWriterTest, FlushIsNoOp) {
 
     // Create and send packet
     using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
-    auto packet =
-        PacketBuilder<PacketType>(buffer.data()).stream_id(0x12345678).packet_count(1).build();
+    auto packet = PacketBuilder<PacketType>(buffer).stream_id(0x12345678).packet_count(1).build();
 
     EXPECT_TRUE(writer.write_packet(packet));
 
@@ -349,10 +325,9 @@ TEST_F(UDPWriterTest, MoveConstructor) {
 
     // Send packet with writer1
     using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
-    auto packet =
-        PacketBuilder<PacketType>(buffer.data()).stream_id(0x11111111).packet_count(1).build();
+    auto packet = PacketBuilder<PacketType>(buffer).stream_id(0x11111111).packet_count(1).build();
 
     EXPECT_TRUE(writer1.write_packet(packet));
     EXPECT_EQ(writer1.packets_sent(), 1);
@@ -371,10 +346,9 @@ TEST_F(UDPWriterTest, MoveAssignment) {
     UDPVRTWriter writer2("127.0.0.1", test_port_2);
 
     using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
-    auto packet =
-        PacketBuilder<PacketType>(buffer.data()).stream_id(0x22222222).packet_count(1).build();
+    auto packet = PacketBuilder<PacketType>(buffer).stream_id(0x22222222).packet_count(1).build();
 
     writer1.write_packet(packet);
     EXPECT_EQ(writer1.packets_sent(), 1);

@@ -13,8 +13,8 @@ Uses 64-bit two's complement Q44.20 fixed-point format.
 ```cpp
     using IFOffsetContext = ContextPacket<NoTimestamp, NoClassId, if_band_offset>;
 
-    alignas(4) std::array<uint8_t, IFOffsetContext::size_bytes> buffer{};
-    IFOffsetContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, IFOffsetContext::size_bytes()> buffer{};
+    IFOffsetContext packet(buffer);
 
     // Set IF band offset to 500 kHz
     packet[if_band_offset].set_value(500.0e3);

@@ -35,7 +35,7 @@ echo "Version: $VERSION"
 echo ""
 
 # Find all C++ source files
-FILES=$(find include tests examples -type f \( -name "*.hpp" -o -name "*.h" -o -name "*.cpp" -o -name "*.cc" \) 2>/dev/null || true)
+FILES=$(find include tests -type f \( -name "*.hpp" -o -name "*.h" -o -name "*.cpp" -o -name "*.cc" \) 2>/dev/null || true)
 
 if [ -z "$FILES" ]; then
     echo -e "${YELLOW}Warning: No C++ files found to format${NC}"

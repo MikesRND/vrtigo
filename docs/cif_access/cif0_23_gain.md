@@ -17,8 +17,8 @@ Single-stage equipment uses Stage 1 only with Stage 2 set to zero.
 ```cpp
     using GainContext = ContextPacket<NoTimestamp, NoClassId, gain>;
 
-    alignas(4) std::array<uint8_t, GainContext::size_bytes> buffer{};
-    GainContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, GainContext::size_bytes()> buffer{};
+    GainContext packet(buffer);
 
     // Set single-stage gain of +10 dB (Stage 2 = 0)
     packet[gain].set_value({10.0, 0.0});

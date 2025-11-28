@@ -2,62 +2,78 @@
 
 This directory contains executable documentation - test files with extractable code snippets that serve both as:
 1. **Unit tests** - Verify code examples compile and work correctly
-2. **Documentation source** - Provide snippets for README and tutorials
+2. **Documentation source** - Provide snippets for tutorials in `docs/quickstart/`
 
-## Structure
+## Marker Format
 
-Each test file contains snippets delimited by special markers:
+Each test file uses these markers to define extractable content:
+
+```cpp
+// [TITLE]
+// Document Title Here
+// [/TITLE]
+
+// [EXAMPLE]
+// Example Section Heading
+// [/EXAMPLE]
+
+// [DESCRIPTION]
+// Multi-line description text explaining the example.
+// [/DESCRIPTION]
+
+TEST(TestSuite, TestName) {
+    // [SNIPPET]
+    // Actual code to extract
+    auto result = create_something();
+    // [/SNIPPET]
+
+    // Additional test assertions (not extracted)
+    ASSERT_TRUE(result.ok());
+}
 ```
-// [quickstart:snippet-name]
-... code snippet here ...
-// [/quickstart:snippet-name]
+
+A single test file can contain multiple `[EXAMPLE]`/`[DESCRIPTION]`/`[SNIPPET]` triplets.
+
+### Narrative Text Between Examples
+
+Use `[TEXT]` blocks to add connecting prose between examples:
+
+```cpp
+// [TEXT]
+// This paragraph appears between examples without a heading or code block.
+// Useful for transitions and narrative flow.
+// [/TEXT]
 ```
 
-## Current Snippets
+## Current Test Files
 
-- `data_packet_test.cpp`: Creates a VRT Signal Data Packet with UTC timestamp and incrementing payload sequence
-- `context_packet_test.cpp`: Creates a VRT Context Packet with signal metadata fields
-- `file_reader_test.cpp`: Reads VRT packets from a file using the high-level VRTFileReader API
+- `data_packet_test.cpp` → `docs/quickstart/data_packet.md`
+- `context_packet_test.cpp` → `docs/quickstart/context_packet.md`
+- `file_reader_test.cpp` → `docs/quickstart/file_reader.md` (2 examples)
+- `packet_parsing_test.cpp` → `docs/quickstart/packet_parsing.md` (4 examples)
 
-## Extracting Snippets
+## Generating Documentation
 
-To extract a snippet for documentation, you can use a simple script:
+Documentation is auto-generated during build:
 
 ```bash
-# Extract snippet between markers
-sed -n '/\[quickstart:create-data-packet\]/,/\[\/quickstart:create-data-packet\]/p' create_packet_test.cpp | sed '1d;$d'
+make autodocs
 ```
 
-Or with a Python script:
+Or directly:
 
-```python
-import re
-
-def extract_snippet(filename, snippet_name):
-    with open(filename, 'r') as f:
-        content = f.read()
-
-    pattern = rf'// \[quickstart:{snippet_name}\](.*?)// \[/quickstart:{snippet_name}\]'
-    match = re.search(pattern, content, re.DOTALL)
-
-    if match:
-        # Remove the first and last lines (markers)
-        lines = match.group(1).strip().split('\n')
-        return '\n'.join(lines)
-    return None
-
-# Example usage:
-code = extract_snippet('create_packet_test.cpp', 'create-data-packet')
-print(code)
+```bash
+./scripts/extract_docs.sh quickstart
 ```
 
-## Adding New Snippets
+## Adding New Examples
 
-1. Create a new test file or add to existing one
-2. Wrap snippet with markers: `[quickstart:name]` and `[/quickstart:name]`
-3. Add basic assertions to verify correctness
-4. Update CMakeLists.txt if adding new test file
-5. Run test to ensure it compiles and passes
+1. Create a new test file: `tests/quickstart/{name}_test.cpp`
+2. Add `[TITLE]` block at the top of the file
+3. Add `[EXAMPLE]`, `[DESCRIPTION]`, and `[SNIPPET]` triplets
+4. Add test assertions outside the `[SNIPPET]` markers
+5. Update `tests/quickstart/CMakeLists.txt` to register the test
+6. Run `make autodocs` to generate `docs/quickstart/{name}.md`
 
 ## Benefits
 
@@ -65,3 +81,4 @@ print(code)
 - **Self-contained**: Each snippet is complete and runnable
 - **Versioned**: Snippets evolve with the codebase
 - **Discoverable**: Developers can run tests to see examples in action
+- **Consistent**: Same format as `cif_access` documentation

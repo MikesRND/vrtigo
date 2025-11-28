@@ -14,8 +14,8 @@ resolution (approximately 0.0078 dBm).
 ```cpp
     using RefLevelContext = ContextPacket<NoTimestamp, NoClassId, reference_level>;
 
-    alignas(4) std::array<uint8_t, RefLevelContext::size_bytes> buffer{};
-    RefLevelContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RefLevelContext::size_bytes()> buffer{};
+    RefLevelContext packet(buffer);
 
     // Set reference level to -10 dBm (typical receiver reference)
     packet[reference_level].set_value(-10.0);

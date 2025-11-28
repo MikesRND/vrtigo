@@ -150,11 +150,11 @@ TEST_F(UDPReaderTest, ReceiveSinglePacket) {
 
     // Verify we got a packet
     ASSERT_TRUE(pkt.has_value()) << "Should receive a packet";
+    ASSERT_TRUE(pkt->ok()) << "Parse should succeed: " << pkt->error().message();
     ASSERT_TRUE(is_data_packet(*pkt)) << "Should be a data packet";
 
     // Verify packet contents
-    const auto& view = std::get<RuntimeDataPacket>(*pkt);
-    EXPECT_TRUE(view.is_valid());
+    const auto& view = std::get<RuntimeDataPacket>(pkt->value());
     EXPECT_EQ(view.type(), PacketType::signal_data);
     EXPECT_TRUE(view.has_stream_id());
 
@@ -201,9 +201,11 @@ TEST_F(UDPReaderTest, ReceiveMultiplePackets) {
         auto pkt = reader.read_next_packet();
         if (!pkt)
             break;
+        if (!pkt->ok())
+            continue;
 
         if (is_data_packet(*pkt)) {
-            const auto& view = std::get<RuntimeDataPacket>(*pkt);
+            const auto& view = std::get<RuntimeDataPacket>(pkt->value());
             auto sid = view.stream_id();
             EXPECT_TRUE(sid.has_value());
 
@@ -265,7 +267,7 @@ TEST_F(UDPReaderTest, IterationHelper) {
     // Use for_each_data_packet helper
     size_t count = 0;
     reader.for_each_data_packet([&count](const RuntimeDataPacket& view) {
-        EXPECT_TRUE(view.is_valid());
+        // RuntimeDataPacket from iterator is always valid (parse errors are skipped)
         EXPECT_TRUE(view.has_stream_id());
         count++;
         return count < NUM_PACKETS; // Stop after NUM_PACKETS
@@ -340,11 +342,11 @@ TEST_F(UDPReaderTest, TruncatedDatagram) {
         EXPECT_EQ(status.bytes_received, 8); // Only 2 words received
     }
 
-    // Should get InvalidPacket or nullopt
+    // Should get parse error or nullopt
     if (pkt.has_value()) {
-        if (!is_valid(*pkt)) {
-            const auto& invalid = std::get<InvalidPacket>(*pkt);
-            EXPECT_EQ(invalid.error, ValidationError::buffer_too_small);
+        if (!pkt->ok()) {
+            const auto& error = pkt->error();
+            EXPECT_EQ(error.code, ValidationError::buffer_too_small);
         }
     }
 }
@@ -370,10 +372,10 @@ TEST_F(UDPReaderTest, LargePayload) {
     // ThreadGuard auto-joins in destructor
 
     ASSERT_TRUE(pkt.has_value()) << "Should receive large packet";
+    ASSERT_TRUE(pkt->ok()) << pkt->error().message();
     ASSERT_TRUE(is_data_packet(*pkt));
 
-    const auto& view = std::get<RuntimeDataPacket>(*pkt);
-    EXPECT_TRUE(view.is_valid());
+    const auto& view = std::get<RuntimeDataPacket>(pkt->value());
 
     auto payload = view.payload();
     EXPECT_EQ(payload.size(), PAYLOAD_WORDS * 4); // 100 words = 400 bytes
@@ -414,10 +416,10 @@ TEST_F(UDPReaderTest, InvalidHeaderSize) {
 
     // ThreadGuard auto-joins in destructor
 
-    // Should get InvalidPacket due to size mismatch
-    if (pkt.has_value() && !is_valid(*pkt)) {
-        const auto& invalid = std::get<InvalidPacket>(*pkt);
-        EXPECT_NE(invalid.error, ValidationError::none);
+    // Should get parse error due to size mismatch
+    if (pkt.has_value() && !pkt->ok()) {
+        const auto& error = pkt->error();
+        EXPECT_NE(error.code, ValidationError::none);
     }
 }
 
@@ -443,5 +445,5 @@ TEST_F(UDPReaderTest, TimeoutIsNonTerminal) {
 
     auto pkt2 = reader.read_next_packet();
     ASSERT_TRUE(pkt2.has_value()) << "Should receive packet after timeout";
-    EXPECT_TRUE(is_valid(*pkt2)) << "Packet should be valid";
+    EXPECT_TRUE(pkt2->ok()) << "Packet should be valid: " << pkt2->error().message();
 }

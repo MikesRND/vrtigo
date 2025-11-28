@@ -12,8 +12,8 @@ the sample rate in Hz. Set and read the encoded value directly.
 ```cpp
     using SampleRateContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
-    alignas(4) std::array<uint8_t, SampleRateContext::size_bytes> buffer{};
-    SampleRateContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, SampleRateContext::size_bytes()> buffer{};
+    SampleRateContext packet(buffer);
 
     // Set sample rate to 10 MHz
     packet[sample_rate].set_value(10'000'000.0);

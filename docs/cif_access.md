@@ -37,7 +37,7 @@ The **Context Field Change Indicator** (CIF0 bit 31) uses packet-level accessor 
 
 | CIF | Bit | Field | Accessor | Description |
 |-----|-----|-------|----------|-------------|
-| CIF0 | 31 | [Change Indicator](cif0_31_change_indicator.md) | `change_indicator()` / `set_change_indicator(bool)` | Indicates if any context fields changed |
+| CIF0 | 31 | [Change Indicator](cif_access/cif0_31_change_indicator.md) | `change_indicator()` / `set_change_indicator(bool)` | Indicates if any context fields changed |
 
 This field is a special case because the bit value itself carries meaning (not field presence).
 
@@ -47,18 +47,18 @@ The following fields provide `.value()` methods that return interpreted values w
 
 | CIF | Bit | Field | Type | Interpretation |
 |-----|-----|-------|------|----------------|
-| CIF0 | 15 | [Data Payload Format](cif0_15_payload_format.md) | `PayloadFormat::View` | Structured bitfield access |
-| CIF0 | 17 | [Device Identifier](cif0_17_device_id.md) | `DeviceIdentifier::View` | Manufacturer OUI + device code |
-| CIF0 | 21 | [Sample Rate](cif0_21_sample_rate.md) | `double` | Hz (from Q52.12) |
-| CIF0 | 22 | [Over-Range Count](cif0_22_over_range_count.md) | `uint32_t` | Count of over-range samples |
-| CIF0 | 23 | [Gain](cif0_23_gain.md) | `GainValue` | Two-stage gain in dB (from Q9.7) |
-| CIF0 | 24 | [Reference Level](cif0_24_reference_level.md) | `double` | dBm (from Q9.7) |
-| CIF0 | 25 | [IF Band Offset](cif0_25_if_band_offset.md) | `double` | Hz (from Q44.20, two's complement) |
-| CIF0 | 26 | [RF Frequency Offset](cif0_26_rf_frequency_offset.md) | `double` | Hz (from Q44.20, two's complement) |
-| CIF0 | 27 | [RF Reference Frequency](cif0_27_rf_reference_frequency.md) | `double` | Hz (from Q44.20, two's complement) |
-| CIF0 | 28 | [IF Reference Frequency](cif0_28_if_reference_frequency.md) | `double` | Hz (from Q44.20, two's complement) |
-| CIF0 | 29 | [Bandwidth](cif0_29_bandwidth.md) | `double` | Hz (from Q52.12) |
-| CIF0 | 30 | [Reference Point Identifier](cif0_30_reference_point_id.md) | `uint32_t` | Stream ID of timing reference point |
+| CIF0 | 15 | [Data Payload Format](cif_access/cif0_15_payload_format.md) | `PayloadFormat::View` | Structured bitfield access |
+| CIF0 | 17 | [Device Identifier](cif_access/cif0_17_device_id.md) | `DeviceIdentifier::View` | Manufacturer OUI + device code |
+| CIF0 | 21 | [Sample Rate](cif_access/cif0_21_sample_rate.md) | `double` | Hz (from Q52.12) |
+| CIF0 | 22 | [Over-Range Count](cif_access/cif0_22_over_range_count.md) | `uint32_t` | Count of over-range samples |
+| CIF0 | 23 | [Gain](cif_access/cif0_23_gain.md) | `GainValue` | Two-stage gain in dB (from Q9.7) |
+| CIF0 | 24 | [Reference Level](cif_access/cif0_24_reference_level.md) | `double` | dBm (from Q9.7) |
+| CIF0 | 25 | [IF Band Offset](cif_access/cif0_25_if_band_offset.md) | `double` | Hz (from Q44.20, two's complement) |
+| CIF0 | 26 | [RF Frequency Offset](cif_access/cif0_26_rf_frequency_offset.md) | `double` | Hz (from Q44.20, two's complement) |
+| CIF0 | 27 | [RF Reference Frequency](cif_access/cif0_27_rf_reference_frequency.md) | `double` | Hz (from Q44.20, two's complement) |
+| CIF0 | 28 | [IF Reference Frequency](cif_access/cif0_28_if_reference_frequency.md) | `double` | Hz (from Q44.20, two's complement) |
+| CIF0 | 29 | [Bandwidth](cif_access/cif0_29_bandwidth.md) | `double` | Hz (from Q52.12) |
+| CIF0 | 30 | [Reference Point Identifier](cif_access/cif0_30_reference_point_id.md) | `uint32_t` | Stream ID of timing reference point |
 
 
 ## Adding New Field Documentation
@@ -66,7 +66,7 @@ Field documentation is auto-generated from self-documenting tests in `tests/cif_
 
 1. Create a test file: `tests/cif_access/cif{N}_{bit}_{fieldname}_test.cpp`
 2. Use `[TITLE]`, `[EXAMPLE]`, `[DESCRIPTION]`, and `[SNIPPET]` markers
-3. Run `make cif_access_docs` to generate the documentation
+3. Run `make autodocs` to generate the documentation
 
 
 ## Fields Without Interpreted Support

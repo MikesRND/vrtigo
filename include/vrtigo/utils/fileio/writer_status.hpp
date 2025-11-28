@@ -20,7 +20,7 @@ enum class WriterStatus : uint8_t {
     closed,            ///< File has been closed
     disk_full,         ///< Disk is full (ENOSPC)
     permission_denied, ///< Permission denied (EACCES/EPERM)
-    invalid_packet     ///< InvalidPacket variant rejected
+    invalid_packet     ///< Parse error variant rejected
 };
 
 /**

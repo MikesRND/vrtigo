@@ -27,8 +27,8 @@ TEST_F(ContextPacketTest, CIF0_17_BasicAccess) {
     // [SNIPPET]
     using DeviceIdContext = ContextPacket<NoTimestamp, NoClassId, device_id>;
 
-    alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes> buffer{};
-    DeviceIdContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes()> buffer{};
+    DeviceIdContext packet(buffer);
 
     // Access via interpreted view
     auto view = packet[device_id].value();
@@ -52,8 +52,8 @@ TEST_F(ContextPacketTest, CIF0_17_BasicAccess) {
 
 TEST_F(ContextPacketTest, CIF0_17_ZeroValues) {
     using DeviceIdContext = ContextPacket<NoTimestamp, NoClassId, device_id>;
-    alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes> buffer{};
-    DeviceIdContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes()> buffer{};
+    DeviceIdContext packet(buffer);
 
     auto view = packet[device_id].value();
 
@@ -67,8 +67,8 @@ TEST_F(ContextPacketTest, CIF0_17_ZeroValues) {
 
 TEST_F(ContextPacketTest, CIF0_17_MaxValues) {
     using DeviceIdContext = ContextPacket<NoTimestamp, NoClassId, device_id>;
-    alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes> buffer{};
-    DeviceIdContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes()> buffer{};
+    DeviceIdContext packet(buffer);
 
     auto view = packet[device_id].value();
 
@@ -83,8 +83,8 @@ TEST_F(ContextPacketTest, CIF0_17_MaxValues) {
 
 TEST_F(ContextPacketTest, CIF0_17_TypicalOUIValues) {
     using DeviceIdContext = ContextPacket<NoTimestamp, NoClassId, device_id>;
-    alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes> buffer{};
-    DeviceIdContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes()> buffer{};
+    DeviceIdContext packet(buffer);
 
     auto view = packet[device_id].value();
 
@@ -110,8 +110,8 @@ TEST_F(ContextPacketTest, CIF0_17_TypicalOUIValues) {
 
 TEST_F(ContextPacketTest, CIF0_17_ReservedBitsIsolation) {
     using DeviceIdContext = ContextPacket<NoTimestamp, NoClassId, device_id>;
-    alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes> buffer{};
-    DeviceIdContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes()> buffer{};
+    DeviceIdContext packet(buffer);
 
     auto view = packet[device_id].value();
 
@@ -129,18 +129,19 @@ TEST_F(ContextPacketTest, CIF0_17_ReservedBitsIsolation) {
 TEST_F(ContextPacketTest, CIF0_17_RuntimeAccess) {
     // Create a compile-time packet with Device ID
     using DeviceIdContext = ContextPacket<NoTimestamp, NoClassId, device_id>;
-    alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes> buffer{};
-    DeviceIdContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes()> buffer{};
+    DeviceIdContext packet(buffer);
 
     auto view = packet[device_id].value();
     view.set(DeviceIdentifier::manufacturer_oui, 0xABCDEF);
     view.set(DeviceIdentifier::device_code, 0x5678);
 
     // Parse with runtime packet
-    RuntimeContextPacket runtime_packet(buffer.data(), buffer.size());
+    auto result = RuntimeContextPacket::parse(buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& runtime_packet = result.value();
 
     // Runtime packet can access the Device ID field
-    EXPECT_TRUE(runtime_packet.is_valid());
     if (runtime_packet[device_id]) {
         auto rt_view = runtime_packet[device_id].value();
         EXPECT_EQ(rt_view.get(DeviceIdentifier::manufacturer_oui), 0xABCDEF);
@@ -150,8 +151,8 @@ TEST_F(ContextPacketTest, CIF0_17_RuntimeAccess) {
 
 TEST_F(ContextPacketTest, CIF0_17_EncodedAccess) {
     using DeviceIdContext = ContextPacket<NoTimestamp, NoClassId, device_id>;
-    alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes> buffer{};
-    DeviceIdContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes()> buffer{};
+    DeviceIdContext packet(buffer);
 
     auto view = packet[device_id].value();
 
@@ -173,8 +174,8 @@ TEST_F(ContextPacketTest, CIF0_17_WithOtherFields) {
     // Device ID combined with other fields
     using CombinedContext = ContextPacket<NoTimestamp, NoClassId, device_id, reference_point_id>;
 
-    alignas(4) std::array<uint8_t, CombinedContext::size_bytes> buffer{};
-    CombinedContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, CombinedContext::size_bytes()> buffer{};
+    CombinedContext packet(buffer);
 
     // Set device ID
     auto dev_view = packet[device_id].value();

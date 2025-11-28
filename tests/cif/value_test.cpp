@@ -14,7 +14,6 @@ using namespace vrtigo::field;
 
 class InterpretedValueTest : public ::testing::Test {
 protected:
-    alignas(4) std::array<uint8_t, 256> buffer{};
 };
 
 // =============================================================================
@@ -24,7 +23,8 @@ protected:
 TEST_F(InterpretedValueTest, BandwidthInterpretedRead) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Set bandwidth to Q52.12 encoding for 100 MHz
     // 100 MHz = 100'000'000 Hz
@@ -41,7 +41,8 @@ TEST_F(InterpretedValueTest, BandwidthInterpretedRead) {
 TEST_F(InterpretedValueTest, BandwidthInterpretedWrite) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Write interpreted value (50 MHz)
     packet[bandwidth].set_value(50'000'000.0);
@@ -54,7 +55,8 @@ TEST_F(InterpretedValueTest, BandwidthInterpretedWrite) {
 TEST_F(InterpretedValueTest, BandwidthRoundTrip) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Test various frequencies for round-trip precision
     const double test_frequencies[] = {
@@ -76,7 +78,8 @@ TEST_F(InterpretedValueTest, BandwidthRoundTrip) {
 TEST_F(InterpretedValueTest, BandwidthOperatorDereference) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Set to 200 MHz
     packet[bandwidth].set_value(200'000'000.0);
@@ -91,7 +94,8 @@ TEST_F(InterpretedValueTest, BandwidthOperatorDereference) {
 TEST_F(InterpretedValueTest, BandwidthConversionPrecision) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Test Q52.12 conversion accuracy
 
@@ -111,7 +115,8 @@ TEST_F(InterpretedValueTest, BandwidthConversionPrecision) {
 TEST_F(InterpretedValueTest, BandwidthEdgeCases) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Zero value
     packet[bandwidth].set_value(0.0);
@@ -133,7 +138,8 @@ TEST_F(InterpretedValueTest, BandwidthEdgeCases) {
 TEST_F(InterpretedValueTest, SampleRateInterpretedRead) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Set sample rate to Q52.12 encoding for 50 MHz (50 MSPS)
     // 50 MHz = 50'000'000 Hz
@@ -150,7 +156,8 @@ TEST_F(InterpretedValueTest, SampleRateInterpretedRead) {
 TEST_F(InterpretedValueTest, SampleRateInterpretedWrite) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Write interpreted value (25 MSPS)
     packet[sample_rate].set_value(25'000'000.0);
@@ -163,7 +170,8 @@ TEST_F(InterpretedValueTest, SampleRateInterpretedWrite) {
 TEST_F(InterpretedValueTest, SampleRateRoundTrip) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Test various sample rates for round-trip precision
     const double test_rates[] = {
@@ -186,7 +194,8 @@ TEST_F(InterpretedValueTest, SampleRateRoundTrip) {
 TEST_F(InterpretedValueTest, SampleRateOperatorDereference) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Set to 125 MSPS
     packet[sample_rate].set_value(125'000'000.0);
@@ -201,7 +210,8 @@ TEST_F(InterpretedValueTest, SampleRateOperatorDereference) {
 TEST_F(InterpretedValueTest, SampleRateConversionPrecision) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Test Q52.12 conversion accuracy
 
@@ -221,7 +231,8 @@ TEST_F(InterpretedValueTest, SampleRateConversionPrecision) {
 TEST_F(InterpretedValueTest, SampleRateTypicalADCRates) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Test common ADC sample rates
     const double adc_rates[] = {
@@ -246,7 +257,8 @@ TEST_F(InterpretedValueTest, SampleRateTypicalADCRates) {
 TEST_F(InterpretedValueTest, SampleRateEdgeCases) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Zero value (stopped ADC)
     packet[sample_rate].set_value(0.0);
@@ -274,7 +286,8 @@ TEST_F(InterpretedValueTest, BandwidthAndSampleRateTogether) {
     // Typical use case: both bandwidth and sample rate in same packet
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Set bandwidth and sample rate
     // Typical: sample rate >= bandwidth (Nyquist)
@@ -295,15 +308,17 @@ TEST_F(InterpretedValueTest, RuntimeParserIntegration) {
     // Build packet with compile-time type
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate>;
 
-    TestContext tx_packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext tx_packet(buffer);
 
     tx_packet.set_stream_id(0xDEADBEEF);
     tx_packet[bandwidth].set_value(75'000'000.0);   // 75 MHz
     tx_packet[sample_rate].set_value(80'000'000.0); // 80 MSPS
 
     // Parse with runtime view
-    RuntimeContextPacket view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.error(), ValidationError::none);
+    auto result = RuntimeContextPacket::parse(buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
 
     // Verify values accessible from runtime parser
     auto bw = view[bandwidth];

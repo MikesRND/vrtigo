@@ -7,12 +7,13 @@ TEST_F(ContextPacketTest, BasicCompileTimePacket) {
     // Note: Context packets always have Stream ID per VITA 49.2 spec
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
+    TestContext packet(pkt_buffer);
 
     // Check packet size
-    EXPECT_EQ(TestContext::size_words,
+    EXPECT_EQ(TestContext::size_words(),
               1 + 1 + 1 + 2 + 2); // header + stream + cif0 + bandwidth + sample_rate
-    EXPECT_EQ(TestContext::size_bytes, TestContext::size_words * 4);
+    EXPECT_EQ(TestContext::size_bytes(), TestContext::size_words() * 4);
 
     // Set fields
     packet.set_stream_id(0x12345678);
@@ -28,10 +29,11 @@ TEST_F(ContextPacketTest, BasicCompileTimePacket) {
 TEST_F(ContextPacketTest, PacketWithClassId) {
     using TestContext = ContextPacket<NoTimestamp, ClassId, bandwidth>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
+    TestContext packet(pkt_buffer);
 
     // Check that class ID increases packet size
-    EXPECT_EQ(TestContext::size_words,
+    EXPECT_EQ(TestContext::size_words(),
               1 + 1 + 2 + 1 + 2); // header + stream + class_id + cif0 + bandwidth
 
     packet.set_stream_id(0x87654321);
@@ -76,8 +78,9 @@ TEST_F(ContextPacketTest, RuntimeParserBasic) {
     cif::write_u64_safe(buffer.data(), 20, 12'500'000);
 
     // Parse with RuntimeContextPacket
-    RuntimeContextPacket view(buffer.data(), 7 * 4);
-    EXPECT_EQ(view.error(), ValidationError::none);
+    auto result = RuntimeContextPacket::parse(std::span<const uint8_t>(buffer.data(), 7 * 4));
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
 
     // Check parsed values
     EXPECT_EQ(view.stream_id().value(), 0xAABBCCDD);
@@ -114,8 +117,9 @@ TEST_F(ContextPacketTest, SizeFieldValidation) {
     cif::write_u64_safe(buffer.data(), 12, 25'000'000);
 
     // Provide buffer large enough for header's claim, so we get past buffer_too_small check
-    RuntimeContextPacket view(buffer.data(), 10 * 4);
-    EXPECT_EQ(view.error(), ValidationError::size_field_mismatch);
+    auto result = RuntimeContextPacket::parse(std::span<const uint8_t>(buffer.data(), 10 * 4));
+    EXPECT_FALSE(result.ok());
+    EXPECT_EQ(result.error().code, ValidationError::size_field_mismatch);
 }
 
 TEST_F(ContextPacketTest, BufferTooSmall) {
@@ -124,23 +128,27 @@ TEST_F(ContextPacketTest, BufferTooSmall) {
     cif::write_u32_safe(buffer.data(), 0, header);
 
     // Provide buffer smaller than declared size
-    RuntimeContextPacket view(buffer.data(), 3 * 4); // Only 3 words provided
-    EXPECT_EQ(view.error(), ValidationError::buffer_too_small);
+    auto result = RuntimeContextPacket::parse(
+        std::span<const uint8_t>(buffer.data(), 3 * 4)); // Only 3 words provided
+    EXPECT_FALSE(result.ok());
+    EXPECT_EQ(result.error().code, ValidationError::buffer_too_small);
 }
 
 TEST_F(ContextPacketTest, InvalidPacketType) {
     uint32_t header = (0U << 28) | 3; // type=0 (not context), size=3
     cif::write_u32_safe(buffer.data(), 0, header);
 
-    RuntimeContextPacket view(buffer.data(), 3 * 4);
-    EXPECT_EQ(view.error(), ValidationError::invalid_packet_type);
+    auto result = RuntimeContextPacket::parse(std::span<const uint8_t>(buffer.data(), 3 * 4));
+    EXPECT_FALSE(result.ok());
+    EXPECT_EQ(result.error().code, ValidationError::packet_type_mismatch);
 }
 
 TEST_F(ContextPacketTest, PacketCountAccessors) {
     // Test packet_count getter/setter for compile-time context packets
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
+    TestContext packet(pkt_buffer);
 
     // Test initial packet count (should be 0 after initialization)
     EXPECT_EQ(packet.packet_count(), 0);
@@ -190,9 +198,9 @@ TEST_F(ContextPacketTest, PacketCountParsing) {
     cif::write_u64_safe(buffer.data(), 12, 20'000'000);
 
     // Parse with RuntimeContextPacket
-    RuntimeContextPacket view(buffer.data(), 5 * 4);
-    EXPECT_TRUE(view.is_valid());
-    EXPECT_EQ(view.error(), ValidationError::none);
+    auto result = RuntimeContextPacket::parse(std::span<const uint8_t>(buffer.data(), 5 * 4));
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
 
     // Verify packet_count was correctly parsed
     EXPECT_EQ(view.packet_count(), 7);
@@ -205,8 +213,8 @@ TEST_F(ContextPacketTest, PacketCountParsing) {
         cif::write_u32_safe(buffer.data(), 0, header);
 
         // Re-parse
-        RuntimeContextPacket view2(buffer.data(), 5 * 4);
-        EXPECT_TRUE(view2.is_valid());
-        EXPECT_EQ(view2.packet_count(), count);
+        auto result2 = RuntimeContextPacket::parse(std::span<const uint8_t>(buffer.data(), 5 * 4));
+        ASSERT_TRUE(result2.ok()) << result2.error().message();
+        EXPECT_EQ(result2.value().packet_count(), count);
     }
 }

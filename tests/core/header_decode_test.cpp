@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <vrtigo/detail/header_decode.hpp>
+#include <vrtigo/detail/packet_header_accessor.hpp>
 
 using namespace vrtigo;
 using namespace vrtigo::detail;
@@ -20,7 +21,7 @@ TEST(HeaderDecodeTest, DecodeSignalPacketType0) {
 
     EXPECT_EQ(decoded.type, PacketType::signal_data_no_id);
     EXPECT_EQ(decoded.size_words, 10);
-    EXPECT_FALSE(has_stream_id_field(decoded.type)); // Type 0 has no stream ID
+    EXPECT_FALSE(HeaderView::has_stream_id(decoded.type)); // Type 0 has no stream ID
     EXPECT_FALSE(decoded.has_class_id);
     EXPECT_FALSE(decoded.trailer_included); // Use type-aware field
     EXPECT_EQ(decoded.tsi, TsiType::none);
@@ -45,7 +46,7 @@ TEST(HeaderDecodeTest, DecodeSignalPacketType1) {
 
     EXPECT_EQ(decoded.type, PacketType::signal_data);
     EXPECT_EQ(decoded.size_words, 512);
-    EXPECT_TRUE(has_stream_id_field(decoded.type)); // Type 1 has stream ID
+    EXPECT_TRUE(HeaderView::has_stream_id(decoded.type)); // Type 1 has stream ID
     EXPECT_FALSE(decoded.has_class_id);
     EXPECT_FALSE(decoded.trailer_included); // Use type-aware field
     EXPECT_EQ(decoded.tsi, TsiType::gps);
@@ -70,7 +71,7 @@ TEST(HeaderDecodeTest, DecodeContextPacket) {
 
     EXPECT_EQ(decoded.type, PacketType::extension_context);
     EXPECT_EQ(decoded.size_words, 20);
-    EXPECT_TRUE(has_stream_id_field(decoded.type)); // Type 5 has stream ID
+    EXPECT_TRUE(HeaderView::has_stream_id(decoded.type)); // Type 5 has stream ID
     EXPECT_TRUE(decoded.has_class_id);
     // Context packets don't have trailer field - bit 26 is reserved
     EXPECT_FALSE(decoded.trailer_included); // Not applicable to context packets

@@ -26,8 +26,8 @@ TEST_F(ContextPacketTest, CIF0_25_BasicAccess) {
     // [SNIPPET]
     using IFOffsetContext = ContextPacket<NoTimestamp, NoClassId, if_band_offset>;
 
-    alignas(4) std::array<uint8_t, IFOffsetContext::size_bytes> buffer{};
-    IFOffsetContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, IFOffsetContext::size_bytes()> buffer{};
+    IFOffsetContext packet(buffer);
 
     // Set IF band offset to 500 kHz
     packet[if_band_offset].set_value(500.0e3);
@@ -44,8 +44,8 @@ TEST_F(ContextPacketTest, CIF0_25_BasicAccess) {
 
 TEST_F(ContextPacketTest, CIF0_25_PositiveAndNegativeOffsets) {
     using IFOffsetContext = ContextPacket<NoTimestamp, NoClassId, if_band_offset>;
-    alignas(4) std::array<uint8_t, IFOffsetContext::size_bytes> buffer{};
-    IFOffsetContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, IFOffsetContext::size_bytes()> buffer{};
+    IFOffsetContext packet(buffer);
 
     // Test positive and negative offsets
     double test_offsets[] = {
@@ -67,8 +67,8 @@ TEST_F(ContextPacketTest, CIF0_25_PositiveAndNegativeOffsets) {
 
 TEST_F(ContextPacketTest, CIF0_25_SpecExamples) {
     using IFOffsetContext = ContextPacket<NoTimestamp, NoClassId, if_band_offset>;
-    alignas(4) std::array<uint8_t, IFOffsetContext::size_bytes> buffer{};
-    IFOffsetContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, IFOffsetContext::size_bytes()> buffer{};
+    IFOffsetContext packet(buffer);
 
     // Per VITA 49.2 spec observations:
     // 0x0000000000100000 = +1 Hz
@@ -87,15 +87,16 @@ TEST_F(ContextPacketTest, CIF0_25_SpecExamples) {
 TEST_F(ContextPacketTest, CIF0_25_RuntimeAccess) {
     // Create a compile-time packet
     using IFOffsetContext = ContextPacket<NoTimestamp, NoClassId, if_band_offset>;
-    alignas(4) std::array<uint8_t, IFOffsetContext::size_bytes> buffer{};
-    IFOffsetContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, IFOffsetContext::size_bytes()> buffer{};
+    IFOffsetContext packet(buffer);
 
     packet[if_band_offset].set_value(500.0e3);
 
     // Parse with runtime packet
-    RuntimeContextPacket runtime_packet(buffer.data(), buffer.size());
+    auto result = RuntimeContextPacket::parse(buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& runtime_packet = result.value();
 
-    EXPECT_TRUE(runtime_packet.is_valid());
     if (runtime_packet[if_band_offset]) {
         EXPECT_NEAR(runtime_packet[if_band_offset].value(), 500.0e3, 1.0);
     }

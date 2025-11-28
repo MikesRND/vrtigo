@@ -55,15 +55,16 @@ inline std::vector<uint8_t> create_simple_data_packet(uint32_t stream_id,
 }
 
 /**
- * @brief Parse VRT packet bytes into PacketVariant
+ * @brief Parse VRT packet bytes into ParseResult<PacketVariant>
  *
- * Convenience wrapper around detail::parse_packet for testing.
+ * Convenience wrapper around parse_packet for testing.
  *
  * @param bytes Vector of packet bytes
- * @return PacketVariant (RuntimeDataPacket, RuntimeContextPacket, or InvalidPacket)
+ * @return ParseResult<PacketVariant> with either valid packet or error info
  */
-inline vrtigo::PacketVariant parse_test_packet(const std::vector<uint8_t>& bytes) {
-    return vrtigo::detail::parse_packet(std::span<const uint8_t>(bytes.data(), bytes.size()));
+inline vrtigo::ParseResult<vrtigo::PacketVariant>
+parse_test_packet(const std::vector<uint8_t>& bytes) {
+    return vrtigo::parse_packet(std::span<const uint8_t>(bytes.data(), bytes.size()));
 }
 
 // =============================================================================

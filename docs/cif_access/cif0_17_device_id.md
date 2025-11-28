@@ -14,8 +14,8 @@ device generating the VRT packet stream. Per VITA 49.2 Section 9.10.1:
 ```cpp
     using DeviceIdContext = ContextPacket<NoTimestamp, NoClassId, device_id>;
 
-    alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes> buffer{};
-    DeviceIdContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes()> buffer{};
+    DeviceIdContext packet(buffer);
 
     // Access via interpreted view
     auto view = packet[device_id].value();

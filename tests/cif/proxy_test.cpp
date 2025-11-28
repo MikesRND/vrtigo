@@ -14,7 +14,6 @@ using namespace vrtigo::field;
 
 class FieldProxyTest : public ::testing::Test {
 protected:
-    alignas(4) std::array<uint8_t, 256> buffer{};
 };
 
 // =============================================================================
@@ -24,7 +23,8 @@ protected:
 TEST_F(FieldProxyTest, BasicSetAndGet) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Set bandwidth raw value (Q52.12 format)
     packet[bandwidth].set_encoded(20'000'000ULL);
@@ -39,7 +39,8 @@ TEST_F(FieldProxyTest, FieldPresenceCheck) {
     // Create packet WITH bandwidth
     using WithBandwidth = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
-    WithBandwidth pkt1(buffer.data());
+    alignas(4) std::array<uint8_t, WithBandwidth::size_bytes()> buffer1{};
+    WithBandwidth pkt1(buffer1);
 
     EXPECT_TRUE(pkt1[bandwidth]);
     EXPECT_TRUE(pkt1[field::bandwidth].has_value());
@@ -48,8 +49,8 @@ TEST_F(FieldProxyTest, FieldPresenceCheck) {
     using WithoutBandwidth =
         ContextPacket<NoTimestamp, NoClassId, sample_rate>; // Has sample_rate, NOT bandwidth
 
-    alignas(4) std::array<uint8_t, WithoutBandwidth::size_bytes> buf2{};
-    WithoutBandwidth pkt2(buf2.data());
+    alignas(4) std::array<uint8_t, WithoutBandwidth::size_bytes()> buf2{};
+    WithoutBandwidth pkt2(buf2);
 
     EXPECT_FALSE(pkt2[bandwidth]);
     EXPECT_FALSE(pkt2[field::bandwidth].has_value());
@@ -58,7 +59,8 @@ TEST_F(FieldProxyTest, FieldPresenceCheck) {
 TEST_F(FieldProxyTest, UncheckedAccess) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Set bandwidth
     packet[bandwidth].set_encoded(1'000'000ULL);
@@ -75,7 +77,8 @@ TEST_F(FieldProxyTest, UncheckedAccess) {
 TEST_F(FieldProxyTest, RawBytesAccess) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     packet[bandwidth].set_encoded(1'000'000ULL);
 
@@ -93,7 +96,8 @@ TEST_F(FieldProxyTest, RawBytesAccess) {
 TEST_F(FieldProxyTest, RawBytesManipulation) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Write raw bytes directly (network byte order)
     uint8_t test_bytes[8] = {
@@ -111,7 +115,8 @@ TEST_F(FieldProxyTest, RawBytesManipulation) {
 TEST_F(FieldProxyTest, OffsetAndSize) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     auto bw_proxy = packet[bandwidth];
 
@@ -126,7 +131,8 @@ TEST_F(FieldProxyTest, MissingFieldHandling) {
     using TestContext =
         ContextPacket<NoTimestamp, NoClassId, sample_rate>; // Has sample_rate, NOT bandwidth
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     auto missing_proxy = packet[bandwidth];
 
@@ -140,7 +146,8 @@ TEST_F(FieldProxyTest, MissingFieldHandling) {
 TEST_F(FieldProxyTest, DifferentFieldSizes) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate, gain>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Gain is 32-bit (4 bytes)
     auto gain_proxy = packet[gain];
@@ -158,7 +165,8 @@ TEST_F(FieldProxyTest, DifferentFieldSizes) {
 TEST_F(FieldProxyTest, ConditionalPatternCompatibility) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, gain>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     packet[gain].set_encoded(42U);
 
@@ -173,7 +181,8 @@ TEST_F(FieldProxyTest, ConditionalPatternCompatibility) {
 TEST_F(FieldProxyTest, MultipleProxiesToSameField) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     auto bw_proxy1 = packet[bandwidth];
     auto bw_proxy2 = packet[bandwidth];
@@ -190,7 +199,8 @@ TEST_F(FieldProxyTest, MultiFieldPacket) {
     // Packet with bandwidth + sample_rate + gain
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate, gain>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Set all fields
     packet[bandwidth].set_encoded(100'000'000ULL);
@@ -212,7 +222,8 @@ TEST_F(FieldProxyTest, MultiCIFWordPacket) {
     using TestContext =
         ContextPacket<NoTimestamp, NoClassId, bandwidth, aux_frequency, controller_uuid>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Set bandwidth (CIF0 field)
     packet[bandwidth].set_encoded(150'000'000ULL);
@@ -230,14 +241,16 @@ TEST_F(FieldProxyTest, RuntimeParserIntegration) {
     // Build packet with compile-time type
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
-    TestContext tx_packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext tx_packet(buffer);
 
     tx_packet.set_stream_id(0xDEADBEEF);
     tx_packet[bandwidth].set_encoded(75'000'000ULL);
 
     // Parse with runtime view
-    RuntimeContextPacket view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.error(), ValidationError::none);
+    auto result = RuntimeContextPacket::parse(buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
 
     // Verify field accessible from runtime parser
     auto bw = view[bandwidth];

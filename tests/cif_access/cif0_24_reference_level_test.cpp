@@ -27,8 +27,8 @@ TEST_F(ContextPacketTest, CIF0_24_BasicAccess) {
     // [SNIPPET]
     using RefLevelContext = ContextPacket<NoTimestamp, NoClassId, reference_level>;
 
-    alignas(4) std::array<uint8_t, RefLevelContext::size_bytes> buffer{};
-    RefLevelContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RefLevelContext::size_bytes()> buffer{};
+    RefLevelContext packet(buffer);
 
     // Set reference level to -10 dBm (typical receiver reference)
     packet[reference_level].set_value(-10.0);
@@ -45,8 +45,8 @@ TEST_F(ContextPacketTest, CIF0_24_BasicAccess) {
 
 TEST_F(ContextPacketTest, CIF0_24_CommonLevels) {
     using RefLevelContext = ContextPacket<NoTimestamp, NoClassId, reference_level>;
-    alignas(4) std::array<uint8_t, RefLevelContext::size_bytes> buffer{};
-    RefLevelContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RefLevelContext::size_bytes()> buffer{};
+    RefLevelContext packet(buffer);
 
     // Test common reference levels
     double test_levels[] = {
@@ -67,8 +67,8 @@ TEST_F(ContextPacketTest, CIF0_24_CommonLevels) {
 
 TEST_F(ContextPacketTest, CIF0_24_SpecExamples) {
     using RefLevelContext = ContextPacket<NoTimestamp, NoClassId, reference_level>;
-    alignas(4) std::array<uint8_t, RefLevelContext::size_bytes> buffer{};
-    RefLevelContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RefLevelContext::size_bytes()> buffer{};
+    RefLevelContext packet(buffer);
 
     // Per VITA 49.2 spec observations for Q9.7:
     // Scale factor = 2^7 = 128
@@ -100,8 +100,8 @@ TEST_F(ContextPacketTest, CIF0_24_SpecExamples) {
 
 TEST_F(ContextPacketTest, CIF0_24_Saturation) {
     using RefLevelContext = ContextPacket<NoTimestamp, NoClassId, reference_level>;
-    alignas(4) std::array<uint8_t, RefLevelContext::size_bytes> buffer{};
-    RefLevelContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RefLevelContext::size_bytes()> buffer{};
+    RefLevelContext packet(buffer);
 
     // Test saturation at bounds
 
@@ -121,15 +121,16 @@ TEST_F(ContextPacketTest, CIF0_24_Saturation) {
 TEST_F(ContextPacketTest, CIF0_24_RuntimeAccess) {
     // Create a compile-time packet
     using RefLevelContext = ContextPacket<NoTimestamp, NoClassId, reference_level>;
-    alignas(4) std::array<uint8_t, RefLevelContext::size_bytes> buffer{};
-    RefLevelContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RefLevelContext::size_bytes()> buffer{};
+    RefLevelContext packet(buffer);
 
     packet[reference_level].set_value(-20.0);
 
     // Parse with runtime packet
-    RuntimeContextPacket runtime_packet(buffer.data(), buffer.size());
+    auto result = RuntimeContextPacket::parse(buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& runtime_packet = result.value();
 
-    EXPECT_TRUE(runtime_packet.is_valid());
     if (runtime_packet[reference_level]) {
         EXPECT_NEAR(runtime_packet[reference_level].value(), -20.0, 0.01);
     }
@@ -137,8 +138,8 @@ TEST_F(ContextPacketTest, CIF0_24_RuntimeAccess) {
 
 TEST_F(ContextPacketTest, CIF0_24_ReservedBits) {
     using RefLevelContext = ContextPacket<NoTimestamp, NoClassId, reference_level>;
-    alignas(4) std::array<uint8_t, RefLevelContext::size_bytes> buffer{};
-    RefLevelContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RefLevelContext::size_bytes()> buffer{};
+    RefLevelContext packet(buffer);
 
     // Verify that upper 16 bits are preserved as reserved (set to 0)
     packet[reference_level].set_value(-10.0);

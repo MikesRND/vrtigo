@@ -43,10 +43,10 @@ namespace vrtigo::utils::netio {
  * - PacketVariant (runtime packets)
  * - RuntimeDataPacket (runtime data packets)
  * - RuntimeContextPacket (runtime context packets)
- * - Any CompileTimePacket (from PacketBuilder)
+ * - Any compile-time packet (from PacketBuilder)
  *
- * InvalidPacket Handling:
- * - PacketVariant containing InvalidPacket is rejected
+ * Parse Error Handling:
+ * - ParseResult errors are rejected (never sent)
  * - write_packet() returns false immediately
  * - No datagram sent
  * - transport_status() reflects error
@@ -234,33 +234,24 @@ public:
      *
      * Sends packet to connected destination. Only valid in bound mode.
      *
-     * @param packet The packet variant to write
-     * @return true on success, false on error or invalid packet
+     * @param packet The packet variant to write (always valid)
+     * @return true on success, false on I/O error
      */
     bool write_packet(const vrtigo::PacketVariant& packet) noexcept {
-        // Check if variant holds InvalidPacket
-        if (std::holds_alternative<vrtigo::InvalidPacket>(packet)) {
-            status_.state = UDPTransportStatus::State::socket_error;
-            status_.errno_value = EINVAL;
-            return false;
-        }
-
         // Write the packet using visitor pattern
+        // PacketVariant now only contains valid packets (RuntimeDataPacket or RuntimeContextPacket)
         return std::visit(
             [this](auto&& pkt) -> bool {
                 using T = std::decay_t<decltype(pkt)>;
 
-                // InvalidPacket already handled above
-                if constexpr (std::is_same_v<T, vrtigo::InvalidPacket>) {
-                    return false; // Should never reach here
-                } else if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
+                if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
                     return this->write_packet_impl(pkt.as_bytes());
                 } else if constexpr (std::is_same_v<T, vrtigo::RuntimeContextPacket>) {
                     // RuntimeContextPacket uses context_buffer() instead of as_bytes()
-                    std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.packet_size_bytes()};
+                    std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.size_bytes()};
                     return this->write_packet_impl(bytes);
                 } else {
-                    return false; // Unknown type
+                    return false; // Should never reach here
                 }
             },
             packet);
@@ -284,19 +275,19 @@ public:
      */
     bool write_packet(const vrtigo::RuntimeContextPacket& packet) noexcept {
         // RuntimeContextPacket uses context_buffer() instead of as_bytes()
-        std::span<const uint8_t> bytes{packet.context_buffer(), packet.packet_size_bytes()};
+        std::span<const uint8_t> bytes{packet.context_buffer(), packet.size_bytes()};
         return write_packet_impl(bytes);
     }
 
     /**
      * @brief Write compile-time packet (bound mode)
      *
-     * @tparam PacketType Type satisfying CompileTimePacket concept
+     * @tparam PacketType Type satisfying CompileTimePacketLike concept
      * @param packet The packet to write
      * @return true on success, false on error
      */
     template <typename PacketType>
-        requires vrtigo::CompileTimePacket<PacketType>
+        requires vrtigo::CompileTimePacketLike<PacketType>
     bool write_packet(const PacketType& packet) noexcept {
         return write_packet_impl(packet.as_bytes());
     }
@@ -308,34 +299,26 @@ public:
      * and unbound modes, but typically used in unbound mode for
      * per-packet destination control.
      *
-     * @param packet The packet variant to write
+     * @param packet The packet variant to write (always valid)
      * @param dest Destination address
-     * @return true on success, false on error or invalid packet
+     * @return true on success, false on I/O error
      */
     bool write_packet(const vrtigo::PacketVariant& packet,
                       const struct sockaddr_in& dest) noexcept {
-        // Check if variant holds InvalidPacket
-        if (std::holds_alternative<vrtigo::InvalidPacket>(packet)) {
-            status_.state = UDPTransportStatus::State::socket_error;
-            status_.errno_value = EINVAL;
-            return false;
-        }
-
         // Write the packet using visitor pattern
+        // PacketVariant now only contains valid packets (RuntimeDataPacket or RuntimeContextPacket)
         return std::visit(
             [this, &dest](auto&& pkt) -> bool {
                 using T = std::decay_t<decltype(pkt)>;
 
-                if constexpr (std::is_same_v<T, vrtigo::InvalidPacket>) {
-                    return false; // Should never reach here
-                } else if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
+                if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
                     return this->write_packet_to(pkt.as_bytes(), dest);
                 } else if constexpr (std::is_same_v<T, vrtigo::RuntimeContextPacket>) {
                     // RuntimeContextPacket uses context_buffer() instead of as_bytes()
-                    std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.packet_size_bytes()};
+                    std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.size_bytes()};
                     return this->write_packet_to(bytes, dest);
                 } else {
-                    return false; // Unknown type
+                    return false; // Should never reach here
                 }
             },
             packet);

@@ -9,7 +9,7 @@ TEST_F(ContextPacketTest, PayloadFormatBasicAccess) {
     using namespace vrtigo::field;
     using TestContext = ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
 
-    TestContext packet(buffer.data());
+    TestContext packet(buffer);
 
     // Access via field proxy
     auto proxy = packet[field::data_payload_format];
@@ -33,7 +33,7 @@ TEST_F(ContextPacketTest, PayloadFormatBitfieldAccess) {
     using namespace vrtigo::field;
     using TestContext = ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
 
-    TestContext packet(buffer.data());
+    TestContext packet(buffer);
     auto format = packet[field::data_payload_format].value();
 
     // Test packing method (bit 31)
@@ -68,7 +68,7 @@ TEST_F(ContextPacketTest, PayloadFormatMultipleFields) {
     using namespace vrtigo::field;
     using TestContext = ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
 
-    TestContext packet(buffer.data());
+    TestContext packet(buffer);
     auto format = packet[field::data_payload_format].value();
 
     // Set values
@@ -90,7 +90,7 @@ TEST_F(ContextPacketTest, PayloadFormatEndianness) {
     using namespace vrtigo::field;
     using TestContext = ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
 
-    TestContext packet(buffer.data());
+    TestContext packet(buffer);
     auto format = packet[field::data_payload_format].value();
 
     // Set a value with a known bit pattern
@@ -118,7 +118,7 @@ TEST_F(ContextPacketTest, PayloadFormatClear) {
     using namespace vrtigo::field;
     using TestContext = ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
 
-    TestContext packet(buffer.data());
+    TestContext packet(buffer);
     auto format = packet[field::data_payload_format].value();
 
     // Set some values
@@ -140,7 +140,7 @@ TEST_F(ContextPacketTest, PayloadFormatEnumValues) {
     using namespace vrtigo::field;
     using TestContext = ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
 
-    TestContext packet(buffer.data());
+    TestContext packet(buffer);
     auto format = packet[field::data_payload_format].value();
 
     // Set and get real/complex type using enum (no cast needed!)
@@ -158,7 +158,7 @@ TEST_F(ContextPacketTest, PayloadFormatAllFields) {
     using namespace vrtigo::field;
     using TestContext = ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
 
-    TestContext packet(buffer.data());
+    TestContext packet(buffer);
     auto format = packet[field::data_payload_format].value();
 
     // Set all word 0 fields

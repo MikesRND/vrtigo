@@ -174,20 +174,6 @@ inline constexpr bool is_valid_tsf_type(TsfType tsf) noexcept {
 // ========================================================================
 
 /**
- * @brief Determine if packet type has stream ID field
- *
- * Per VITA 49.2 :
- *
- * @param type The packet type
- * @return true if packet has stream ID field
- */
-inline constexpr bool has_stream_id_field(PacketType type) noexcept {
-    uint8_t t = static_cast<uint8_t>(type);
-    // Only types 0 and 2 lack stream ID
-    return (t != 0) && (t != 2) && (t <= 7);
-}
-
-/**
  * @brief Check if packet is a Signal Data packet (types 0-1)
  */
 inline constexpr bool is_signal_data_packet(PacketType type) noexcept {

@@ -6,42 +6,41 @@
 using namespace vrtigo;
 
 // Test basic signal packet without stream ID
-TEST(SignalPacketViewTest, BasicPacketNoStream) {
+TEST(RuntimeDataPacketTest, BasicPacketNoStream) {
     using PacketType = SignalDataPacketNoId<vrtigo::NoClassId, NoTimestamp,
                                             vrtigo::Trailer::none, // no trailer
                                             64                     // 64 words payload
                                             >;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
-    PacketType packet(buffer.data());
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    PacketType packet(buffer);
 
     // Parse with runtime view
-    SignalPacketView view(buffer.data(), buffer.size());
+    auto result = RuntimeDataPacket::parse(buffer);
 
-    EXPECT_TRUE(view.is_valid());
-    EXPECT_EQ(view.error(), ValidationError::none);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
     EXPECT_EQ(view.type(), vrtigo::PacketType::signal_data_no_id);
     EXPECT_FALSE(view.has_stream_id());
     EXPECT_FALSE(view.has_trailer());
-    EXPECT_FALSE(view.has_timestamp_integer());
-    EXPECT_FALSE(view.has_timestamp_fractional());
-    EXPECT_EQ(view.packet_size_words(), PacketType::size_bytes / 4);
+    EXPECT_FALSE(view.has_timestamp());
+    EXPECT_EQ(view.size_words(), PacketType::size_bytes() / 4);
     EXPECT_EQ(view.payload_size_bytes(), 64 * 4);
 }
 
 // Test signal packet with stream ID
-TEST(SignalPacketViewTest, PacketWithStreamID) {
+TEST(RuntimeDataPacketTest, PacketWithStreamID) {
     using PacketType = SignalDataPacket<vrtigo::NoClassId, NoTimestamp, vrtigo::Trailer::none, 64>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
-    [[maybe_unused]] auto packet =
-        PacketBuilder<PacketType>(buffer.data()).stream_id(0x12345678).build();
+    [[maybe_unused]] auto packet = PacketBuilder<PacketType>(buffer).stream_id(0x12345678).build();
 
     // Parse with runtime view
-    SignalPacketView view(buffer.data(), buffer.size());
+    auto result = RuntimeDataPacket::parse(buffer);
 
-    EXPECT_TRUE(view.is_valid());
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
     EXPECT_EQ(view.type(), vrtigo::PacketType::signal_data);
     EXPECT_TRUE(view.has_stream_id());
 
@@ -51,101 +50,103 @@ TEST(SignalPacketViewTest, PacketWithStreamID) {
 }
 
 // Test signal packet with timestamps
-TEST(SignalPacketViewTest, PacketWithTimestamps) {
+TEST(RuntimeDataPacketTest, PacketWithTimestamps) {
     using PacketType =
         SignalDataPacket<vrtigo::NoClassId, UtcRealTimestamp, vrtigo::Trailer::none, 64>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
-    auto ts = UtcRealTimestamp(1234567890, 500000000000ULL);
+    auto build_ts = UtcRealTimestamp(1234567890, 500000000000ULL);
     [[maybe_unused]] auto packet =
-        PacketBuilder<PacketType>(buffer.data()).stream_id(0xABCDEF00).timestamp(ts).build();
+        PacketBuilder<PacketType>(buffer).stream_id(0xABCDEF00).timestamp(build_ts).build();
 
     // Parse with runtime view
-    SignalPacketView view(buffer.data(), buffer.size());
+    auto result = RuntimeDataPacket::parse(buffer);
 
-    EXPECT_TRUE(view.is_valid());
-    EXPECT_TRUE(view.has_timestamp_integer());
-    EXPECT_TRUE(view.has_timestamp_fractional());
-    EXPECT_EQ(view.tsi_kind(), TsiType::utc);
-    EXPECT_EQ(view.tsf_kind(), TsfType::real_time);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
+    EXPECT_TRUE(view.has_timestamp());
 
-    auto tsi = view.timestamp_integer();
-    ASSERT_TRUE(tsi.has_value());
-    EXPECT_EQ(*tsi, 1234567890);
-
-    auto tsf = view.timestamp_fractional();
-    ASSERT_TRUE(tsf.has_value());
-    EXPECT_EQ(*tsf, 500000000000ULL);
+    auto ts = view.timestamp();
+    ASSERT_TRUE(ts.has_value());
+    EXPECT_EQ(view.header().tsi_kind(), TsiType::utc);
+    EXPECT_EQ(view.header().tsf_kind(), TsfType::real_time);
+    EXPECT_TRUE(ts->has_tsi());
+    EXPECT_TRUE(ts->has_tsf());
+    EXPECT_EQ(ts->tsi(), 1234567890);
+    EXPECT_EQ(ts->tsf(), 500000000000ULL);
 }
 
 // Test signal packet with trailer
-TEST(SignalPacketViewTest, PacketWithTrailer) {
+TEST(RuntimeDataPacketTest, PacketWithTrailer) {
     using PacketType = SignalDataPacket<vrtigo::NoClassId, NoTimestamp,
                                         vrtigo::Trailer::included, // has trailer
                                         64>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     auto trailer_cfg = vrtigo::TrailerBuilder{0xDEADBEEF};
 
     [[maybe_unused]] auto packet =
-        PacketBuilder<PacketType>(buffer.data()).stream_id(0x11111111).trailer(trailer_cfg).build();
+        PacketBuilder<PacketType>(buffer).stream_id(0x11111111).trailer(trailer_cfg).build();
 
     // Parse with runtime view
-    SignalPacketView view(buffer.data(), buffer.size());
+    auto result = RuntimeDataPacket::parse(buffer);
 
-    EXPECT_TRUE(view.is_valid());
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
     EXPECT_TRUE(view.has_trailer());
 
     auto trailer = view.trailer();
     ASSERT_TRUE(trailer.has_value());
-    EXPECT_EQ(*trailer, 0xDEADBEEF);
+    EXPECT_EQ(trailer->raw(), 0xDEADBEEF);
 }
 
 // Test full-featured packet (stream ID + timestamps + trailer)
-TEST(SignalPacketViewTest, FullFeaturedPacket) {
+TEST(RuntimeDataPacketTest, FullFeaturedPacket) {
     using PacketType = SignalDataPacket<vrtigo::NoClassId, UtcRealTimestamp,
                                         vrtigo::Trailer::included, // has trailer
                                         128                        // larger payload
                                         >;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
-    auto ts = UtcRealTimestamp(9999999, 123456789012ULL);
-    [[maybe_unused]] auto packet = PacketBuilder<PacketType>(buffer.data())
+    auto build_ts = UtcRealTimestamp(9999999, 123456789012ULL);
+    [[maybe_unused]] auto packet = PacketBuilder<PacketType>(buffer)
                                        .stream_id(0xCAFEBABE)
-                                       .timestamp(ts)
+                                       .timestamp(build_ts)
                                        .trailer_valid_data(true)
                                        .trailer_calibrated_time(true)
                                        .packet_count(7)
                                        .build();
 
     // Parse with runtime view
-    SignalPacketView view(buffer.data(), buffer.size());
+    auto result = RuntimeDataPacket::parse(buffer);
 
-    EXPECT_TRUE(view.is_valid());
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
     EXPECT_EQ(view.type(), vrtigo::PacketType::signal_data);
     EXPECT_TRUE(view.has_stream_id());
-    EXPECT_TRUE(view.has_timestamp_integer());
-    EXPECT_TRUE(view.has_timestamp_fractional());
+    EXPECT_TRUE(view.has_timestamp());
     EXPECT_TRUE(view.has_trailer());
     EXPECT_EQ(view.packet_count(), 7);
 
     EXPECT_EQ(*view.stream_id(), 0xCAFEBABE);
-    EXPECT_EQ(*view.timestamp_integer(), 9999999);
-    EXPECT_EQ(*view.timestamp_fractional(), 123456789012ULL);
+    auto ts = view.timestamp();
+    ASSERT_TRUE(ts.has_value());
+    EXPECT_EQ(ts->tsi(), 9999999);
+    EXPECT_EQ(ts->tsf(), 123456789012ULL);
     EXPECT_TRUE(view.trailer().has_value());
 }
 
 // Test payload access
-TEST(SignalPacketViewTest, PayloadAccess) {
+TEST(RuntimeDataPacketTest, PayloadAccess) {
     using PacketType = SignalDataPacketNoId<vrtigo::NoClassId, NoTimestamp, vrtigo::Trailer::none,
                                             16 // 16 words = 64 bytes
                                             >;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
-    PacketType packet(buffer.data());
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    PacketType packet(buffer);
 
     // Fill payload with test pattern
     auto payload = packet.payload();
@@ -154,9 +155,10 @@ TEST(SignalPacketViewTest, PayloadAccess) {
     }
 
     // Parse with runtime view
-    SignalPacketView view(buffer.data(), buffer.size());
+    auto result = RuntimeDataPacket::parse(buffer);
 
-    EXPECT_TRUE(view.is_valid());
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
     EXPECT_EQ(view.payload_size_bytes(), 64);
     EXPECT_EQ(view.payload_size_words(), 16);
 
@@ -170,28 +172,23 @@ TEST(SignalPacketViewTest, PayloadAccess) {
 }
 
 // Test validation: buffer too small
-TEST(SignalPacketViewTest, ValidationBufferTooSmall) {
+TEST(RuntimeDataPacketTest, ValidationBufferTooSmall) {
     using PacketType =
         SignalDataPacketNoId<vrtigo::NoClassId, NoTimestamp, vrtigo::Trailer::none, 64>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
-    PacketType packet(buffer.data());
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    PacketType packet(buffer);
 
     // Parse with smaller buffer size
-    SignalPacketView view(buffer.data(), 10); // Only 10 bytes
+    auto result =
+        RuntimeDataPacket::parse(std::span<const uint8_t>(buffer.data(), 10)); // Only 10 bytes
 
-    EXPECT_FALSE(view.is_valid());
-    EXPECT_EQ(view.error(), ValidationError::buffer_too_small);
-
-    // Accessors should return nullopt when invalid
-    EXPECT_FALSE(view.stream_id().has_value());
-    EXPECT_FALSE(view.timestamp_integer().has_value());
-    EXPECT_FALSE(view.trailer().has_value());
-    EXPECT_TRUE(view.payload().empty());
+    EXPECT_FALSE(result.ok());
+    EXPECT_EQ(result.error().code, ValidationError::buffer_too_small);
 }
 
 // Test validation: wrong packet type
-TEST(SignalPacketViewTest, ValidationWrongPacketType) {
+TEST(RuntimeDataPacketTest, ValidationWrongPacketType) {
     alignas(4) std::array<uint8_t, 64> buffer{};
 
     // Manually create a context packet header (type = 4)
@@ -200,27 +197,27 @@ TEST(SignalPacketViewTest, ValidationWrongPacketType) {
     std::memcpy(buffer.data(), &header_be, sizeof(header_be));
 
     // Try to parse as signal packet
-    SignalPacketView view(buffer.data(), buffer.size());
+    auto result = RuntimeDataPacket::parse(buffer);
 
-    EXPECT_FALSE(view.is_valid());
-    EXPECT_EQ(view.error(), ValidationError::packet_type_mismatch);
+    EXPECT_FALSE(result.ok());
+    EXPECT_EQ(result.error().code, ValidationError::packet_type_mismatch);
 }
 
-// Test validation: null buffer
-TEST(SignalPacketViewTest, ValidationNullBuffer) {
-    SignalPacketView view(nullptr, 100);
+// Test validation: empty buffer
+TEST(RuntimeDataPacketTest, ValidationEmptyBuffer) {
+    auto result = RuntimeDataPacket::parse(std::span<const uint8_t>{});
 
-    EXPECT_FALSE(view.is_valid());
-    EXPECT_EQ(view.error(), ValidationError::buffer_too_small);
+    EXPECT_FALSE(result.ok());
+    EXPECT_EQ(result.error().code, ValidationError::buffer_too_small);
 }
 
 // Test round-trip: build → parse → verify
-TEST(SignalPacketViewTest, RoundTripBuildParse) {
+TEST(RuntimeDataPacketTest, RoundTripBuildParse) {
     using PacketType =
         SignalDataPacket<vrtigo::NoClassId, Timestamp<TsiType::gps, TsfType::real_time>,
                          vrtigo::Trailer::included, 256>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     // Build packet
     std::array<uint8_t, 256 * 4> payload_data{};
@@ -232,7 +229,7 @@ TEST(SignalPacketViewTest, RoundTripBuildParse) {
 
     using GPSTimestamp = Timestamp<TsiType::gps, TsfType::real_time>;
     auto ts = GPSTimestamp(2000000000, 999999999999ULL);
-    [[maybe_unused]] auto packet = PacketBuilder<PacketType>(buffer.data())
+    [[maybe_unused]] auto packet = PacketBuilder<PacketType>(buffer)
                                        .stream_id(0x87654321)
                                        .timestamp(ts)
                                        .trailer(trailer_cfg)
@@ -241,23 +238,25 @@ TEST(SignalPacketViewTest, RoundTripBuildParse) {
                                        .build();
 
     // Parse with view
-    SignalPacketView view(buffer.data(), buffer.size());
+    auto result = RuntimeDataPacket::parse(buffer);
 
     // Verify all fields
-    EXPECT_TRUE(view.is_valid());
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
     EXPECT_EQ(view.type(), vrtigo::PacketType::signal_data);
     EXPECT_TRUE(view.has_stream_id());
-    EXPECT_TRUE(view.has_timestamp_integer());
-    EXPECT_TRUE(view.has_timestamp_fractional());
+    EXPECT_TRUE(view.has_timestamp());
     EXPECT_TRUE(view.has_trailer());
-    EXPECT_EQ(view.tsi_kind(), TsiType::gps);
-    EXPECT_EQ(view.tsf_kind(), TsfType::real_time);
     EXPECT_EQ(view.packet_count(), 15);
 
     EXPECT_EQ(*view.stream_id(), 0x87654321);
-    EXPECT_EQ(*view.timestamp_integer(), 2000000000);
-    EXPECT_EQ(*view.timestamp_fractional(), 999999999999ULL);
-    EXPECT_EQ(*view.trailer(), 0x12345678);
+    auto view_ts = view.timestamp();
+    ASSERT_TRUE(view_ts.has_value());
+    EXPECT_EQ(view.header().tsi_kind(), TsiType::gps);
+    EXPECT_EQ(view.header().tsf_kind(), TsfType::real_time);
+    EXPECT_EQ(view_ts->tsi(), 2000000000);
+    EXPECT_EQ(view_ts->tsf(), 999999999999ULL);
+    EXPECT_EQ(view.trailer()->raw(), 0x12345678);
 
     // Verify payload
     auto parsed_payload = view.payload();
@@ -270,7 +269,7 @@ TEST(SignalPacketViewTest, RoundTripBuildParse) {
 // Test that signal packets can now have class IDs
 // Data packets (signal and extension) now support optional class ID fields,
 // and the parser correctly handles the offset calculations for all subsequent fields
-TEST(SignalPacketViewTest, ValidationAcceptsClassIdBit) {
+TEST(RuntimeDataPacketTest, ValidationAcceptsClassIdBit) {
     alignas(4) std::array<uint8_t, 64> buffer{};
 
     // Create a signal packet header with class ID bit set (bit 27)
@@ -296,10 +295,10 @@ TEST(SignalPacketViewTest, ValidationAcceptsClassIdBit) {
     std::memcpy(buffer.data() + 12, &word1_be, sizeof(word1_be));
 
     // Parse packet - should be valid
-    SignalPacketView view(buffer.data(), buffer.size());
+    auto result = RuntimeDataPacket::parse(buffer);
 
-    EXPECT_TRUE(view.is_valid());
-    EXPECT_EQ(view.error(), ValidationError::none);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
 
     // Verify class ID is accessible
     EXPECT_TRUE(view.has_class_id());
@@ -319,7 +318,7 @@ TEST(SignalPacketViewTest, ValidationAcceptsClassIdBit) {
 // Test that bit 25 (Nd0) is independent of packet type
 // Per VITA 49.2 Table 5.1.1.1-1, bit 25 is "Not a V49.0 Packet Indicator",
 // NOT the stream ID indicator. Stream ID presence is determined by packet type only.
-TEST(SignalPacketViewTest, Bit25IsIndependentOfPacketType) {
+TEST(RuntimeDataPacketTest, Bit25IsIndependentOfPacketType) {
     alignas(4) std::array<uint8_t, 64> buffer{};
 
     // Case 1: Type-0 packet (no stream ID) with bit 25 set (Nd0=1, V49.2 mode)
@@ -330,9 +329,9 @@ TEST(SignalPacketViewTest, Bit25IsIndependentOfPacketType) {
     uint32_t header_be = detail::host_to_network32(header_type0_with_nd0);
     std::memcpy(buffer.data(), &header_be, sizeof(header_be));
 
-    SignalPacketView view1(buffer.data(), buffer.size());
-    EXPECT_TRUE(view1.is_valid());       // Should be valid!
-    EXPECT_FALSE(view1.has_stream_id()); // No stream ID (type 0)
+    auto result1 = RuntimeDataPacket::parse(buffer);
+    ASSERT_TRUE(result1.ok()) << result1.error().message();
+    EXPECT_FALSE(result1.value().has_stream_id()); // No stream ID (type 0)
 
     // Case 2: Type-1 packet (with stream ID) with bit 25 clear (Nd0=0, V49.0 compatible)
     // This is also VALID - type-1 packets can be V49.0 compatible
@@ -342,7 +341,7 @@ TEST(SignalPacketViewTest, Bit25IsIndependentOfPacketType) {
     header_be = detail::host_to_network32(header_type1_without_nd0);
     std::memcpy(buffer.data(), &header_be, sizeof(header_be));
 
-    SignalPacketView view2(buffer.data(), buffer.size());
-    EXPECT_TRUE(view2.is_valid());      // Should be valid!
-    EXPECT_TRUE(view2.has_stream_id()); // Has stream ID (type 1)
+    auto result2 = RuntimeDataPacket::parse(buffer);
+    ASSERT_TRUE(result2.ok()) << result2.error().message();
+    EXPECT_TRUE(result2.value().has_stream_id()); // Has stream ID (type 1)
 }

@@ -177,11 +177,9 @@ TEST(FileReaderTest, ParseContextPackets) {
         if (info.type == PacketType::context || info.type == PacketType::extension_context) {
             found_context = true;
 
-            // Verify we can create a RuntimeContextPacket (basic parsing check)
-            RuntimeContextPacket view(const_cast<uint8_t*>(packet.data()), packet.size());
-
-            // Note: We don't validate because test data may have unsupported/reserved fields
+            // Verify we can attempt parsing (result may fail if unsupported fields)
             // The file reader's job is just to read packets correctly
+            (void)RuntimeContextPacket::parse(packet);
             EXPECT_GE(packet.size(), 4); // At least a header
             break;
         }

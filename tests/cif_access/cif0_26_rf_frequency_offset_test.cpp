@@ -26,8 +26,8 @@ TEST_F(ContextPacketTest, CIF0_26_BasicAccess) {
     // [SNIPPET]
     using RFOffsetContext = ContextPacket<NoTimestamp, NoClassId, rf_frequency_offset>;
 
-    alignas(4) std::array<uint8_t, RFOffsetContext::size_bytes> buffer{};
-    RFOffsetContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RFOffsetContext::size_bytes()> buffer{};
+    RFOffsetContext packet(buffer);
 
     // Set RF frequency offset to 1 MHz (channelizer offset)
     packet[rf_frequency_offset].set_value(1.0e6);
@@ -44,8 +44,8 @@ TEST_F(ContextPacketTest, CIF0_26_BasicAccess) {
 
 TEST_F(ContextPacketTest, CIF0_26_ChannelizerOffsets) {
     using RFOffsetContext = ContextPacket<NoTimestamp, NoClassId, rf_frequency_offset>;
-    alignas(4) std::array<uint8_t, RFOffsetContext::size_bytes> buffer{};
-    RFOffsetContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RFOffsetContext::size_bytes()> buffer{};
+    RFOffsetContext packet(buffer);
 
     // Test typical channelizer offsets
     double test_offsets[] = {
@@ -66,8 +66,8 @@ TEST_F(ContextPacketTest, CIF0_26_ChannelizerOffsets) {
 
 TEST_F(ContextPacketTest, CIF0_26_SpecExamples) {
     using RFOffsetContext = ContextPacket<NoTimestamp, NoClassId, rf_frequency_offset>;
-    alignas(4) std::array<uint8_t, RFOffsetContext::size_bytes> buffer{};
-    RFOffsetContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RFOffsetContext::size_bytes()> buffer{};
+    RFOffsetContext packet(buffer);
 
     // Per VITA 49.2 spec observations:
     // 0x0000000000100000 = +1 Hz
@@ -86,15 +86,16 @@ TEST_F(ContextPacketTest, CIF0_26_SpecExamples) {
 TEST_F(ContextPacketTest, CIF0_26_RuntimeAccess) {
     // Create a compile-time packet
     using RFOffsetContext = ContextPacket<NoTimestamp, NoClassId, rf_frequency_offset>;
-    alignas(4) std::array<uint8_t, RFOffsetContext::size_bytes> buffer{};
-    RFOffsetContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RFOffsetContext::size_bytes()> buffer{};
+    RFOffsetContext packet(buffer);
 
     packet[rf_frequency_offset].set_value(1.0e6);
 
     // Parse with runtime packet
-    RuntimeContextPacket runtime_packet(buffer.data(), buffer.size());
+    auto result = RuntimeContextPacket::parse(buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& runtime_packet = result.value();
 
-    EXPECT_TRUE(runtime_packet.is_valid());
     if (runtime_packet[rf_frequency_offset]) {
         EXPECT_NEAR(runtime_packet[rf_frequency_offset].value(), 1.0e6, 1.0);
     }

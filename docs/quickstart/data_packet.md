@@ -1,30 +1,19 @@
-// [TITLE]
-// Data Packet (Signal Samples)
-// [/TITLE]
-//
-// This test demonstrates a simple VRT data packet creation
-// with an incrementing sequence payload and current timestamp.
+# Data Packet (Signal Samples)
 
-#include <array>
+*Auto-generated from `tests/quickstart/data_packet_test.cpp`. All examples are tested.*
 
-#include <gtest/gtest.h>
-#include <vrtigo.hpp>
+---
 
-// [EXAMPLE]
-// Creating a Signal Data Packet
-// [/EXAMPLE]
+## Creating a Signal Data Packet
 
-// [DESCRIPTION]
-// This example demonstrates creating a simple VRT signal data packet with:
-// - UTC timestamp (current time)
-// - 8-byte payload
-// - Stream identifier
-//
-// The builder pattern provides a fluent API for packet creation.
-// [/DESCRIPTION]
+This example demonstrates creating a simple VRT signal data packet with:
+- UTC timestamp (current time)
+- 8-byte payload
+- Stream identifier
 
-TEST(QuickstartSnippet, CreateDataPacket) {
-    // [SNIPPET]
+The builder pattern provides a fluent API for packet creation.
+
+```cpp
     // Create a VRT Signal Data Packet with timestamp and payload
 
     // Define packet type with UTC timestamp
@@ -50,16 +39,5 @@ TEST(QuickstartSnippet, CreateDataPacket) {
 
     // The packet is now ready to transmit
     // You can access fields: packet.stream_id(), packet.timestamp(), etc.
-    // [/SNIPPET]
+```
 
-    // Basic verification that the packet was created correctly
-    ASSERT_EQ(packet.stream_id(), 0x12345678);
-    ASSERT_EQ(packet.packet_count(), 1);
-    ASSERT_EQ(packet.payload().size(), 8);
-
-    // Verify payload contents
-    auto payload_view = packet.payload();
-    for (size_t i = 0; i < 8; ++i) {
-        EXPECT_EQ(payload_view[i], i + 1);
-    }
-}

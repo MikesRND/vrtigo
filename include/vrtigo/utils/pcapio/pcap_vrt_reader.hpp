@@ -176,13 +176,13 @@ public:
      *
      * Skips PCAP record header and link-layer header, then validates VRT packet.
      *
-     * @return PacketVariant (RuntimeDataPacket, RuntimeContextPacket, or InvalidPacket),
-     *         or std::nullopt on EOF
+     * @return ParseResult<PacketVariant> containing RuntimeDataPacket or RuntimeContextPacket
+     *         on success, or ParseError on failure. Returns std::nullopt on EOF.
      *
      * @note Malformed packets (too small, read errors) are skipped and reading continues.
      *       Only true EOF returns std::nullopt.
      */
-    std::optional<vrtigo::PacketVariant> read_next_packet() noexcept {
+    std::optional<vrtigo::ParseResult<vrtigo::PacketVariant>> read_next_packet() noexcept {
         while (true) {
             // Check for EOF
             if (current_offset_ >= file_size_) {
@@ -243,7 +243,7 @@ public:
 
             // Validate and return VRT packet
             auto bytes = std::span<const uint8_t>(vrt_buffer_.data(), vrt_size);
-            return vrtigo::detail::parse_packet(bytes);
+            return vrtigo::parse_packet(bytes);
         }
     }
 
