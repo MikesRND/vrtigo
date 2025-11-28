@@ -8,3 +8,6 @@ vrtigo_add_gtest(quickstart_context_packet context_packet_test.cpp)
 
 # Read VRT File snippet test
 vrtigo_add_gtest(quickstart_file_reader file_reader_test.cpp TEST_DATA_DIR "${CMAKE_SOURCE_DIR}/tests/data")
+
+# Packet Parsing snippet test
+vrtigo_add_gtest(quickstart_packet_parsing packet_parsing_test.cpp)

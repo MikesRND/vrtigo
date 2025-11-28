@@ -1,22 +1,44 @@
 #!/bin/bash
-# Extract CIF access examples and generate individual markdown files
-# Processes all cif*_test.cpp files in tests/cif_access/
-# Generates docs/cif_access/{basename}.md for each test file
+# Unified documentation extraction script
+# Extracts examples from test files and generates markdown documentation
+#
+# Usage: extract_docs.sh <target>
+# Where target is: cif_access | quickstart
 
 set -e
 
+TARGET="$1"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR/.."
-CIF_ACCESS_DIR="$PROJECT_ROOT/tests/cif_access"
-DOCS_DIR="$PROJECT_ROOT/docs/cif_access"
+
+# Configure based on target
+case "$TARGET" in
+    cif_access)
+        SRC_DIR="$PROJECT_ROOT/tests/cif_access"
+        DOCS_DIR="$PROJECT_ROOT/docs/cif_access"
+        PATTERN="cif*_test.cpp"
+        ;;
+    quickstart)
+        SRC_DIR="$PROJECT_ROOT/tests/quickstart"
+        DOCS_DIR="$PROJECT_ROOT/docs/quickstart"
+        PATTERN="*_test.cpp"
+        ;;
+    *)
+        echo "Usage: $0 <cif_access|quickstart>" >&2
+        exit 1
+        ;;
+esac
 
 # Create docs directory if it doesn't exist
 mkdir -p "$DOCS_DIR"
 
-echo "Extracting CIF access documentation..." >&2
+# Remove old generated docs to prevent stale files
+rm -f "$DOCS_DIR"/*.md
 
-# Process each cif*_test.cpp file
-for testfile in "$CIF_ACCESS_DIR"/cif*_test.cpp; do
+echo "Extracting $TARGET documentation..." >&2
+
+# Process each matching test file
+for testfile in "$SRC_DIR"/$PATTERN; do
     [ -f "$testfile" ] || continue
 
     filename=$(basename "$testfile")
@@ -48,29 +70,55 @@ for testfile in "$CIF_ACCESS_DIR"/cif*_test.cpp; do
 
     # Default title if none found
     if [ -z "$title" ]; then
-        title="CIF Access Examples"
+        title="Examples"
     fi
 
     # Start output file with header
     cat > "$output_file" << EOF
 # $title
 
-*Auto-generated from \`tests/cif_access/$filename\`. All examples are tested.*
+*Auto-generated from \`tests/$TARGET/$filename\`. All examples are tested.*
 
 ---
 
 EOF
 
-    # Extract all EXAMPLE/DESCRIPTION/SNIPPET triplets
+    # Extract all EXAMPLE/DESCRIPTION/SNIPPET triplets and TEXT blocks
     # We'll read the file once and track state
     in_example=0
     in_description=0
     in_snippet=0
+    in_text=0
     example_heading=""
     description=""
     snippet=""
+    text_block=""
 
     while IFS= read -r line; do
+        # TEXT markers (standalone prose between examples)
+        if [[ $line =~ \[TEXT\] ]]; then
+            in_text=1
+            text_block=""
+        elif [[ $line =~ \[/TEXT\] ]]; then
+            in_text=0
+            # Output text block immediately as plain paragraph
+            if [ -n "$text_block" ]; then
+                echo "$text_block" >> "$output_file"
+                echo "" >> "$output_file"
+            fi
+            text_block=""
+        elif [ $in_text -eq 1 ]; then
+            # Strip leading whitespace and comment markers
+            text_line="${line#"${line%%[![:space:]]*}"}"
+            text_line="${text_line#// }"
+            text_line="${text_line#//}"
+            if [ -n "$text_block" ]; then
+                text_block="$text_block"$'\n'"$text_line"
+            else
+                text_block="$text_line"
+            fi
+        fi
+
         # EXAMPLE markers
         if [[ $line =~ \[EXAMPLE\] ]]; then
             in_example=1
@@ -148,4 +196,4 @@ EOF
     echo "    Generated $output_file" >&2
 done
 
-echo "CIF access documentation generation complete" >&2
+echo "$TARGET documentation generation complete" >&2

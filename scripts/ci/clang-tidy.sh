@@ -63,14 +63,13 @@ if [ ! -f "$BUILD_DIR/compile_commands.json" ]; then
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DCMAKE_CXX_STANDARD=20 \
         -DVRTIGO_BUILD_TESTS=ON \
-        -DVRTIGO_BUILD_EXAMPLES=ON \
         -DVRTIGO_FETCH_DEPENDENCIES=ON
     echo ""
 fi
 
-# Find all C++ source files in tests and examples
-# Note: Header-only library, so we analyze tests and examples
-FILES=$(find tests examples -type f \( -name "*.cpp" -o -name "*.cc" \) 2>/dev/null || true)
+# Find all C++ source files in tests
+# Note: Header-only library, so we analyze tests
+FILES=$(find tests -type f \( -name "*.cpp" -o -name "*.cc" \) 2>/dev/null || true)
 
 if [ -z "$FILES" ]; then
     echo -e "${YELLOW}Warning: No C++ source files found to analyze${NC}"
@@ -97,7 +96,7 @@ if command -v run-clang-tidy &>/dev/null || command -v run-clang-tidy-16 &>/dev/
 
     echo "Running parallel analysis..."
     # Run and capture output
-    if ! OUTPUT=$($RUN_CLANG_TIDY -p "$BUILD_DIR" -j "$NPROC" "^(tests|examples)/.*\.(cpp|cc)$" 2>&1); then
+    if ! OUTPUT=$($RUN_CLANG_TIDY -p "$BUILD_DIR" -j "$NPROC" "^tests/.*\.(cpp|cc)$" 2>&1); then
         ERROR_COUNT=$(echo "$OUTPUT" | grep -c "error:" || true)
         WARNING_COUNT=$(echo "$OUTPUT" | grep -c "warning:" || true)
         echo "$OUTPUT"

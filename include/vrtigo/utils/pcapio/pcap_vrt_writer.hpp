@@ -168,19 +168,14 @@ public:
      * Wraps the VRT packet with PCAP record header and link-layer header,
      * then writes to file. Uses internal buffering for performance.
      *
-     * @param pkt PacketVariant containing VRT packet
-     * @return true on success, false on error or if packet is InvalidPacket
+     * @param pkt PacketVariant containing VRT packet (always valid)
+     * @return true on success, false on I/O error
      *
-     * @note InvalidPacket variants are skipped and return false
      * @note Timestamps are generated automatically using system time
      */
     bool write_packet(const vrtigo::PacketVariant& pkt) noexcept {
-        // Skip InvalidPacket
-        if (std::holds_alternative<vrtigo::InvalidPacket>(pkt)) {
-            return false;
-        }
-
         // Get packet buffer
+        // PacketVariant now only contains valid packets (RuntimeDataPacket or RuntimeContextPacket)
         std::span<const uint8_t> vrt_bytes;
         std::visit(
             [&vrt_bytes](auto&& p) {
@@ -188,7 +183,7 @@ public:
                 if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
                     vrt_bytes = p.as_bytes();
                 } else if constexpr (std::is_same_v<T, vrtigo::RuntimeContextPacket>) {
-                    vrt_bytes = std::span<const uint8_t>{p.context_buffer(), p.packet_size_bytes()};
+                    vrt_bytes = std::span<const uint8_t>{p.context_buffer(), p.size_bytes()};
                 }
             },
             pkt);
@@ -224,7 +219,8 @@ public:
         }
 
         // Write dummy link-layer header (all zeros)
-        if (link_header_size_ > 0) {
+        // Note: link_header_size_ validated <= MAX_LINK_HEADER_SIZE in constructor
+        if (link_header_size_ > 0 && link_header_size_ <= MAX_LINK_HEADER_SIZE) {
             std::array<uint8_t, MAX_LINK_HEADER_SIZE> dummy_header{};
             if (!write_to_buffer(dummy_header.data(), link_header_size_)) {
                 return false;

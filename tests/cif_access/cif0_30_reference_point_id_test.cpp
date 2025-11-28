@@ -27,8 +27,8 @@ TEST_F(ContextPacketTest, CIF0_30_BasicAccess) {
     // [SNIPPET]
     using RefPointContext = ContextPacket<NoTimestamp, NoClassId, reference_point_id>;
 
-    alignas(4) std::array<uint8_t, RefPointContext::size_bytes> buffer{};
-    RefPointContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RefPointContext::size_bytes()> buffer{};
+    RefPointContext packet(buffer);
 
     // Set Reference Point ID to a Stream ID
     uint32_t ref_point_sid = 0x12345678;
@@ -46,8 +46,8 @@ TEST_F(ContextPacketTest, CIF0_30_BasicAccess) {
 
 TEST_F(ContextPacketTest, CIF0_30_MultipleValues) {
     using RefPointContext = ContextPacket<NoTimestamp, NoClassId, reference_point_id>;
-    alignas(4) std::array<uint8_t, RefPointContext::size_bytes> buffer{};
-    RefPointContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RefPointContext::size_bytes()> buffer{};
+    RefPointContext packet(buffer);
 
     // Test different Stream IDs
     uint32_t test_sids[] = {0x00000000, 0xFFFFFFFF, 0xABCD1234, 0x80000001};
@@ -61,17 +61,18 @@ TEST_F(ContextPacketTest, CIF0_30_MultipleValues) {
 TEST_F(ContextPacketTest, CIF0_30_RuntimeAccess) {
     // Create a compile-time packet with Reference Point ID
     using RefPointContext = ContextPacket<NoTimestamp, NoClassId, reference_point_id>;
-    alignas(4) std::array<uint8_t, RefPointContext::size_bytes> buffer{};
-    RefPointContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RefPointContext::size_bytes()> buffer{};
+    RefPointContext packet(buffer);
 
     uint32_t ref_point_sid = 0xCAFEBABE;
     packet[reference_point_id].set_value(ref_point_sid);
 
     // Parse with runtime packet
-    RuntimeContextPacket runtime_packet(buffer.data(), buffer.size());
+    auto result = RuntimeContextPacket::parse(buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& runtime_packet = result.value();
 
     // Runtime packet can read the Reference Point ID
-    EXPECT_TRUE(runtime_packet.is_valid());
     if (runtime_packet[reference_point_id]) {
         EXPECT_EQ(runtime_packet[reference_point_id].value(), ref_point_sid);
     }

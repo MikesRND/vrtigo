@@ -15,8 +15,8 @@ Per VITA 49.2: false = no changes, true = at least one field changed.
 ```cpp
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
-    alignas(4) std::array<uint8_t, TestContext::size_bytes> buffer{};
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Indicate that context fields have changed
     packet.set_change_indicator(true);

@@ -43,9 +43,10 @@ TEST(PCAPWriterTest, WriteSinglePacket) {
         PCAPVRTWriter writer(path.c_str());
 
         auto vrt_pkt = create_simple_data_packet(0x12345678, 10);
-        auto pkt_variant = parse_test_packet(vrt_pkt);
+        auto pkt_result = parse_test_packet(vrt_pkt);
+        ASSERT_TRUE(pkt_result.ok());
 
-        bool result = writer.write_packet(pkt_variant);
+        bool result = writer.write_packet(pkt_result.value());
         EXPECT_TRUE(result);
         EXPECT_EQ(writer.packets_written(), 1);
 
@@ -73,8 +74,9 @@ TEST(PCAPWriterTest, WriteMultiplePackets) {
 
         for (uint32_t i = 0; i < 5; i++) {
             auto vrt_pkt = create_simple_data_packet(0x1000 + i, 5);
-            auto pkt_variant = parse_test_packet(vrt_pkt);
-            EXPECT_TRUE(writer.write_packet(pkt_variant));
+            auto pkt_result = parse_test_packet(vrt_pkt);
+            ASSERT_TRUE(pkt_result.ok());
+            EXPECT_TRUE(writer.write_packet(pkt_result.value()));
         }
 
         EXPECT_EQ(writer.packets_written(), 5);
@@ -95,9 +97,10 @@ TEST(PCAPWriterTest, RawLinkType) {
         PCAPVRTWriter writer(path.c_str(), 0);
 
         auto vrt_pkt = create_simple_data_packet(0x99999999);
-        auto pkt_variant = parse_test_packet(vrt_pkt);
+        auto pkt_result = parse_test_packet(vrt_pkt);
+        ASSERT_TRUE(pkt_result.ok());
 
-        EXPECT_TRUE(writer.write_packet(pkt_variant));
+        EXPECT_TRUE(writer.write_packet(pkt_result.value()));
         EXPECT_EQ(writer.link_header_size(), 0);
     }
 
@@ -125,19 +128,21 @@ TEST(PCAPWriterTest, RoundTripSinglePacket) {
         PCAPVRTWriter writer(path.c_str());
 
         auto vrt_pkt = create_simple_data_packet(expected_stream_id);
-        auto pkt_variant = parse_test_packet(vrt_pkt);
+        auto pkt_result = parse_test_packet(vrt_pkt);
+        ASSERT_TRUE(pkt_result.ok());
 
-        EXPECT_TRUE(writer.write_packet(pkt_variant));
+        EXPECT_TRUE(writer.write_packet(pkt_result.value()));
     }
 
     // Read it back
     {
         PCAPVRTReader<> reader(path.c_str());
 
-        auto pkt_variant = reader.read_next_packet();
-        ASSERT_TRUE(pkt_variant.has_value());
+        auto pkt_result = reader.read_next_packet();
+        ASSERT_TRUE(pkt_result.has_value());
+        ASSERT_TRUE(pkt_result->ok());
 
-        auto* data_pkt = std::get_if<RuntimeDataPacket>(&(*pkt_variant));
+        auto* data_pkt = std::get_if<RuntimeDataPacket>(&pkt_result->value());
         ASSERT_NE(data_pkt, nullptr);
 
         auto sid = data_pkt->stream_id();
@@ -159,8 +164,9 @@ TEST(PCAPWriterTest, RoundTripMultiplePackets) {
 
         for (auto sid : expected_ids) {
             auto vrt_pkt = create_simple_data_packet(sid);
-            auto pkt_variant = parse_test_packet(vrt_pkt);
-            EXPECT_TRUE(writer.write_packet(pkt_variant));
+            auto pkt_result = parse_test_packet(vrt_pkt);
+            ASSERT_TRUE(pkt_result.ok());
+            EXPECT_TRUE(writer.write_packet(pkt_result.value()));
         }
     }
 
@@ -169,8 +175,10 @@ TEST(PCAPWriterTest, RoundTripMultiplePackets) {
         PCAPVRTReader<> reader(path.c_str());
 
         std::vector<uint32_t> read_ids;
-        while (auto pkt_variant = reader.read_next_packet()) {
-            if (auto* data_pkt = std::get_if<RuntimeDataPacket>(&(*pkt_variant))) {
+        while (auto pkt_result = reader.read_next_packet()) {
+            if (!pkt_result->ok())
+                continue;
+            if (auto* data_pkt = std::get_if<RuntimeDataPacket>(&pkt_result->value())) {
                 auto sid = data_pkt->stream_id();
                 if (sid.has_value()) {
                     read_ids.push_back(*sid);
@@ -197,19 +205,21 @@ TEST(PCAPWriterTest, RoundTripRawLinkType) {
         PCAPVRTWriter writer(path.c_str(), 0);
 
         auto vrt_pkt = create_simple_data_packet(expected_stream_id);
-        auto pkt_variant = parse_test_packet(vrt_pkt);
+        auto pkt_result = parse_test_packet(vrt_pkt);
+        ASSERT_TRUE(pkt_result.ok());
 
-        EXPECT_TRUE(writer.write_packet(pkt_variant));
+        EXPECT_TRUE(writer.write_packet(pkt_result.value()));
     }
 
     // Read with no link header
     {
         PCAPVRTReader<> reader(path.c_str(), 0);
 
-        auto pkt_variant = reader.read_next_packet();
-        ASSERT_TRUE(pkt_variant.has_value());
+        auto pkt_result = reader.read_next_packet();
+        ASSERT_TRUE(pkt_result.has_value());
+        ASSERT_TRUE(pkt_result->ok());
 
-        auto* data_pkt = std::get_if<RuntimeDataPacket>(&(*pkt_variant));
+        auto* data_pkt = std::get_if<RuntimeDataPacket>(&pkt_result->value());
         ASSERT_NE(data_pkt, nullptr);
 
         EXPECT_EQ(data_pkt->stream_id().value(), expected_stream_id);
@@ -223,29 +233,9 @@ TEST(PCAPWriterTest, RoundTripRawLinkType) {
 // Error Handling Tests
 // =============================================================================
 
-TEST(PCAPWriterTest, SkipInvalidPacket) {
-    std::filesystem::path path = "test_pcap_write_invalid.pcap";
-
-    {
-        PCAPVRTWriter writer(path.c_str());
-
-        // Create InvalidPacket
-        vrtigo::detail::DecodedHeader dummy{};
-        vrtigo::InvalidPacket invalid_pkt{vrtigo::ValidationError::invalid_packet_type,
-                                          PacketType::signal_data_no_id, dummy,
-                                          std::span<const uint8_t>()};
-
-        vrtigo::PacketVariant pkt_variant{invalid_pkt};
-
-        // Should return false and not write
-        bool result = writer.write_packet(pkt_variant);
-        EXPECT_FALSE(result);
-        EXPECT_EQ(writer.packets_written(), 0);
-    }
-
-    // Cleanup
-    std::filesystem::remove(path);
-}
+// Note: InvalidPacket was removed from PacketVariant.
+// Parse errors are now returned via ParseResult<PacketVariant>.error()
+// Writers only accept PacketVariant which contains valid packets.
 
 TEST(PCAPWriterTest, FileCreationError) {
     // Try to create file in non-existent directory
@@ -277,8 +267,9 @@ TEST(PCAPWriterTest, MaxLinkHeaderAccepted) {
 
         // Write a packet to verify it works
         auto vrt_pkt = create_simple_data_packet(0x12345678);
-        auto pkt_variant = parse_test_packet(vrt_pkt);
-        EXPECT_TRUE(writer.write_packet(pkt_variant));
+        auto pkt_result = parse_test_packet(vrt_pkt);
+        ASSERT_TRUE(pkt_result.ok());
+        EXPECT_TRUE(writer.write_packet(pkt_result.value()));
     }
 
     // Cleanup
@@ -299,8 +290,9 @@ TEST(PCAPWriterTest, ConvertVRTFileToPCAP) {
 
         for (uint32_t i = 0; i < 3; i++) {
             auto vrt_pkt = create_simple_data_packet(0x2000 + i);
-            auto pkt_variant = parse_test_packet(vrt_pkt);
-            vrt_writer.write_packet(pkt_variant);
+            auto pkt_result = parse_test_packet(vrt_pkt);
+            ASSERT_TRUE(pkt_result.ok());
+            vrt_writer.write_packet(pkt_result.value());
         }
     }
 
@@ -309,8 +301,10 @@ TEST(PCAPWriterTest, ConvertVRTFileToPCAP) {
         vrtigo::VRTFileReader<> reader(vrt_path.c_str());
         PCAPVRTWriter writer(pcap_path.c_str());
 
-        while (auto pkt = reader.read_next_packet()) {
-            writer.write_packet(*pkt);
+        while (auto pkt_result = reader.read_next_packet()) {
+            if (pkt_result->ok()) {
+                writer.write_packet(pkt_result->value());
+            }
         }
     }
 
@@ -320,8 +314,9 @@ TEST(PCAPWriterTest, ConvertVRTFileToPCAP) {
         EXPECT_EQ(reader.packets_read(), 0);
 
         size_t count = 0;
-        while (auto pkt = reader.read_next_packet()) {
-            count++;
+        while (auto pkt_result = reader.read_next_packet()) {
+            if (pkt_result->ok())
+                count++;
         }
         EXPECT_EQ(count, 3);
     }

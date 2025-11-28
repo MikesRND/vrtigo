@@ -1,7 +1,7 @@
 # VRTIGO Makefile - Convenience wrapper for CMake
 
-.PHONY: all clean configure debug release examples help check
-.PHONY: test run install uninstall quickstart cif_access_docs
+.PHONY: all clean configure debug release help check
+.PHONY: test install uninstall autodocs
 .PHONY: quick-check coverage debug-build clang-build install-verify ci-full clean-all
 .PHONY: format-check format-fix format-diff clang-tidy clang-tidy-fix
 
@@ -9,7 +9,6 @@
 BUILD_DIR ?= build
 BUILD_TYPE ?= Debug
 VRTIGO_BUILD_TESTS ?= ON
-VRTIGO_BUILD_EXAMPLES ?= ON
 VRTIGO_FETCH_DEPENDENCIES ?= ON
 
 # Parallel build jobs
@@ -26,7 +25,6 @@ configure:
 		-DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
 		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
 		-DVRTIGO_BUILD_TESTS=$(VRTIGO_BUILD_TESTS) \
-		-DVRTIGO_BUILD_EXAMPLES=$(VRTIGO_BUILD_EXAMPLES) \
 		-DVRTIGO_FETCH_DEPENDENCIES=$(VRTIGO_FETCH_DEPENDENCIES)
 
 # Debug build (default)
@@ -45,17 +43,9 @@ release:
 all: configure
 	@cmake --build $(BUILD_DIR) -j$(NPROC)
 
-# Build only examples
-examples: configure
-	@cmake --build $(BUILD_DIR) --target basic_usage trailer_example timestamp_example context_example file_parsing_example
-
-# Extract quickstart documentation
-quickstart: configure
-	@cmake --build $(BUILD_DIR) --target quickstart
-
-# Extract CIF access documentation
-cif_access_docs: configure
-	@cmake --build $(BUILD_DIR) --target cif_access_docs
+# Generate documentation from test files
+autodocs: configure
+	@cmake --build $(BUILD_DIR) --target autodocs
 
 # Clean build artifacts
 clean:
@@ -76,25 +66,6 @@ test: configure
 			ctest --output-on-failure; \
 		fi
 	@echo "✓ All tests passed"
-
-# ============================================================================
-# Run Targets
-# ============================================================================
-
-# Run all examples
-run: all
-	@echo "Running all examples..."
-	@echo "\n=== Basic Usage ==="
-	@./$(BUILD_DIR)/examples/basic_usage
-	@echo "\n=== Trailer Example ==="
-	@./$(BUILD_DIR)/examples/trailer_example
-	@echo "\n=== Timestamp Example ==="
-	@./$(BUILD_DIR)/examples/timestamp_example
-	@echo "\n=== Context Example ==="
-	@./$(BUILD_DIR)/examples/context_example
-	@echo "\n=== File Parsing Example ==="
-	@./$(BUILD_DIR)/examples/file_parsing_example tests/data/VITA49SampleData.bin
-	@echo "\n✓ All examples completed"
 
 # ============================================================================
 # Workflow Targets
@@ -183,7 +154,7 @@ format-fix:
 # Show formatting differences (uses git diff for colored output)
 format-diff:
 	@echo "Formatting differences (using clang-format):"
-	@for file in $$(find include tests examples -type f \( -name "*.hpp" -o -name "*.cpp" \) 2>/dev/null); do \
+	@for file in $$(find include tests -type f \( -name "*.hpp" -o -name "*.cpp" \) 2>/dev/null); do \
 		if command -v clang-format >/dev/null 2>&1; then \
 			if ! clang-format --dry-run --Werror "$$file" &>/dev/null; then \
 				echo "\n=== $$file ==="; \
@@ -214,11 +185,9 @@ help:
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "COMMON TARGETS"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "  make / make all       Build everything (tests + examples)"
+	@echo "  make / make all       Build everything"
 	@echo "  make test             Run all tests"
-	@echo "  make examples         Build examples only"
-	@echo "  make quickstart       Extract quickstart docs to docs/quickstart.md"
-	@echo "  make cif_access_docs  Extract CIF access docs to docs/cif_access/"
+	@echo "  make autodocs         Generate docs from test files"
 	@echo ""
 	@echo "  make clean            Remove build directory"
 	@echo "  make clean-all        Remove all build dirs"

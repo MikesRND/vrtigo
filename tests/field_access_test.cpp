@@ -19,7 +19,7 @@ int main() {
                                      NoClassId,                     // ClassIdType
                                      bandwidth, sample_rate, gain>; // Fields
 
-    uint8_t buffer[1024] = {};
+    alignas(4) std::array<uint8_t, TestPacket::size_bytes()> buffer{};
     TestPacket packet(buffer);
 
     // =======================================================================

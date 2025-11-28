@@ -6,7 +6,8 @@ TEST_F(ContextPacketTest, CIF3FieldsBasic) {
     using TestContext =
         ContextPacket<NoTimestamp, NoClassId, network_id, tropospheric_state, jitter, pulse_width>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Test 1-word fields
     packet[field::network_id].set_encoded(0x11111111);
@@ -26,6 +27,7 @@ TEST_F(ContextPacketTest, CIF3FieldsBasic) {
 TEST_F(ContextPacketTest, RuntimeParseCIF3) {
     // Build a packet with CIF3 enabled
     // Type 4 has stream ID: header(1) + stream_id(1) + CIF0(1) + CIF3(1) + network_id(1) = 5 words
+    alignas(4) std::array<uint8_t, 5 * 4> buffer{};
     uint32_t header = (static_cast<uint32_t>(PacketType::context) << header::packet_type_shift) | 5;
     cif::write_u32_safe(buffer.data(), 0, header);
 
@@ -45,9 +47,9 @@ TEST_F(ContextPacketTest, RuntimeParseCIF3) {
     cif::write_u32_safe(buffer.data(), 16, 0xDEADBEEF);
 
     // Parse and validate
-    RuntimeContextPacket view(buffer.data(), 5 * 4);
-    EXPECT_EQ(view.error(), ValidationError::none);
-    EXPECT_TRUE(view.is_valid());
+    auto result = RuntimeContextPacket::parse(buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
 
     // Verify CIF3 is present
     EXPECT_EQ(view.cif3(), vrtigo::detail::field_bitmask<network_id>());
@@ -61,7 +63,8 @@ TEST_F(ContextPacketTest, CompileTimeCIF3) {
     using namespace vrtigo::field;
     using TestContext = ContextPacket<NoTimestamp, NoClassId, network_id, tropospheric_state>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Set field values
     packet[network_id].set_encoded(0x11111111);
@@ -77,8 +80,9 @@ TEST_F(ContextPacketTest, CompileTimeCIF3) {
     EXPECT_EQ(packet[tropospheric_state].encoded(), 0x22222222);
 
     // Parse as runtime packet to verify structure
-    RuntimeContextPacket view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.error(), ValidationError::none);
+    auto result = RuntimeContextPacket::parse(buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
     EXPECT_EQ(view.cif3(), expected_cif3);
     EXPECT_EQ(view[network_id].encoded(), 0x11111111);
     EXPECT_EQ(view[tropospheric_state].encoded(), 0x22222222);

@@ -28,8 +28,8 @@ TEST_F(ContextPacketTest, CIF0_31_BasicAccess) {
     // [SNIPPET]
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
-    alignas(4) std::array<uint8_t, TestContext::size_bytes> buffer{};
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Indicate that context fields have changed
     packet.set_change_indicator(true);
@@ -46,8 +46,8 @@ TEST_F(ContextPacketTest, CIF0_31_BasicAccess) {
 
 TEST_F(ContextPacketTest, CIF0_31_ToggleIndicator) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
-    alignas(4) std::array<uint8_t, TestContext::size_bytes> buffer{};
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Initially false after packet creation
     EXPECT_FALSE(packet.change_indicator());
@@ -64,14 +64,15 @@ TEST_F(ContextPacketTest, CIF0_31_ToggleIndicator) {
 TEST_F(ContextPacketTest, CIF0_31_RuntimeAccess) {
     // Create a compile-time packet with change indicator set
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
-    alignas(4) std::array<uint8_t, TestContext::size_bytes> buffer{};
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
     packet.set_change_indicator(true);
 
     // Parse with runtime packet
-    RuntimeContextPacket runtime_packet(buffer.data(), buffer.size());
+    auto result = RuntimeContextPacket::parse(buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& runtime_packet = result.value();
 
     // Runtime packet can read the change indicator
     EXPECT_TRUE(runtime_packet.change_indicator());
-    EXPECT_TRUE(runtime_packet.is_valid());
 }

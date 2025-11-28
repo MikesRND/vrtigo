@@ -8,15 +8,23 @@
  * with automatic validation and type-safe packet access.
  *
  * Primary types:
- * - VRTFileReader: High-level reader returning validated, type-safe PacketVariant (RECOMMENDED)
+ * - VRTFileReader: High-level reader returning ParseResult<PacketVariant> (RECOMMENDED)
  * - RawVRTFileReader: Low-level reader returning raw packet bytes
  * - PCAPVRTReader: Read VRT packets from PCAP capture files (for testing/validation)
  * - PCAPVRTWriter: Write VRT packets to PCAP capture files (for testing/validation)
- * - PacketVariant: Type-safe union of RuntimeDataPacket, RuntimeContextPacket, or InvalidPacket
+ * - PacketVariant: Type-safe union of RuntimeDataPacket or RuntimeContextPacket
+ * - ParseResult: Result wrapper with either valid packet or ParseError
+ *
+ * Parsing functions (defined in packet_parser.hpp, exported here):
+ * - parse_packet(): Parse any packet type, returns ParseResult<PacketVariant>
+ * - parse_data_packet(): Parse data packet, returns ParseResult<RuntimeDataPacket>
+ * - parse_context_packet(): Parse context packet, returns ParseResult<RuntimeContextPacket>
  */
 
 #include "detail/packet_parser.hpp"
 #include "detail/packet_variant.hpp"
+#include "detail/parse_error.hpp"
+#include "detail/parse_result.hpp"
 #include "utils/fileio/raw_vrt_file_reader.hpp"
 #include "utils/fileio/vrt_file_reader.hpp"
 #include "utils/pcapio/pcap_vrt_reader.hpp"
@@ -39,32 +47,7 @@ using PCAPVRTReader = utils::pcapio::PCAPVRTReader<MaxPacketWords>;
 // PCAP writer - writes VRT packets to PCAP capture files (for testing/validation)
 using PCAPVRTWriter = utils::pcapio::PCAPVRTWriter;
 
-/**
- * @brief Parse and validate a VRT packet from raw bytes
- *
- * Automatically detects packet type and returns a validated packet view.
- * This is the recommended way to parse packets when the packet type is
- * unknown at compile time.
- *
- * Supported packet types:
- * - Signal Data (types 0-1) → RuntimeDataPacket
- * - Extension Data (types 2-3) → RuntimeDataPacket
- * - Context (types 4-5) → RuntimeContextPacket
- * - Command (types 6-7) → InvalidPacket (not yet supported)
- *
- * @param bytes Raw packet bytes (must remain valid while using returned view)
- * @return PacketVariant containing validated view or error information
- *
- * @example
- * std::span<const uint8_t> bytes = get_packet_bytes();
- * auto pkt = vrtigo::parse_packet(bytes);
- * if (vrtigo::is_data_packet(pkt)) {
- *     const auto& view = std::get<vrtigo::RuntimeDataPacket>(pkt);
- *     // Process packet...
- * }
- */
-inline PacketVariant parse_packet(std::span<const uint8_t> bytes) noexcept {
-    return detail::parse_packet(bytes);
-}
+// parse_packet(), parse_data_packet(), and parse_context_packet() are
+// defined in packet_parser.hpp and are in the vrtigo namespace
 
 } // namespace vrtigo

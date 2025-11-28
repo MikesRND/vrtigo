@@ -11,11 +11,10 @@ protected:
     using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
                                                 vrtigo::Trailer::included, 128>;
 
-    std::vector<uint8_t> buffer;
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     void SetUp() override {
-        buffer.resize(PacketType::size_bytes);
-        PacketType packet(buffer.data());
+        PacketType packet(buffer);
         packet.trailer().clear(); // Start with zeroed trailer
     }
 };
@@ -25,14 +24,14 @@ protected:
 // ============================================================================
 
 TEST_F(TrailerTest, ContextPacketCount_InitiallyInvalid) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     // When E bit is 0, count should return nullopt
     EXPECT_FALSE(packet.trailer().context_packet_count().has_value());
 }
 
 TEST_F(TrailerTest, ContextPacketCount_SetAndGet) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     // Set count (should set E bit and count field)
     packet.trailer().set_context_packet_count(42);
@@ -46,7 +45,7 @@ TEST_F(TrailerTest, ContextPacketCount_SetAndGet) {
 }
 
 TEST_F(TrailerTest, ContextPacketCount_Clear) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     packet.trailer().set_context_packet_count(10);
     ASSERT_TRUE(packet.trailer().context_packet_count().has_value());
@@ -57,7 +56,7 @@ TEST_F(TrailerTest, ContextPacketCount_Clear) {
 }
 
 TEST_F(TrailerTest, ContextPacketCount_MaxValue) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     // Count is 7 bits, max value is 127
     packet.trailer().set_context_packet_count(127);
@@ -70,7 +69,7 @@ TEST_F(TrailerTest, ContextPacketCount_MaxValue) {
 // ============================================================================
 
 TEST_F(TrailerTest, CalibratedTime_EnableIndicatorPairing) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     // Initially invalid (enable bit 31 = 0)
     EXPECT_FALSE(packet.trailer().calibrated_time().has_value());
@@ -96,7 +95,7 @@ TEST_F(TrailerTest, CalibratedTime_EnableIndicatorPairing) {
 }
 
 TEST_F(TrailerTest, CalibratedTime_Clear) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     packet.trailer().set_calibrated_time(true);
     ASSERT_TRUE(packet.trailer().calibrated_time().has_value());
@@ -110,7 +109,7 @@ TEST_F(TrailerTest, CalibratedTime_Clear) {
 }
 
 TEST_F(TrailerTest, ValidData_EnableIndicatorPairing) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     EXPECT_FALSE(packet.trailer().valid_data().has_value());
 
@@ -125,7 +124,7 @@ TEST_F(TrailerTest, ValidData_EnableIndicatorPairing) {
 }
 
 TEST_F(TrailerTest, ReferenceLock_EnableIndicatorPairing) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     EXPECT_FALSE(packet.trailer().reference_lock().has_value());
 
@@ -140,7 +139,7 @@ TEST_F(TrailerTest, ReferenceLock_EnableIndicatorPairing) {
 }
 
 TEST_F(TrailerTest, AgcMgc_EnableIndicatorPairing) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     EXPECT_FALSE(packet.trailer().agc_mgc().has_value());
 
@@ -155,7 +154,7 @@ TEST_F(TrailerTest, AgcMgc_EnableIndicatorPairing) {
 }
 
 TEST_F(TrailerTest, DetectedSignal_EnableIndicatorPairing) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     EXPECT_FALSE(packet.trailer().detected_signal().has_value());
 
@@ -170,7 +169,7 @@ TEST_F(TrailerTest, DetectedSignal_EnableIndicatorPairing) {
 }
 
 TEST_F(TrailerTest, SpectralInversion_EnableIndicatorPairing) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     EXPECT_FALSE(packet.trailer().spectral_inversion().has_value());
 
@@ -185,7 +184,7 @@ TEST_F(TrailerTest, SpectralInversion_EnableIndicatorPairing) {
 }
 
 TEST_F(TrailerTest, OverRange_EnableIndicatorPairing) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     EXPECT_FALSE(packet.trailer().over_range().has_value());
 
@@ -200,7 +199,7 @@ TEST_F(TrailerTest, OverRange_EnableIndicatorPairing) {
 }
 
 TEST_F(TrailerTest, SampleLoss_EnableIndicatorPairing) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     EXPECT_FALSE(packet.trailer().sample_loss().has_value());
 
@@ -219,7 +218,7 @@ TEST_F(TrailerTest, SampleLoss_EnableIndicatorPairing) {
 // ============================================================================
 
 TEST_F(TrailerTest, SampleFrame1_DirectAccess) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     // Initially not set (enable bit is 0)
     EXPECT_FALSE(packet.trailer().sample_frame_1().has_value());
@@ -238,7 +237,7 @@ TEST_F(TrailerTest, SampleFrame1_DirectAccess) {
 }
 
 TEST_F(TrailerTest, SampleFrame0_DirectAccess) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     EXPECT_FALSE(packet.trailer().sample_frame_0().has_value());
 
@@ -253,7 +252,7 @@ TEST_F(TrailerTest, SampleFrame0_DirectAccess) {
 }
 
 TEST_F(TrailerTest, UserDefined1_DirectAccess) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     EXPECT_FALSE(packet.trailer().user_defined_1().has_value());
 
@@ -268,7 +267,7 @@ TEST_F(TrailerTest, UserDefined1_DirectAccess) {
 }
 
 TEST_F(TrailerTest, UserDefined0_DirectAccess) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     EXPECT_FALSE(packet.trailer().user_defined_0().has_value());
 
@@ -287,7 +286,7 @@ TEST_F(TrailerTest, UserDefined0_DirectAccess) {
 // ============================================================================
 
 TEST_F(TrailerTest, Builder_ContextPacketCount) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     vrtigo::TrailerBuilder().context_packet_count(25).apply(packet.trailer());
 
@@ -296,7 +295,7 @@ TEST_F(TrailerTest, Builder_ContextPacketCount) {
 }
 
 TEST_F(TrailerTest, Builder_NamedIndicators) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     vrtigo::TrailerBuilder().calibrated_time(true).valid_data(true).reference_lock(false).apply(
         packet.trailer());
@@ -312,7 +311,7 @@ TEST_F(TrailerTest, Builder_NamedIndicators) {
 }
 
 TEST_F(TrailerTest, Builder_SampleFrameAndUserDefined) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     vrtigo::TrailerBuilder()
         .sample_frame_1(true)
@@ -332,7 +331,7 @@ TEST_F(TrailerTest, Builder_SampleFrameAndUserDefined) {
 }
 
 TEST_F(TrailerTest, Builder_ComplexTrailer) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     vrtigo::TrailerBuilder()
         .context_packet_count(10)
@@ -370,7 +369,7 @@ TEST_F(TrailerTest, Builder_ValueMethod) {
 }
 
 TEST_F(TrailerTest, Builder_FromView) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     // Set up trailer
     packet.trailer().set_calibrated_time(true);
@@ -381,7 +380,7 @@ TEST_F(TrailerTest, Builder_FromView) {
         vrtigo::TrailerBuilder().from_view(packet.trailer()).valid_data(true).value();
 
     // Should have original values plus new one
-    PacketType packet2(buffer.data());
+    PacketType packet2(buffer);
     packet2.trailer().set_raw(new_trailer);
 
     ASSERT_TRUE(packet2.trailer().calibrated_time().has_value());
@@ -399,7 +398,7 @@ TEST_F(TrailerTest, Builder_FromView) {
 // ============================================================================
 
 TEST_F(TrailerTest, ClearMethods_NamedIndicators) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     // Set multiple indicators
     packet.trailer().set_calibrated_time(true);
@@ -421,7 +420,7 @@ TEST_F(TrailerTest, ClearMethods_NamedIndicators) {
 }
 
 TEST_F(TrailerTest, ClearMethod_EntireTrailer) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     // Set everything
     packet.trailer().set_context_packet_count(50);
@@ -445,7 +444,7 @@ TEST_F(TrailerTest, ClearMethod_EntireTrailer) {
 // ============================================================================
 
 TEST_F(TrailerTest, MultipleIndicators_Independent) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     // Set multiple indicators independently
     packet.trailer().set_calibrated_time(true);
@@ -476,7 +475,7 @@ TEST_F(TrailerTest, MultipleIndicators_Independent) {
 // ============================================================================
 
 TEST_F(TrailerTest, EndianHandling) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     packet.trailer().set_calibrated_time(true);
     packet.trailer().set_context_packet_count(42);
@@ -494,7 +493,7 @@ TEST_F(TrailerTest, EndianHandling) {
 // ============================================================================
 
 TEST_F(TrailerTest, Rule_5_1_6_13_Compliance) {
-    PacketType packet(buffer.data());
+    PacketType packet(buffer);
 
     // Rule 5.1.6-13: When E bit is 0, count is undefined
     EXPECT_FALSE(packet.trailer().context_packet_count().has_value());

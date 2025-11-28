@@ -73,7 +73,6 @@ lcov --capture --directory . --output-file coverage.info --ignore-errors mismatc
 lcov --remove coverage.info \
     '/usr/*' \
     '*/tests/*' \
-    '*/examples/*' \
     --output-file coverage_filtered.info 2>/dev/null || true
 
 # Display coverage report

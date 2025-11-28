@@ -27,10 +27,10 @@ namespace vrtigo::utils::fileio {
  * - PacketVariant (runtime packets from readers)
  * - RuntimeDataPacket (runtime data packets)
  * - RuntimeContextPacket (runtime context packets)
- * - Any CompileTimePacket (from PacketBuilder)
+ * - Any compile-time packet (from PacketBuilder)
  *
- * InvalidPacket Handling:
- * - PacketVariant containing InvalidPacket is rejected
+ * Parse Error Handling:
+ * - ParseResult errors are rejected (never written)
  * - write_packet() returns false immediately
  * - status() returns WriterStatus::invalid_packet
  * - No bytes written to file
@@ -72,35 +72,25 @@ public:
      * @brief Write packet from variant
      *
      * Writes a packet from a PacketVariant. If the variant holds
-     * InvalidPacket, the write is rejected and status is set to
-     * invalid_packet.
      *
-     * @param packet The packet variant to write
-     * @return true on success, false on error or invalid packet
+     * @param packet The packet variant to write (always valid)
+     * @return true on success, false on I/O error
      */
     bool write_packet(const PacketVariant& packet) noexcept {
-        // Check if variant holds InvalidPacket
-        if (std::holds_alternative<InvalidPacket>(packet)) {
-            high_level_status_ = WriterStatus::invalid_packet;
-            return false;
-        }
-
         // Write the packet using visitor pattern
+        // PacketVariant now only contains valid packets (RuntimeDataPacket or RuntimeContextPacket)
         bool result = std::visit(
             [this](auto&& pkt) -> bool {
                 using T = std::decay_t<decltype(pkt)>;
 
-                // InvalidPacket already handled above
-                if constexpr (std::is_same_v<T, InvalidPacket>) {
-                    return false; // Should never reach here
-                } else if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
+                if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
                     return this->write_packet_impl(pkt);
                 } else if constexpr (std::is_same_v<T, vrtigo::RuntimeContextPacket>) {
                     // RuntimeContextPacket uses context_buffer() instead of as_bytes()
-                    std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.packet_size_bytes()};
+                    std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.size_bytes()};
                     return this->raw_writer_.write_packet(bytes);
                 } else {
-                    return false; // Unknown type
+                    return false; // Should never reach here
                 }
             },
             packet);
@@ -135,7 +125,7 @@ public:
      */
     bool write_packet(const vrtigo::RuntimeContextPacket& packet) noexcept {
         // RuntimeContextPacket uses context_buffer() instead of as_bytes()
-        std::span<const uint8_t> bytes{packet.context_buffer(), packet.packet_size_bytes()};
+        std::span<const uint8_t> bytes{packet.context_buffer(), packet.size_bytes()};
         bool result = raw_writer_.write_packet(bytes);
         if (result) {
             high_level_status_ = WriterStatus::ready;
@@ -147,14 +137,14 @@ public:
      * @brief Write compile-time packet
      *
      * Accepts packets from PacketBuilder or any type satisfying
-     * CompileTimePacket concept. No conversion to variant needed.
+     * CompileTimePacketLike concept. No conversion to variant needed.
      *
-     * @tparam PacketType Type satisfying CompileTimePacket concept
+     * @tparam PacketType Type satisfying CompileTimePacketLike concept
      * @param packet The packet to write
      * @return true on success, false on error
      */
     template <typename PacketType>
-        requires vrtigo::CompileTimePacket<PacketType>
+        requires vrtigo::CompileTimePacketLike<PacketType>
     bool write_packet(const PacketType& packet) noexcept {
         auto bytes = packet.as_bytes();
         bool result = raw_writer_.write_packet(bytes);

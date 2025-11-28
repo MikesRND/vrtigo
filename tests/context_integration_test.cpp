@@ -7,14 +7,16 @@ TEST_F(ContextPacketTest, RoundTrip) {
     // Note: Context packets always have Stream ID per VITA 49.2 spec
     using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth, gain>;
 
-    TestContext tx_packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
+    TestContext tx_packet(pkt_buffer);
     tx_packet.set_stream_id(0xDEADBEEF);
     tx_packet[bandwidth].set_value(100'000'000.0); // 100 MHz
     tx_packet[gain].set_encoded(0x12345678U);
 
     // Parse same buffer with view
-    RuntimeContextPacket view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.error(), ValidationError::none);
+    auto result = RuntimeContextPacket::parse(pkt_buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
 
     EXPECT_EQ(view.stream_id().value(), 0xDEADBEEF);
     EXPECT_DOUBLE_EQ(view[bandwidth].value(), 100'000'000.0);
@@ -34,14 +36,16 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2CompileTime) {
     static_assert((TestContext::cif0_value & (1U << 29)) != 0,
                   "Bandwidth bit should be preserved from CIF0 parameter");
 
-    TestContext tx_packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
+    TestContext tx_packet(pkt_buffer);
     tx_packet.set_stream_id(0x11223344);
     tx_packet[bandwidth].set_value(50'000'000.0);        // 50 MHz (has interpreted support)
     tx_packet[aux_frequency].set_encoded(25'000'000ULL); // Raw (no interpreted support)
 
     // Parse with runtime view
-    RuntimeContextPacket view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.error(), ValidationError::none);
+    auto result = RuntimeContextPacket::parse(pkt_buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
 
     // Verify CIF0 has both enable bits set
     constexpr uint32_t cif_enable_mask =
@@ -92,8 +96,9 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2Runtime) {
     cif::write_u32_safe(buffer.data(), 48, 0x22222222);
 
     // Parse and validate
-    RuntimeContextPacket view(buffer.data(), 13 * 4);
-    EXPECT_EQ(view.error(), ValidationError::none);
+    auto result = RuntimeContextPacket::parse(std::span<const uint8_t>(buffer.data(), 13 * 4));
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
 
     // Verify structure
     EXPECT_EQ(view.cif0(), cif0_mask);
@@ -115,7 +120,8 @@ TEST_F(ContextPacketTest, MultiWordFieldWrite) {
     // Create a compile-time packet with Data Payload Format (2 words, FieldView<2>)
     using TestContext = ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
+    TestContext packet(pkt_buffer);
 
     // Create source data for the field (2 words = 8 bytes)
     alignas(4) uint8_t source_data[8];
@@ -135,8 +141,9 @@ TEST_F(ContextPacketTest, MultiWordFieldWrite) {
     EXPECT_EQ(read_value.encoded().word(1), 0x11223344);
 
     // Verify round-trip through runtime parser
-    RuntimeContextPacket view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.error(), ValidationError::none);
+    auto result = RuntimeContextPacket::parse(pkt_buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
 
     auto runtime_value = view[data_payload_format];
     ASSERT_TRUE(runtime_value.has_value());

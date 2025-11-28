@@ -1,43 +1,18 @@
-// [TITLE]
-// Reading VRT Files
-// [/TITLE]
-//
-// This test demonstrates reading a VRT file with the high-level
-// VRTFileReader API. It shows type-safe packet iteration with
-// automatic validation and elegant visitor pattern usage.
+# Reading VRT Files
 
-#include <iostream>
+*Auto-generated from `tests/quickstart/file_reader_test.cpp`. All examples are tested.*
 
-#include <gtest/gtest.h>
-#include <vrtigo/vrtigo_io.hpp>
+---
 
-// Test data file paths
-#include <filesystem>
+## High-Level File Reading
 
-using vrtigo::field::sample_rate;
+This example demonstrates reading a VRT file with the high-level reader:
+- Automatic packet validation
+- Type-safe variant access (RuntimeDataPacket, RuntimeContextPacket)
+- Elegant iteration with for_each helpers
+- Zero-copy access to packet data
 
-const std::filesystem::path test_data_dir = TEST_DATA_DIR;
-const auto sine_wave_file = test_data_dir / "VITA49SineWaveData.bin";
-
-// [EXAMPLE]
-// High-Level File Reading
-// [/EXAMPLE]
-
-// [DESCRIPTION]
-// This example demonstrates reading a VRT file with the high-level reader:
-// - Automatic packet validation
-// - Type-safe variant access (RuntimeDataPacket, RuntimeContextPacket)
-// - Elegant iteration with for_each helpers
-// - Zero-copy access to packet data
-// [/DESCRIPTION]
-
-TEST(QuickstartSnippet, ReadVRTFile) {
-    // Skip if test file doesn't exist
-    if (!std::filesystem::exists(sine_wave_file)) {
-        GTEST_SKIP() << "Sine wave test file not found";
-    }
-
-    // [SNIPPET]
+```cpp
     // Read VRT packets from a file
 
     // Open VRT file - that's it!
@@ -73,33 +48,15 @@ TEST(QuickstartSnippet, ReadVRTFile) {
 
         return true; // Continue processing
     });
-    // [/SNIPPET]
+```
 
-    // Verification
-    EXPECT_GT(data_packets, 0) << "Should have read some data packets";
-    EXPECT_GT(total_samples, 0) << "Should have extracted samples";
+## Manual Packet Iteration
 
-    std::cout << "Read " << data_packets << " data packets, " << context_packets
-              << " context packets, " << total_samples << " samples total\n";
-}
+This example shows manual packet iteration for more control.
+Use this when you need to handle invalid packets or implement
+custom processing logic.
 
-// [EXAMPLE]
-// Manual Packet Iteration
-// [/EXAMPLE]
-
-// [DESCRIPTION]
-// This example shows manual packet iteration for more control.
-// Use this when you need to handle invalid packets or implement
-// custom processing logic.
-// [/DESCRIPTION]
-
-TEST(QuickstartSnippet, ReadVRTFileManual) {
-    // Skip if test file doesn't exist
-    if (!std::filesystem::exists(sine_wave_file)) {
-        GTEST_SKIP() << "Sine wave test file not found";
-    }
-
-    // [SNIPPET]
+```cpp
     // Manual packet iteration with full control
 
     vrtigo::VRTFileReader<> reader(sine_wave_file.c_str());
@@ -134,12 +91,5 @@ TEST(QuickstartSnippet, ReadVRTFileManual) {
             (void)error;
         }
     }
-    // [/SNIPPET]
+```
 
-    // Verification
-    EXPECT_GT(valid_packets, 0) << "Should have read valid packets";
-    EXPECT_EQ(invalid_packets, 0) << "Test file should have no invalid packets";
-
-    std::cout << "Read " << valid_packets << " valid packets, " << invalid_packets
-              << " invalid packets\n";
-}

@@ -59,7 +59,7 @@ struct UDPTransportStatus {
      * VRT packet header in host byte order
      *
      * Only valid if bytes_received >= 4.
-     * Used for error diagnostics and InvalidPacket creation.
+     * Used for error diagnostics and ParseError creation.
      */
     uint32_t header{0};
 

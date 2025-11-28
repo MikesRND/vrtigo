@@ -7,10 +7,11 @@ TEST_F(ContextPacketTest, CIF1Fields) {
     // Note: Context packets always have Stream ID per VITA 49.2 spec
     using TestContext = ContextPacket<NoTimestamp, NoClassId, spectrum>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Check size includes CIF1 spectrum field
-    EXPECT_EQ(TestContext::size_words,
+    EXPECT_EQ(TestContext::size_words(),
               1 + 1 + 1 + 1 + 13); // header + stream_id + cif0 + cif1 + spectrum
 }
 
@@ -18,7 +19,8 @@ TEST_F(ContextPacketTest, NewCIF1Fields) {
     using TestContext = ContextPacket<NoTimestamp, NoClassId, health_status, phase_offset,
                                       polarization, pointing_vector_3d_single>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Set and verify Health Status (1 word)
     packet[health_status].set_encoded(0xABCDEF01);
@@ -41,6 +43,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF1) {
     // Build a packet with CIF1 enabled and Aux Frequency field
     // Type 4 has stream ID: header(1) + stream_id(1) + CIF0(1) + CIF1(1) + Aux Frequency(2) = 6
     // words
+    alignas(4) std::array<uint8_t, 6 * 4> buffer{};
     uint32_t header = (static_cast<uint32_t>(PacketType::context) << header::packet_type_shift) | 6;
     cif::write_u32_safe(buffer.data(), 0, header);
 
@@ -60,8 +63,9 @@ TEST_F(ContextPacketTest, RuntimeParseCIF1) {
     cif::write_u64_safe(buffer.data(), 16, expected_freq);
 
     // Parse and validate
-    RuntimeContextPacket view(buffer.data(), 6 * 4);
-    EXPECT_EQ(view.error(), ValidationError::none);
+    auto result = RuntimeContextPacket::parse(buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
 
     // Verify CIF0 and CIF1 are read correctly
     EXPECT_EQ(view.cif0(), cif0_mask);
@@ -83,13 +87,15 @@ TEST_F(ContextPacketTest, CompileTimeCIF1RuntimeParse) {
     static_assert((TestContext::cif0_value & (1U << cif::CIF2_ENABLE_BIT)) == 0,
                   "CIF2 enable bit should NOT be set when CIF2 == 0");
 
-    TestContext tx_packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext tx_packet(buffer);
     tx_packet.set_stream_id(0xAABBCCDD);
     tx_packet[aux_frequency].set_encoded(15'000'000ULL); // 15 MHz
 
     // Parse with runtime view
-    RuntimeContextPacket view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.error(), ValidationError::none);
+    auto result = RuntimeContextPacket::parse(buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
     EXPECT_EQ(view.stream_id().value(), 0xAABBCCDD);
     // CIF0 should have CIF1 enable bit set
     EXPECT_EQ(view.cif0() & (1U << cif::CIF1_ENABLE_BIT), (1U << cif::CIF1_ENABLE_BIT));

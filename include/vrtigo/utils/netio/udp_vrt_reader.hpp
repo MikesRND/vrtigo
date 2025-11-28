@@ -56,7 +56,7 @@ namespace vrtigo::utils::netio {
  * **Datagram Truncation**
  *
  * If a datagram exceeds MaxPacketWords * 4 bytes, it will be detected via MSG_TRUNC and
- * returned as an InvalidPacket. The actual datagram size is available in
+ * returned as a ParseError. The actual datagram size is available in
  * transport_status().actual_size, allowing you to reallocate with a larger buffer if needed.
  *
  * @tparam MaxPacketWords Maximum packet size in 32-bit words (default: 65535)
@@ -192,17 +192,17 @@ public:
      * Blocks waiting for the next UDP datagram, validates it, and returns a type-safe variant
      * containing the appropriate packet view.
      *
-     * @return PacketVariant (RuntimeDataPacket, RuntimeContextPacket, or InvalidPacket),
-     *         or std::nullopt on socket closure or fatal error
+     * @return ParseResult<PacketVariant> containing valid packet or error info,
+     *         or std::nullopt on socket closure, timeout, or fatal error
      *
      * @note In blocking mode, this will wait indefinitely for data unless a timeout is set.
-     * @note Datagram truncation (exceeding buffer size) returns InvalidPacket with
+     * @note Datagram truncation (exceeding buffer size) returns ParseError with
      *       ValidationError::buffer_too_small. Check transport_status().actual_size for
      *       the required buffer size.
      * @note The returned view references the internal scratch buffer and is valid
      *       until the next read operation.
      */
-    std::optional<vrtigo::PacketVariant> read_next_packet() noexcept {
+    std::optional<vrtigo::ParseResult<vrtigo::PacketVariant>> read_next_packet() noexcept {
         auto bytes = read_next_datagram();
 
         if (bytes.empty()) {
@@ -218,17 +218,17 @@ public:
                 return std::nullopt;
             }
 
-            // Datagram truncated - always return InvalidPacket so iteration continues
+            // Datagram truncated - return ParseError so iteration continues
             if (status_.is_truncated()) {
                 if (status_.bytes_received >= 4) {
-                    // We have header - create proper InvalidPacket
+                    // We have header - create proper ParseError
                     auto decoded = vrtigo::detail::decode_header(status_.header);
-                    return vrtigo::PacketVariant{vrtigo::InvalidPacket{
+                    return vrtigo::ParseResult<vrtigo::PacketVariant>{vrtigo::ParseError{
                         ValidationError::buffer_too_small, status_.packet_type, decoded,
                         std::span<const uint8_t>() // No partial data
                     }};
                 }
-                // Truncated with no header - return generic InvalidPacket
+                // Truncated with no header - return generic ParseError
                 // Use dummy header with packet size from actual_size
                 vrtigo::detail::DecodedHeader dummy{};
                 dummy.type = PacketType::signal_data_no_id;
@@ -236,7 +236,7 @@ public:
                     static_cast<uint16_t>(std::min(status_.actual_size / 4, size_t(65535)));
                 dummy.has_class_id = false;
                 dummy.trailer_included = false;
-                return vrtigo::PacketVariant{vrtigo::InvalidPacket{
+                return vrtigo::ParseResult<vrtigo::PacketVariant>{vrtigo::ParseError{
                     ValidationError::buffer_too_small, PacketType::signal_data_no_id, dummy,
                     std::span<const uint8_t>()}};
             }
@@ -247,19 +247,19 @@ public:
 
         // Validate minimum packet size
         if (bytes.size() < 4) {
-            // Malformed datagram - return InvalidPacket so iteration continues
+            // Malformed datagram - return ParseError so iteration continues
             vrtigo::detail::DecodedHeader dummy{};
             dummy.type = PacketType::signal_data_no_id;
             dummy.size_words = static_cast<uint16_t>(bytes.size() / 4);
             dummy.has_class_id = false;
             dummy.trailer_included = false;
-            return vrtigo::PacketVariant{vrtigo::InvalidPacket{
-                ValidationError::buffer_too_small, PacketType::signal_data_no_id, dummy,
-                std::span<const uint8_t>(bytes.data(), bytes.size())}};
+            return vrtigo::ParseResult<vrtigo::PacketVariant>{
+                vrtigo::ParseError{ValidationError::buffer_too_small, PacketType::signal_data_no_id,
+                                   dummy, std::span<const uint8_t>(bytes.data(), bytes.size())}};
         }
 
         // Parse and validate the packet
-        return vrtigo::detail::parse_packet(bytes);
+        return vrtigo::parse_packet(bytes);
     }
 
     /**

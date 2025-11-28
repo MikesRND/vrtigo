@@ -26,8 +26,8 @@ TEST_F(ContextPacketTest, CIF0_28_BasicAccess) {
     // [SNIPPET]
     using IFRefContext = ContextPacket<NoTimestamp, NoClassId, if_reference_frequency>;
 
-    alignas(4) std::array<uint8_t, IFRefContext::size_bytes> buffer{};
-    IFRefContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, IFRefContext::size_bytes()> buffer{};
+    IFRefContext packet(buffer);
 
     // Set IF reference frequency to 10.7 MHz (typical AM/FM IF)
     packet[if_reference_frequency].set_value(10.7e6);
@@ -44,8 +44,8 @@ TEST_F(ContextPacketTest, CIF0_28_BasicAccess) {
 
 TEST_F(ContextPacketTest, CIF0_28_PositiveFrequencies) {
     using IFRefContext = ContextPacket<NoTimestamp, NoClassId, if_reference_frequency>;
-    alignas(4) std::array<uint8_t, IFRefContext::size_bytes> buffer{};
-    IFRefContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, IFRefContext::size_bytes()> buffer{};
+    IFRefContext packet(buffer);
 
     // Test various positive frequencies
     double test_freqs[] = {
@@ -66,8 +66,8 @@ TEST_F(ContextPacketTest, CIF0_28_PositiveFrequencies) {
 
 TEST_F(ContextPacketTest, CIF0_28_NegativeFrequencies) {
     using IFRefContext = ContextPacket<NoTimestamp, NoClassId, if_reference_frequency>;
-    alignas(4) std::array<uint8_t, IFRefContext::size_bytes> buffer{};
-    IFRefContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, IFRefContext::size_bytes()> buffer{};
+    IFRefContext packet(buffer);
 
     // Test negative frequencies (for complex samples)
     double test_freqs[] = {-1.0, -10.7e6, -1.0e9};
@@ -81,8 +81,8 @@ TEST_F(ContextPacketTest, CIF0_28_NegativeFrequencies) {
 
 TEST_F(ContextPacketTest, CIF0_28_SpecExamples) {
     using IFRefContext = ContextPacket<NoTimestamp, NoClassId, if_reference_frequency>;
-    alignas(4) std::array<uint8_t, IFRefContext::size_bytes> buffer{};
-    IFRefContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, IFRefContext::size_bytes()> buffer{};
+    IFRefContext packet(buffer);
 
     // Per VITA 49.2 spec observations:
     // 0x0000000000100000 = 1 Hz
@@ -101,15 +101,16 @@ TEST_F(ContextPacketTest, CIF0_28_SpecExamples) {
 TEST_F(ContextPacketTest, CIF0_28_RuntimeAccess) {
     // Create a compile-time packet
     using IFRefContext = ContextPacket<NoTimestamp, NoClassId, if_reference_frequency>;
-    alignas(4) std::array<uint8_t, IFRefContext::size_bytes> buffer{};
-    IFRefContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, IFRefContext::size_bytes()> buffer{};
+    IFRefContext packet(buffer);
 
     packet[if_reference_frequency].set_value(10.7e6);
 
     // Parse with runtime packet
-    RuntimeContextPacket runtime_packet(buffer.data(), buffer.size());
+    auto result = RuntimeContextPacket::parse(buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& runtime_packet = result.value();
 
-    EXPECT_TRUE(runtime_packet.is_valid());
     if (runtime_packet[if_reference_frequency]) {
         EXPECT_NEAR(runtime_packet[if_reference_frequency].value(), 10.7e6, 1.0);
     }

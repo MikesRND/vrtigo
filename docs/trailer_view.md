@@ -22,12 +22,14 @@ TrailerBuilder           // Value-type builder for composing trailer words
 
 ## Accessing Trailer Views
 
-Trailer views are obtained through packet's `trailer()` method when `HasTrailer == Trailer::included`:
+Trailer views are obtained through packet's `trailer()` method. Both compile-time and runtime packets provide uniform `TrailerView` access:
 
 | Packet Type | Non-const Method | Const Method |
 |-------------|------------------|--------------|
 | `DataPacket<..., Trailer::included>` | `trailer()` → `MutableTrailerView` | `trailer() const` → `TrailerView` |
-| `RuntimeDataPacket` | — | `trailer()` → `optional<uint32_t>` (raw word only) |
+| `RuntimeDataPacket` | — | `trailer()` → `optional<TrailerView>` |
+
+Runtime packets wrap the view in `std::optional` to handle cases where the trailer is absent or the packet is invalid.
 
 ## Enable/Indicator Bit Pairing
 
@@ -151,7 +153,8 @@ auto trailer_cfg = TrailerBuilder{}
     .context_packet_count(3);      // Sets E bit 7 and count bits 6-0
 
 // Apply to a packet builder
-auto packet = PacketBuilder<PacketType>(buffer.data())
+alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+auto packet = PacketBuilder<PacketType>(buffer)
     .stream_id(0x1234)
     .trailer(trailer_cfg)
     .build();
@@ -188,7 +191,8 @@ All setter methods return `TrailerBuilder&` for chaining:
 ```cpp
 // Compile-time packet with trailer
 using PacketType = SignalDataPacket<NoClassId, UtcRealTimestamp, Trailer::included, 128>;
-PacketType packet(buffer.data());
+alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+PacketType packet(buffer);
 
 // Check named indicators (returns std::optional<bool>)
 if (auto valid = packet.trailer().valid_data()) {
@@ -222,6 +226,30 @@ if (auto count = packet.trailer().context_packet_count()) {
 bool frame_bit = packet.trailer().sample_frame_1();
 ```
 
+### Reading Trailer from Runtime Packets
+
+```cpp
+// Runtime packet parsing - uniform TrailerView access
+RuntimeDataPacket view(rx_buffer);
+
+if (view.is_valid()) {
+    // trailer() returns optional<TrailerView>
+    if (auto trailer = view.trailer()) {
+        // Same API as compile-time packets
+        if (auto valid = trailer->valid_data()) {
+            std::cout << "Valid data: " << (*valid ? "yes" : "no") << "\n";
+        }
+
+        if (auto count = trailer->context_packet_count()) {
+            std::cout << "Context packet count: " << (int)*count << "\n";
+        }
+
+        // Raw word access
+        uint32_t raw = trailer->raw();
+    }
+}
+```
+
 ### Setting Trailer Fields
 
 ```cpp
@@ -245,7 +273,7 @@ packet.trailer().clear();                      // All bits = 0
 ```cpp
 // Build packet with comprehensive status
 using PacketType = SignalDataPacket<NoClassId, UtcRealTimestamp, Trailer::included, 128>;
-std::vector<uint8_t> buffer(PacketType::size_bytes);
+alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
 // Compose trailer configuration
 auto good_status = TrailerBuilder{}
@@ -256,7 +284,7 @@ auto good_status = TrailerBuilder{}
 
 // Build packet
 auto ts = UtcRealTimestamp(1000000, 0);
-auto packet = PacketBuilder<PacketType>(buffer.data())
+auto packet = PacketBuilder<PacketType>(buffer)
     .stream_id(0x12345678)
     .timestamp(ts)
     .trailer(good_status)
@@ -277,7 +305,8 @@ auto error_trailer = TrailerBuilder{}
     .over_range(true)     // Over-range detected
     .sample_loss(true);   // Sample loss detected
 
-auto packet = PacketBuilder<PacketType>(buffer.data())
+alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+auto packet = PacketBuilder<PacketType>(buffer)
     .stream_id(0xAABBCCDD)
     .trailer(error_trailer)
     .build();
@@ -299,7 +328,8 @@ if (packet.trailer().over_range().value_or(false) ||
 
 ```cpp
 // For simple cases, use PacketBuilder's trailer methods directly
-auto packet = PacketBuilder<PacketType>(buffer.data())
+alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
+auto packet = PacketBuilder<PacketType>(buffer)
     .stream_id(0x1234)
     .trailer_valid_data(true)
     .trailer_calibrated_time(true)

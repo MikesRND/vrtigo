@@ -30,8 +30,8 @@ TEST_F(ContextPacketTest, CIF0_23_BasicAccess) {
     // [SNIPPET]
     using GainContext = ContextPacket<NoTimestamp, NoClassId, gain>;
 
-    alignas(4) std::array<uint8_t, GainContext::size_bytes> buffer{};
-    GainContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, GainContext::size_bytes()> buffer{};
+    GainContext packet(buffer);
 
     // Set single-stage gain of +10 dB (Stage 2 = 0)
     packet[gain].set_value({10.0, 0.0});
@@ -53,8 +53,8 @@ TEST_F(ContextPacketTest, CIF0_23_BasicAccess) {
 
 TEST_F(ContextPacketTest, CIF0_23_DualStageGain) {
     using GainContext = ContextPacket<NoTimestamp, NoClassId, gain>;
-    alignas(4) std::array<uint8_t, GainContext::size_bytes> buffer{};
-    GainContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, GainContext::size_bytes()> buffer{};
+    GainContext packet(buffer);
 
     // Set dual-stage gains: RF gain +20 dB, IF gain +15 dB
     packet[gain].set_value({20.0, 15.0});
@@ -67,8 +67,8 @@ TEST_F(ContextPacketTest, CIF0_23_DualStageGain) {
 
 TEST_F(ContextPacketTest, CIF0_23_Attenuation) {
     using GainContext = ContextPacket<NoTimestamp, NoClassId, gain>;
-    alignas(4) std::array<uint8_t, GainContext::size_bytes> buffer{};
-    GainContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, GainContext::size_bytes()> buffer{};
+    GainContext packet(buffer);
 
     // Test negative gains (attenuation)
     packet[gain].set_value({-10.0, -5.0});
@@ -81,8 +81,8 @@ TEST_F(ContextPacketTest, CIF0_23_Attenuation) {
 
 TEST_F(ContextPacketTest, CIF0_23_SpecExamples) {
     using GainContext = ContextPacket<NoTimestamp, NoClassId, gain>;
-    alignas(4) std::array<uint8_t, GainContext::size_bytes> buffer{};
-    GainContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, GainContext::size_bytes()> buffer{};
+    GainContext packet(buffer);
 
     // Per VITA 49.2 Observation 9.5.3-4:
 
@@ -159,8 +159,8 @@ TEST_F(ContextPacketTest, CIF0_23_SpecExamples) {
 
 TEST_F(ContextPacketTest, CIF0_23_CommonGainValues) {
     using GainContext = ContextPacket<NoTimestamp, NoClassId, gain>;
-    alignas(4) std::array<uint8_t, GainContext::size_bytes> buffer{};
-    GainContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, GainContext::size_bytes()> buffer{};
+    GainContext packet(buffer);
 
     // Test typical single-stage gain values
     struct TestCase {
@@ -184,8 +184,8 @@ TEST_F(ContextPacketTest, CIF0_23_CommonGainValues) {
 
 TEST_F(ContextPacketTest, CIF0_23_Saturation) {
     using GainContext = ContextPacket<NoTimestamp, NoClassId, gain>;
-    alignas(4) std::array<uint8_t, GainContext::size_bytes> buffer{};
-    GainContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, GainContext::size_bytes()> buffer{};
+    GainContext packet(buffer);
 
     // Test saturation at bounds (±256 dB per stage)
 
@@ -209,15 +209,16 @@ TEST_F(ContextPacketTest, CIF0_23_Saturation) {
 TEST_F(ContextPacketTest, CIF0_23_RuntimeAccess) {
     // Create a compile-time packet
     using GainContext = ContextPacket<NoTimestamp, NoClassId, gain>;
-    alignas(4) std::array<uint8_t, GainContext::size_bytes> buffer{};
-    GainContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, GainContext::size_bytes()> buffer{};
+    GainContext packet(buffer);
 
     packet[gain].set_value({15.0, 10.0});
 
     // Parse with runtime packet
-    RuntimeContextPacket runtime_packet(buffer.data(), buffer.size());
+    auto result = RuntimeContextPacket::parse(buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& runtime_packet = result.value();
 
-    EXPECT_TRUE(runtime_packet.is_valid());
     if (runtime_packet[gain]) {
         auto g = runtime_packet[gain].value();
         EXPECT_NEAR(g.stage1_db, 15.0, 0.01);

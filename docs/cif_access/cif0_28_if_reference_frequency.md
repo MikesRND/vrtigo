@@ -13,8 +13,8 @@ of the described signal. It uses 64-bit two's complement Q44.20 fixed-point form
 ```cpp
     using IFRefContext = ContextPacket<NoTimestamp, NoClassId, if_reference_frequency>;
 
-    alignas(4) std::array<uint8_t, IFRefContext::size_bytes> buffer{};
-    IFRefContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, IFRefContext::size_bytes()> buffer{};
+    IFRefContext packet(buffer);
 
     // Set IF reference frequency to 10.7 MHz (typical AM/FM IF)
     packet[if_reference_frequency].set_value(10.7e6);

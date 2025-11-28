@@ -12,8 +12,8 @@ the signal bandwidth in Hz.
 ```cpp
     using BandwidthContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
-    alignas(4) std::array<uint8_t, BandwidthContext::size_bytes> buffer{};
-    BandwidthContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, BandwidthContext::size_bytes()> buffer{};
+    BandwidthContext packet(buffer);
 
     // Set bandwidth to 20 MHz
     packet[bandwidth].set_value(20'000'000.0);

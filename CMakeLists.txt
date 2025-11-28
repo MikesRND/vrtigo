@@ -49,25 +49,12 @@ if(VRTIGO_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
-# Optional: Build examples
-option(VRTIGO_BUILD_EXAMPLES "Build examples" OFF)
-if(VRTIGO_BUILD_EXAMPLES)
-    add_subdirectory(examples)
-endif()
-
-# Custom target: Extract quickstart snippets to docs
-add_custom_target(quickstart ALL
-    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/extract_quickstart.sh
+# Custom target: Generate documentation from test files
+add_custom_target(autodocs ALL
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/extract_docs.sh cif_access
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/extract_docs.sh quickstart
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMENT "Extracting quickstart code snippets to docs/quickstart.md"
-    VERBATIM
-)
-
-# Custom target: Extract CIF access examples to docs
-add_custom_target(cif_access_docs ALL
-    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/extract_cif_access.sh
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMENT "Generating CIF access documentation"
+    COMMENT "Generating documentation from test files"
     VERBATIM
 )
 

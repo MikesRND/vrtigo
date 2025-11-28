@@ -38,43 +38,69 @@ namespace vrtigo {
 template <PacketType Type = PacketType::signal_data_no_id, typename ClassIdType = NoClassId,
           typename TimestampType = NoTimestamp, bool IsContext = false>
 class Prologue {
+    // ========================================================================
+    // Private implementation details (internal word counts)
+    // These must be declared first so size_words() can use them
+    // ========================================================================
+    static constexpr size_t header_words_ = 1;
+    static constexpr size_t stream_id_words_ =
+        (IsContext || Type == PacketType::signal_data || Type == PacketType::extension_data) ? 1
+                                                                                             : 0;
+    static constexpr size_t class_id_words_ = ClassIdTraits<ClassIdType>::size_words;
+    static constexpr TsiType tsi_ = TimestampTraits<TimestampType>::tsi;
+    static constexpr TsfType tsf_ = TimestampTraits<TimestampType>::tsf;
+    static constexpr size_t tsi_words_ = (tsi_ == TsiType::none) ? 0 : 1;
+    static constexpr size_t tsf_words_ = (tsf_ == TsfType::none) ? 0 : 2;
+    static constexpr size_t timestamp_words_ = tsi_words_ + tsf_words_;
+
 public:
     // Type traits
     static constexpr PacketType packet_type = Type;
     using class_id_type = ClassIdType;
     using timestamp_type = TimestampType;
 
-    // Determine field presence
-    static constexpr bool is_context_packet = IsContext;
-    static constexpr bool has_stream_id = is_context_packet || (Type == PacketType::signal_data ||
-                                                                Type == PacketType::extension_data);
-    static constexpr bool has_class_id = ClassIdTraits<ClassIdType>::has_class_id;
-    static constexpr bool has_timestamp = TimestampTraits<TimestampType>::has_timestamp;
+    // ========================================================================
+    // Static constexpr property functions (public API)
+    // These can be called as T::has_stream_id() or pkt.has_stream_id()
+    // ========================================================================
 
-    // Extract timestamp components
-    static constexpr TsiType tsi = TimestampTraits<TimestampType>::tsi;
-    static constexpr TsfType tsf = TimestampTraits<TimestampType>::tsf;
+    /// Check if this is a context packet
+    static constexpr bool is_context_packet() noexcept { return IsContext; }
 
-    // Field sizes in words
-    static constexpr size_t header_words = 1;
-    static constexpr size_t stream_id_words = has_stream_id ? 1 : 0;
-    static constexpr size_t class_id_words = ClassIdTraits<ClassIdType>::size_words;
-    static constexpr size_t tsi_words = (tsi == TsiType::none) ? 0 : 1;
-    static constexpr size_t tsf_words = (tsf == TsfType::none) ? 0 : 2;
-    static constexpr size_t timestamp_words = tsi_words + tsf_words;
+    /// Check if packet has stream ID field
+    static constexpr bool has_stream_id() noexcept {
+        return IsContext || (Type == PacketType::signal_data || Type == PacketType::extension_data);
+    }
 
-    // Total prologue size
-    static constexpr size_t size_words =
-        header_words + stream_id_words + class_id_words + timestamp_words;
-    static constexpr size_t size_bytes = size_words * vrt_word_size;
+    /// Check if packet has class ID field
+    static constexpr bool has_class_id() noexcept {
+        return ClassIdTraits<ClassIdType>::has_class_id;
+    }
 
-    // Field offsets in words (from start of packet)
+    /// Check if packet has timestamp fields
+    static constexpr bool has_timestamp() noexcept {
+        return TimestampTraits<TimestampType>::has_timestamp;
+    }
+
+    /// Get prologue size in 32-bit words
+    static constexpr size_t size_words() noexcept {
+        return header_words_ + stream_id_words_ + class_id_words_ + timestamp_words_;
+    }
+
+    /// Get prologue size in bytes
+    static constexpr size_t size_bytes() noexcept { return size_words() * vrt_word_size; }
+
+    // Extract timestamp components (public - needed for validation)
+    static constexpr TsiType tsi = tsi_;
+    static constexpr TsfType tsf = tsf_;
+
+    // Field offsets in words (from start of packet) - public for DataPacket/ContextPacket
     static constexpr size_t header_offset = 0;
-    static constexpr size_t stream_id_offset = header_offset + header_words;
-    static constexpr size_t class_id_offset = stream_id_offset + stream_id_words;
-    static constexpr size_t tsi_offset = class_id_offset + class_id_words;
-    static constexpr size_t tsf_offset = tsi_offset + tsi_words;
-    static constexpr size_t payload_offset = tsf_offset + tsf_words;
+    static constexpr size_t stream_id_offset = header_offset + header_words_;
+    static constexpr size_t class_id_offset = stream_id_offset + stream_id_words_;
+    static constexpr size_t tsi_offset = class_id_offset + class_id_words_;
+    static constexpr size_t tsf_offset = tsi_offset + tsi_words_;
+    static constexpr size_t payload_offset = tsf_offset + tsf_words_;
 
     /**
      * @brief Construct a Prologue with a buffer
@@ -92,7 +118,7 @@ public:
                      bool has_trailer = false) noexcept {
         const uint32_t header =
             detail::build_header(static_cast<uint8_t>(Type), // Cast enum to uint8_t
-                                 has_class_id,               // Class ID indicator
+                                 has_class_id(),             // Class ID indicator
                                  has_trailer,                // Bit 26: Trailer indicator
                                  false,                      // Bit 25: Nd0 indicator
                                  false,                      // Bit 24: Spectrum/Time
@@ -108,7 +134,7 @@ public:
      * @brief Initialize the stream ID field (if present)
      */
     void init_stream_id() noexcept
-        requires(has_stream_id)
+        requires(has_stream_id())
     {
         detail::write_u32(buffer_, stream_id_offset * vrt_word_size, 0);
     }
@@ -117,22 +143,22 @@ public:
      * @brief Initialize the class ID fields (if present)
      */
     void init_class_id() noexcept
-        requires(has_class_id)
+        requires(has_class_id())
     {
-        std::memset(buffer_ + class_id_offset * vrt_word_size, 0, class_id_words * vrt_word_size);
+        std::memset(buffer_ + class_id_offset * vrt_word_size, 0, class_id_words_ * vrt_word_size);
     }
 
     /**
      * @brief Initialize timestamp fields (if present)
      */
     void init_timestamps() noexcept
-        requires(has_timestamp)
+        requires(has_timestamp())
     {
         if constexpr (tsi != TsiType::none) {
             detail::write_u32(buffer_, tsi_offset * vrt_word_size, 0);
         }
         if constexpr (tsf != TsfType::none) {
-            std::memset(buffer_ + tsf_offset * vrt_word_size, 0, tsf_words * vrt_word_size);
+            std::memset(buffer_ + tsf_offset * vrt_word_size, 0, tsf_words_ * vrt_word_size);
         }
     }
 
@@ -197,7 +223,7 @@ public:
      * @brief Get the stream ID (if present)
      */
     [[nodiscard]] uint32_t stream_id() const noexcept
-        requires(has_stream_id)
+        requires(has_stream_id())
     {
         return detail::read_u32(buffer_, stream_id_offset * vrt_word_size);
     }
@@ -206,7 +232,7 @@ public:
      * @brief Set the stream ID (if present)
      */
     void set_stream_id(uint32_t id) noexcept
-        requires(has_stream_id)
+        requires(has_stream_id())
     {
         detail::write_u32(buffer_, stream_id_offset * vrt_word_size, id);
     }
@@ -215,7 +241,7 @@ public:
      * @brief Get the class ID (if present)
      */
     ClassIdValue class_id() const noexcept
-        requires(has_class_id)
+        requires(has_class_id())
     {
         uint32_t word0 = detail::read_u32(buffer_, class_id_offset * vrt_word_size);
         uint32_t word1 = detail::read_u32(buffer_, (class_id_offset + 1) * vrt_word_size);
@@ -226,7 +252,7 @@ public:
      * @brief Set the class ID (if present)
      */
     void set_class_id(ClassIdValue cid) noexcept
-        requires(has_class_id)
+        requires(has_class_id())
     {
         detail::write_u32(buffer_, class_id_offset * vrt_word_size, cid.word0());
         detail::write_u32(buffer_, (class_id_offset + 1) * vrt_word_size, cid.word1());
@@ -236,7 +262,7 @@ public:
      * @brief Get the timestamp (if present)
      */
     TimestampType timestamp() const noexcept
-        requires(has_timestamp)
+        requires(has_timestamp())
     {
         uint32_t tsi_val =
             (tsi != TsiType::none) ? detail::read_u32(buffer_, tsi_offset * vrt_word_size) : 0;
@@ -249,7 +275,7 @@ public:
      * @brief Set the timestamp (if present)
      */
     void set_timestamp(TimestampType ts) noexcept
-        requires(has_timestamp)
+        requires(has_timestamp())
     {
         if constexpr (tsi != TsiType::none) {
             detail::write_u32(buffer_, tsi_offset * vrt_word_size, ts.tsi());

@@ -26,8 +26,8 @@ TEST_F(ContextPacketTest, CIF0_27_BasicAccess) {
     // [SNIPPET]
     using RFRefContext = ContextPacket<NoTimestamp, NoClassId, rf_reference_frequency>;
 
-    alignas(4) std::array<uint8_t, RFRefContext::size_bytes> buffer{};
-    RFRefContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RFRefContext::size_bytes()> buffer{};
+    RFRefContext packet(buffer);
 
     // Set RF reference frequency to 2.4 GHz (WiFi band)
     packet[rf_reference_frequency].set_value(2.4e9);
@@ -44,8 +44,8 @@ TEST_F(ContextPacketTest, CIF0_27_BasicAccess) {
 
 TEST_F(ContextPacketTest, CIF0_27_CommonRFFrequencies) {
     using RFRefContext = ContextPacket<NoTimestamp, NoClassId, rf_reference_frequency>;
-    alignas(4) std::array<uint8_t, RFRefContext::size_bytes> buffer{};
-    RFRefContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RFRefContext::size_bytes()> buffer{};
+    RFRefContext packet(buffer);
 
     // Test common RF frequencies
     double test_freqs[] = {
@@ -66,8 +66,8 @@ TEST_F(ContextPacketTest, CIF0_27_CommonRFFrequencies) {
 
 TEST_F(ContextPacketTest, CIF0_27_SpecExamples) {
     using RFRefContext = ContextPacket<NoTimestamp, NoClassId, rf_reference_frequency>;
-    alignas(4) std::array<uint8_t, RFRefContext::size_bytes> buffer{};
-    RFRefContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RFRefContext::size_bytes()> buffer{};
+    RFRefContext packet(buffer);
 
     // Per VITA 49.2 spec observations:
     // 0x0000000000100000 = +1 Hz
@@ -86,15 +86,16 @@ TEST_F(ContextPacketTest, CIF0_27_SpecExamples) {
 TEST_F(ContextPacketTest, CIF0_27_RuntimeAccess) {
     // Create a compile-time packet
     using RFRefContext = ContextPacket<NoTimestamp, NoClassId, rf_reference_frequency>;
-    alignas(4) std::array<uint8_t, RFRefContext::size_bytes> buffer{};
-    RFRefContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RFRefContext::size_bytes()> buffer{};
+    RFRefContext packet(buffer);
 
     packet[rf_reference_frequency].set_value(2.4e9);
 
     // Parse with runtime packet
-    RuntimeContextPacket runtime_packet(buffer.data(), buffer.size());
+    auto result = RuntimeContextPacket::parse(buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& runtime_packet = result.value();
 
-    EXPECT_TRUE(runtime_packet.is_valid());
     if (runtime_packet[rf_reference_frequency]) {
         EXPECT_NEAR(runtime_packet[rf_reference_frequency].value(), 2.4e9, 1.0);
     }

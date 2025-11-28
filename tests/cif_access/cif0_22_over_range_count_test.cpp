@@ -29,8 +29,8 @@ TEST_F(ContextPacketTest, CIF0_22_BasicAccess) {
     // [SNIPPET]
     using OverRangeContext = ContextPacket<NoTimestamp, NoClassId, over_range_count>;
 
-    alignas(4) std::array<uint8_t, OverRangeContext::size_bytes> buffer{};
-    OverRangeContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, OverRangeContext::size_bytes()> buffer{};
+    OverRangeContext packet(buffer);
 
     // Set Over-Range Count to indicate 42 over-range samples
     uint32_t count = 42;
@@ -48,8 +48,8 @@ TEST_F(ContextPacketTest, CIF0_22_BasicAccess) {
 
 TEST_F(ContextPacketTest, CIF0_22_ZeroCount) {
     using OverRangeContext = ContextPacket<NoTimestamp, NoClassId, over_range_count>;
-    alignas(4) std::array<uint8_t, OverRangeContext::size_bytes> buffer{};
-    OverRangeContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, OverRangeContext::size_bytes()> buffer{};
+    OverRangeContext packet(buffer);
 
     // Zero indicates no over-range samples in the paired Data packet
     packet[over_range_count].set_value(0);
@@ -58,8 +58,8 @@ TEST_F(ContextPacketTest, CIF0_22_ZeroCount) {
 
 TEST_F(ContextPacketTest, CIF0_22_MaxCount) {
     using OverRangeContext = ContextPacket<NoTimestamp, NoClassId, over_range_count>;
-    alignas(4) std::array<uint8_t, OverRangeContext::size_bytes> buffer{};
-    OverRangeContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, OverRangeContext::size_bytes()> buffer{};
+    OverRangeContext packet(buffer);
 
     // Maximum 32-bit value per Rule 9.10.6-3
     uint32_t max_count = 0xFFFFFFFF;
@@ -69,8 +69,8 @@ TEST_F(ContextPacketTest, CIF0_22_MaxCount) {
 
 TEST_F(ContextPacketTest, CIF0_22_MultipleValues) {
     using OverRangeContext = ContextPacket<NoTimestamp, NoClassId, over_range_count>;
-    alignas(4) std::array<uint8_t, OverRangeContext::size_bytes> buffer{};
-    OverRangeContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, OverRangeContext::size_bytes()> buffer{};
+    OverRangeContext packet(buffer);
 
     // Test various count values
     uint32_t test_counts[] = {0, 1, 1000, 0x7FFFFFFF, 0x80000000, 0xFFFFFFFF};
@@ -84,17 +84,18 @@ TEST_F(ContextPacketTest, CIF0_22_MultipleValues) {
 TEST_F(ContextPacketTest, CIF0_22_RuntimeAccess) {
     // Create a compile-time packet with Over-Range Count
     using OverRangeContext = ContextPacket<NoTimestamp, NoClassId, over_range_count>;
-    alignas(4) std::array<uint8_t, OverRangeContext::size_bytes> buffer{};
-    OverRangeContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, OverRangeContext::size_bytes()> buffer{};
+    OverRangeContext packet(buffer);
 
     uint32_t count = 12345;
     packet[over_range_count].set_value(count);
 
     // Parse with runtime packet
-    RuntimeContextPacket runtime_packet(buffer.data(), buffer.size());
+    auto result = RuntimeContextPacket::parse(buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& runtime_packet = result.value();
 
     // Runtime packet can read the Over-Range Count
-    EXPECT_TRUE(runtime_packet.is_valid());
     if (runtime_packet[over_range_count]) {
         EXPECT_EQ(runtime_packet[over_range_count].value(), count);
     }
@@ -105,8 +106,8 @@ TEST_F(ContextPacketTest, CIF0_22_WithOtherFields) {
     using CombinedContext =
         ContextPacket<NoTimestamp, NoClassId, sample_rate, over_range_count, gain>;
 
-    alignas(4) std::array<uint8_t, CombinedContext::size_bytes> buffer{};
-    CombinedContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, CombinedContext::size_bytes()> buffer{};
+    CombinedContext packet(buffer);
 
     // Set all fields
     packet[sample_rate].set_value(100'000'000.0); // 100 MHz

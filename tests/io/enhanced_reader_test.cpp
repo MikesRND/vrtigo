@@ -101,8 +101,7 @@ TEST(EnhancedReaderTest, DetectDataPackets) {
             data_packet_count++;
 
             // Verify we can access RuntimeDataPacket methods
-            auto& data_pkt = std::get<vrtigo::RuntimeDataPacket>(*pkt);
-            EXPECT_TRUE(data_pkt.is_valid());
+            auto& data_pkt = std::get<vrtigo::RuntimeDataPacket>(pkt->value());
 
             // Should have a payload
             auto payload = data_pkt.payload();
@@ -124,8 +123,8 @@ TEST(EnhancedReaderTest, DetectContextPackets) {
             context_packet_count++;
 
             // Verify we can access RuntimeContextPacket methods
-            auto& ctx_pkt = std::get<vrtigo::RuntimeContextPacket>(*pkt);
-            EXPECT_TRUE(ctx_pkt.is_valid());
+            auto& ctx_pkt = std::get<vrtigo::RuntimeContextPacket>(pkt->value());
+            (void)ctx_pkt; // Access verified
         }
     }
 
@@ -159,7 +158,8 @@ TEST(EnhancedReaderTest, ForEachDataPacket) {
 
     size_t processed = reader.for_each_data_packet([&](const vrtigo::RuntimeDataPacket& pkt) {
         data_count++;
-        EXPECT_TRUE(pkt.is_valid());
+        // RuntimeDataPacket from iterator is always valid (parse errors are skipped)
+        (void)pkt;
         return true;
     });
 
@@ -174,7 +174,8 @@ TEST(EnhancedReaderTest, ForEachContextPacket) {
 
     size_t processed = reader.for_each_context_packet([&](const vrtigo::RuntimeContextPacket& pkt) {
         context_count++;
-        EXPECT_TRUE(pkt.is_valid());
+        // RuntimeContextPacket from iterator is always valid (parse errors are skipped)
+        (void)pkt;
         return true;
     });
 
@@ -239,6 +240,7 @@ TEST(EnhancedReaderTest, VisitPacketVariant) {
 
     auto pkt = reader.read_next_packet();
     ASSERT_TRUE(pkt.has_value());
+    ASSERT_TRUE(pkt->ok()) << "Expected valid packet: " << pkt->error().message();
 
     bool visited = false;
 
@@ -248,17 +250,11 @@ TEST(EnhancedReaderTest, VisitPacketVariant) {
 
             if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
                 visited = true;
-                EXPECT_TRUE(p.is_valid());
             } else if constexpr (std::is_same_v<T, vrtigo::RuntimeContextPacket>) {
                 visited = true;
-                EXPECT_TRUE(p.is_valid());
-            } else if constexpr (std::is_same_v<T, InvalidPacket>) {
-                visited = true;
-                // Check error message is non-empty
-                EXPECT_FALSE(p.error_message().empty());
             }
         },
-        *pkt);
+        pkt->value());
 
     EXPECT_TRUE(visited);
 }
@@ -280,18 +276,19 @@ TEST(EnhancedReaderTest, EOFHandling) {
     EXPECT_FALSE(pkt.has_value());
 }
 
-TEST(EnhancedReaderTest, InvalidPacketHasErrorInfo) {
-    // This test just verifies the InvalidPacket structure works
+TEST(EnhancedReaderTest, ParseErrorHasErrorInfo) {
+    // This test verifies the ParseError structure works
 
     vrtigo::detail::DecodedHeader header{};
-    vrtigo::InvalidPacket invalid{ValidationError::buffer_too_small, PacketType::signal_data_no_id,
-                                  header, std::span<const uint8_t>{}};
+    vrtigo::ParseError error{ValidationError::buffer_too_small, PacketType::signal_data_no_id,
+                             header, std::span<const uint8_t>{}};
 
-    EXPECT_EQ(invalid.error, ValidationError::buffer_too_small);
-    EXPECT_FALSE(invalid.error_message().empty());
+    EXPECT_EQ(error.code, ValidationError::buffer_too_small);
+    EXPECT_NE(error.message(), nullptr);
+    EXPECT_FALSE(std::string(error.message()).empty());
 }
 
-TEST(EnhancedReaderTest, IOErrorReturnsInvalidPacket) {
+TEST(EnhancedReaderTest, IOErrorReturnsParseError) {
     // Create a temporary file with a truncated packet to trigger I/O error
     auto temp_path = std::filesystem::temp_directory_path() / "test_truncated.vrt";
 
@@ -314,23 +311,23 @@ TEST(EnhancedReaderTest, IOErrorReturnsInvalidPacket) {
 
     auto pkt = reader.read_next_packet();
 
-    // Should return a packet (not nullopt), but it should be InvalidPacket
+    // Should return a ParseResult (not nullopt), but it should be an error
     ASSERT_TRUE(pkt.has_value());
-    EXPECT_FALSE(is_valid(*pkt));
+    EXPECT_FALSE(pkt->ok());
 
-    // Verify it's an InvalidPacket with error information
-    auto* invalid = std::get_if<InvalidPacket>(&(*pkt));
-    ASSERT_NE(invalid, nullptr);
+    // Verify we can access error information
+    const auto& error = pkt->error();
 
     // Should have an error (not none)
-    EXPECT_NE(invalid->error, ValidationError::none);
-    EXPECT_FALSE(invalid->error_message().empty());
+    EXPECT_NE(error.code, ValidationError::none);
+    EXPECT_NE(error.message(), nullptr);
+    EXPECT_FALSE(std::string(error.message()).empty());
 
     // Clean up
     std::filesystem::remove(temp_path);
 }
 
-TEST(EnhancedReaderTest, InvalidPacketTypeReturnsInvalidPacket) {
+TEST(EnhancedReaderTest, InvalidPacketTypeReturnsParseError) {
     // Create a temporary file with an invalid packet type
     auto temp_path = std::filesystem::temp_directory_path() / "test_invalid_type.vrt";
 
@@ -357,13 +354,12 @@ TEST(EnhancedReaderTest, InvalidPacketTypeReturnsInvalidPacket) {
 
     auto pkt = reader.read_next_packet();
 
-    // Should return InvalidPacket
+    // Should return ParseError
     ASSERT_TRUE(pkt.has_value());
-    EXPECT_FALSE(is_valid(*pkt));
+    EXPECT_FALSE(pkt->ok());
 
-    auto* invalid = std::get_if<InvalidPacket>(&(*pkt));
-    ASSERT_NE(invalid, nullptr);
-    EXPECT_EQ(invalid->error, ValidationError::invalid_packet_type);
+    const auto& error = pkt->error();
+    EXPECT_EQ(error.code, ValidationError::invalid_packet_type);
 
     // Clean up
     std::filesystem::remove(temp_path);

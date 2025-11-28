@@ -16,8 +16,8 @@ or imaginary component was beyond range (Rule 9.10.6-2).
 ```cpp
     using OverRangeContext = ContextPacket<NoTimestamp, NoClassId, over_range_count>;
 
-    alignas(4) std::array<uint8_t, OverRangeContext::size_bytes> buffer{};
-    OverRangeContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, OverRangeContext::size_bytes()> buffer{};
+    OverRangeContext packet(buffer);
 
     // Set Over-Range Count to indicate 42 over-range samples
     uint32_t count = 42;

@@ -13,8 +13,8 @@ fixed-point format, providing ±8.79 THz range with 0.95 µHz resolution.
 ```cpp
     using RFRefContext = ContextPacket<NoTimestamp, NoClassId, rf_reference_frequency>;
 
-    alignas(4) std::array<uint8_t, RFRefContext::size_bytes> buffer{};
-    RFRefContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RFRefContext::size_bytes()> buffer{};
+    RFRefContext packet(buffer);
 
     // Set RF reference frequency to 2.4 GHz (WiFi band)
     packet[rf_reference_frequency].set_value(2.4e9);

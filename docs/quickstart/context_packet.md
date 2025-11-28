@@ -1,28 +1,15 @@
-// [TITLE]
-// Context Packet (Signal Metadata)
-// [/TITLE]
-//
-// This test demonstrates creating a VRT context packet
-// with signal parameters like sample rate and bandwidth.
+# Context Packet (Signal Metadata)
 
-#include <array>
+*Auto-generated from `tests/quickstart/context_packet_test.cpp`. All examples are tested.*
 
-#include <gtest/gtest.h>
-#include <vrtigo.hpp>
+---
 
-// [EXAMPLE]
-// Creating a Context Packet
-// [/EXAMPLE]
+## Creating a Context Packet
 
-// [DESCRIPTION]
-// This example demonstrates creating a VRT context packet to describe
-// signal characteristics.
-// [/DESCRIPTION]
+This example demonstrates creating a VRT context packet to describe
+signal characteristics.
 
-TEST(QuickstartSnippet, CreateContextPacket) {
-    using namespace vrtigo::field; // For convenient field access
-
-    // [SNIPPET]
+```cpp
     // Create a VRT Context Packet with signal parameters
     using namespace vrtigo::field; // Enable short field syntax
 
@@ -47,14 +34,5 @@ TEST(QuickstartSnippet, CreateContextPacket) {
     // You can read back values:
     auto fs = packet[sample_rate].value(); // Returns 100'000'000.0 Hz
     auto bw = packet[bandwidth].value();   // Returns 40'000'000.0 Hz
-    // [/SNIPPET]
+```
 
-    // Basic verification that the packet was created correctly
-    ASSERT_EQ(packet.stream_id(), 0x12345678);
-    ASSERT_DOUBLE_EQ(packet[sample_rate].value(), 100'000'000.0);
-    ASSERT_DOUBLE_EQ(packet[bandwidth].value(), 40'000'000.0);
-
-    // Verify we can read the values back
-    ASSERT_DOUBLE_EQ(fs, 100'000'000.0);
-    ASSERT_DOUBLE_EQ(bw, 40'000'000.0);
-}

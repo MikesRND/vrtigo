@@ -6,7 +6,8 @@ TEST_F(ContextPacketTest, TimestampInitialization) {
     // Note: Context packets always have Stream ID per VITA 49.2 spec
     using TestContext = ContextPacket<UtcRealTimestamp, NoClassId>; // No context fields
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
+    TestContext packet(pkt_buffer);
 
     // Timestamps should be zero-initialized
     auto ts = packet.timestamp();
@@ -17,7 +18,8 @@ TEST_F(ContextPacketTest, TimestampInitialization) {
 TEST_F(ContextPacketTest, TimestampIntegerAccess) {
     using TestContext = ContextPacket<UtcRealTimestamp, NoClassId>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
+    TestContext packet(pkt_buffer);
 
     // Set timestamp with integer only
     UtcRealTimestamp ts(1699000000, 0);
@@ -30,7 +32,8 @@ TEST_F(ContextPacketTest, TimestampIntegerAccess) {
 TEST_F(ContextPacketTest, TimestampFractionalAccess) {
     using TestContext = ContextPacket<UtcRealTimestamp, NoClassId>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
+    TestContext packet(pkt_buffer);
 
     // Set timestamp with fractional part
     uint64_t frac = 500000000000ULL;
@@ -44,7 +47,8 @@ TEST_F(ContextPacketTest, TimestampFractionalAccess) {
 TEST_F(ContextPacketTest, UnifiedTimestampAccess) {
     using TestContext = ContextPacket<UtcRealTimestamp, NoClassId>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
+    TestContext packet(pkt_buffer);
 
     // Create a timestamp
     UtcRealTimestamp ts(1699000000, 250000000000ULL);
@@ -61,7 +65,8 @@ TEST_F(ContextPacketTest, UnifiedTimestampAccess) {
 TEST_F(ContextPacketTest, TimestampWithClassId) {
     using TestContext = ContextPacket<UtcRealTimestamp, ClassId>; // Has class ID (8 bytes)
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
+    TestContext packet(pkt_buffer);
 
     // Timestamps should be zero-initialized even with class ID present
     auto ts_init = packet.timestamp();
@@ -90,7 +95,8 @@ TEST_F(ContextPacketTest, TimestampWithClassId) {
 TEST_F(ContextPacketTest, TimestampWithContextFields) {
     using TestContext = ContextPacket<UtcRealTimestamp, NoClassId, bandwidth, sample_rate>;
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
+    TestContext packet(pkt_buffer);
 
     // Set all fields
     packet.set_stream_id(0x12345678);

@@ -12,8 +12,8 @@ samples in Q3.12 format with 1024 samples per vector.
 ```cpp
     using FormatContext = ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
 
-    alignas(4) std::array<uint8_t, FormatContext::size_bytes> buffer{};
-    FormatContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, FormatContext::size_bytes()> buffer{};
+    FormatContext packet(buffer);
 
     auto format = packet[data_payload_format].value();
 
@@ -34,8 +34,8 @@ format (32 bits per component) with 512 samples per vector and link-efficient pa
 ```cpp
     using FormatContext = ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
 
-    alignas(4) std::array<uint8_t, FormatContext::size_bytes> buffer{};
-    FormatContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, FormatContext::size_bytes()> buffer{};
+    FormatContext packet(buffer);
 
     auto format = packet[data_payload_format].value();
 
@@ -57,8 +57,8 @@ call, returning a tuple. This is more efficient than individual get() calls.
 ```cpp
     using FormatContext = ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
 
-    alignas(4) std::array<uint8_t, FormatContext::size_bytes> buffer{};
-    FormatContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, FormatContext::size_bytes()> buffer{};
+    FormatContext packet(buffer);
 
     auto format = packet[data_payload_format].value();
 
@@ -82,8 +82,8 @@ enum values for fields that declare them, requiring no manual casting.
 ```cpp
     using FormatContext = ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
 
-    alignas(4) std::array<uint8_t, FormatContext::size_bytes> buffer{};
-    FormatContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, FormatContext::size_bytes()> buffer{};
+    FormatContext packet(buffer);
 
     // Simulate received data with specific format
     auto format = packet[data_payload_format].value();

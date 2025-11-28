@@ -13,8 +13,8 @@ channelized signals. When present, the original frequency is RF Reference Freque
 ```cpp
     using RFOffsetContext = ContextPacket<NoTimestamp, NoClassId, rf_frequency_offset>;
 
-    alignas(4) std::array<uint8_t, RFOffsetContext::size_bytes> buffer{};
-    RFOffsetContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, RFOffsetContext::size_bytes()> buffer{};
+    RFOffsetContext packet(buffer);
 
     // Set RF frequency offset to 1 MHz (channelizer offset)
     packet[rf_frequency_offset].set_value(1.0e6);

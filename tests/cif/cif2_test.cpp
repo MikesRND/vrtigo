@@ -8,10 +8,11 @@ TEST_F(ContextPacketTest, CIF2Fields) {
                                       NoClassId,        // No class ID
                                       controller_uuid>; // CIF2 field
 
-    TestContext packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext packet(buffer);
 
     // Check size includes CIF2 field
-    EXPECT_EQ(TestContext::size_words,
+    EXPECT_EQ(TestContext::size_words(),
               1 + 1 + 1 + 1 + 4); // header + stream_id + cif0 + cif2 + uuid
 }
 
@@ -19,6 +20,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF2) {
     // Build a packet with CIF2 enabled and Controller UUID field
     // Type 4 has stream ID: header(1) + stream_id(1) + CIF0(1) + CIF2(1) + Controller UUID(4) = 8
     // words
+    alignas(4) std::array<uint8_t, 8 * 4> buffer{};
     uint32_t header = (static_cast<uint32_t>(PacketType::context) << header::packet_type_shift) | 8;
     cif::write_u32_safe(buffer.data(), 0, header);
 
@@ -42,8 +44,9 @@ TEST_F(ContextPacketTest, RuntimeParseCIF2) {
     cif::write_u32_safe(buffer.data(), 28, expected_uuid[3]);
 
     // Parse and validate
-    RuntimeContextPacket view(buffer.data(), 8 * 4);
-    EXPECT_EQ(view.error(), ValidationError::none);
+    auto result = RuntimeContextPacket::parse(buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
 
     // Verify CIF0 and CIF2 are read correctly
     EXPECT_EQ(view.cif0(), cif0_mask);
@@ -74,12 +77,14 @@ TEST_F(ContextPacketTest, CompileTimeCIF2RuntimeParse) {
     static_assert((TestContext::cif0_value & 0x02) == 0,
                   "CIF1 enable bit (bit 1) should NOT be set when CIF1 == 0");
 
-    TestContext tx_packet(buffer.data());
+    alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
+    TestContext tx_packet(buffer);
     tx_packet.set_stream_id(0xAABBCCDD);
 
     // Parse with runtime view
-    RuntimeContextPacket view(buffer.data(), TestContext::size_bytes);
-    EXPECT_EQ(view.error(), ValidationError::none);
+    auto result = RuntimeContextPacket::parse(buffer);
+    ASSERT_TRUE(result.ok()) << result.error().message();
+    const auto& view = result.value();
     EXPECT_EQ(view.stream_id().value(), 0xAABBCCDD);
     // CIF0 should have bit 2 set (CIF2 enable)
     EXPECT_EQ(view.cif0() & 0x04, 0x04);

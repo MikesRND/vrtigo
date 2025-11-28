@@ -142,12 +142,11 @@ quick-check:
 
 All scripts (except `install-verify.sh`) build with:
 - Tests: **ON**
-- Examples: **ON**
 - Benchmarks: **OFF**
 
 IO helpers are always available (no optional toggle).
 
-The `install-verify.sh` script builds a minimal library (tests/examples/benchmarks OFF) to test the install workflow.
+The `install-verify.sh` script builds a minimal library (tests/benchmarks OFF) to test the install workflow.
 
 ## Common Workflows
 
