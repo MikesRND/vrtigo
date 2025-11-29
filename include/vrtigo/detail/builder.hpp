@@ -5,7 +5,7 @@
 
 #include <vrtigo/class_id.hpp>
 
-#include "data_packet.hpp"
+#include "../typed/data_packet.hpp"
 #include "packet_concepts.hpp"
 #include "trailer_view.hpp"
 

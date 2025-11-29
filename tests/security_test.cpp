@@ -5,7 +5,7 @@
 #include <vrtigo.hpp>
 
 // Test fixture for security validation tests
-// Tests RuntimeDataPacket::parse() validation of untrusted data
+// Tests dynamic::DataPacket::parse() validation of untrusted data
 class SecurityTest : public ::testing::Test {
 protected:
     // Helper to corrupt a specific field in the header
@@ -21,14 +21,14 @@ protected:
 
 // Test 1: Valid packet should parse successfully
 TEST_F(SecurityTest, ValidPacketParsesSuccessfully) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                                vrtigo::Trailer::included, 256>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                                       vrtigo::Trailer::included, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
 
-    // Parse with RuntimeDataPacket
-    auto result = vrtigo::RuntimeDataPacket::parse(buffer);
+    // Parse with dynamic::DataPacket
+    auto result = vrtigo::dynamic::DataPacket::parse(buffer);
     EXPECT_TRUE(result.ok());
 
     if (result.ok()) {
@@ -44,30 +44,30 @@ TEST_F(SecurityTest, ValidPacketParsesSuccessfully) {
 TEST_F(SecurityTest, BufferTooSmallForHeader) {
     std::array<uint8_t, 3> tiny_buffer{};
 
-    auto result = vrtigo::RuntimeDataPacket::parse(tiny_buffer);
+    auto result = vrtigo::dynamic::DataPacket::parse(tiny_buffer);
     EXPECT_FALSE(result.ok());
     EXPECT_EQ(result.error().code, vrtigo::ValidationError::buffer_too_small);
 }
 
 // Test 3: Buffer too small for declared size
 TEST_F(SecurityTest, BufferTooSmallForDeclaredSize) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                                vrtigo::Trailer::none, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
+                                                       vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
 
     // Parse with truncated buffer
     std::span<const uint8_t> truncated(buffer.data(), buffer.size() - 4);
-    auto result = vrtigo::RuntimeDataPacket::parse(truncated);
+    auto result = vrtigo::dynamic::DataPacket::parse(truncated);
     EXPECT_FALSE(result.ok());
     EXPECT_EQ(result.error().code, vrtigo::ValidationError::buffer_too_small);
 }
 
 // Test 4: Wrong packet type (context packet)
 TEST_F(SecurityTest, ContextPacketTypeMismatch) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                                vrtigo::Trailer::none, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
+                                                       vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -75,15 +75,15 @@ TEST_F(SecurityTest, ContextPacketTypeMismatch) {
     // Corrupt packet type field (bits 31-28) to type 4 (context)
     corrupt_header_field(buffer.data(), 0xF0000000, 0x40000000);
 
-    auto result = vrtigo::RuntimeDataPacket::parse(buffer);
+    auto result = vrtigo::dynamic::DataPacket::parse(buffer);
     EXPECT_FALSE(result.ok());
     EXPECT_EQ(result.error().code, vrtigo::ValidationError::packet_type_mismatch);
 }
 
 // Test 5: Wrong packet type (extension context)
 TEST_F(SecurityTest, ExtensionContextPacketTypeMismatch) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                                vrtigo::Trailer::none, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
+                                                       vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -91,15 +91,15 @@ TEST_F(SecurityTest, ExtensionContextPacketTypeMismatch) {
     // Corrupt packet type field to type 5 (extension context)
     corrupt_header_field(buffer.data(), 0xF0000000, 0x50000000);
 
-    auto result = vrtigo::RuntimeDataPacket::parse(buffer);
+    auto result = vrtigo::dynamic::DataPacket::parse(buffer);
     EXPECT_FALSE(result.ok());
     EXPECT_EQ(result.error().code, vrtigo::ValidationError::packet_type_mismatch);
 }
 
 // Test 6: Size field mismatch (too large)
 TEST_F(SecurityTest, SizeFieldTooLarge) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                                vrtigo::Trailer::none, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
+                                                       vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -107,15 +107,15 @@ TEST_F(SecurityTest, SizeFieldTooLarge) {
     // Corrupt size field (bits 15-0) to claim larger size than buffer
     corrupt_header_field(buffer.data(), 0x0000FFFF, 65535);
 
-    auto result = vrtigo::RuntimeDataPacket::parse(buffer);
+    auto result = vrtigo::dynamic::DataPacket::parse(buffer);
     EXPECT_FALSE(result.ok());
     EXPECT_EQ(result.error().code, vrtigo::ValidationError::buffer_too_small);
 }
 
 // Test 7: Size field mismatch (zero)
 TEST_F(SecurityTest, SizeFieldZero) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                                vrtigo::Trailer::none, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
+                                                       vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -123,7 +123,7 @@ TEST_F(SecurityTest, SizeFieldZero) {
     // Corrupt size field to 0
     corrupt_header_field(buffer.data(), 0x0000FFFF, 0);
 
-    auto result = vrtigo::RuntimeDataPacket::parse(buffer);
+    auto result = vrtigo::dynamic::DataPacket::parse(buffer);
     EXPECT_FALSE(result.ok());
     // Zero size should trigger size_field_mismatch (minimum is 1 word for header)
     EXPECT_EQ(result.error().code, vrtigo::ValidationError::size_field_mismatch);
@@ -131,15 +131,15 @@ TEST_F(SecurityTest, SizeFieldZero) {
 
 // Test 8: Minimal packet validation (header only)
 TEST_F(SecurityTest, MinimalPacketValidation) {
-    using PacketType =
-        vrtigo::SignalDataPacketNoId<vrtigo::NoClassId, vrtigo::NoTimestamp, vrtigo::Trailer::none,
-                                     0 // Zero payload
-                                     >;
+    using PacketType = vrtigo::typed::SignalDataPacketNoId<vrtigo::NoClassId, vrtigo::NoTimestamp,
+                                                           vrtigo::Trailer::none,
+                                                           0 // Zero payload
+                                                           >;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
 
-    auto result = vrtigo::RuntimeDataPacket::parse(buffer);
+    auto result = vrtigo::dynamic::DataPacket::parse(buffer);
     EXPECT_TRUE(result.ok());
     EXPECT_EQ(PacketType::size_bytes(), 4); // Just header
 
@@ -150,15 +150,15 @@ TEST_F(SecurityTest, MinimalPacketValidation) {
 
 // Test 9: Maximum configuration validation
 TEST_F(SecurityTest, MaximumConfigurationValidation) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                                vrtigo::Trailer::included,
-                                                1024 // Large payload
-                                                >;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                                       vrtigo::Trailer::included,
+                                                       1024 // Large payload
+                                                       >;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
 
-    auto result = vrtigo::RuntimeDataPacket::parse(buffer);
+    auto result = vrtigo::dynamic::DataPacket::parse(buffer);
     EXPECT_TRUE(result.ok());
 
     if (result.ok()) {
@@ -168,8 +168,8 @@ TEST_F(SecurityTest, MaximumConfigurationValidation) {
 
 // Test 10: Multiple errors (buffer too small takes priority)
 TEST_F(SecurityTest, MultipleErrors) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                                vrtigo::Trailer::included, 256>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                                       vrtigo::Trailer::included, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -179,12 +179,12 @@ TEST_F(SecurityTest, MultipleErrors) {
 
     // Buffer size error takes priority (parse with tiny buffer)
     std::span<const uint8_t> tiny_span(buffer.data(), 2);
-    auto result = vrtigo::RuntimeDataPacket::parse(tiny_span);
+    auto result = vrtigo::dynamic::DataPacket::parse(tiny_span);
     EXPECT_FALSE(result.ok());
     EXPECT_EQ(result.error().code, vrtigo::ValidationError::buffer_too_small);
 
     // With sufficient buffer, type mismatch should be reported
-    auto result2 = vrtigo::RuntimeDataPacket::parse(buffer);
+    auto result2 = vrtigo::dynamic::DataPacket::parse(buffer);
     EXPECT_FALSE(result2.ok());
     EXPECT_EQ(result2.error().code, vrtigo::ValidationError::packet_type_mismatch);
 }
@@ -202,13 +202,14 @@ TEST_F(SecurityTest, ErrorStringConversion) {
 
 // Test 12: Type 0 (signal_data_no_id) packet parses successfully
 TEST_F(SecurityTest, Type0PacketValidation) {
-    using PacketType = vrtigo::SignalDataPacketNoId<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                                    vrtigo::Trailer::none, 256>;
+    using PacketType =
+        vrtigo::typed::SignalDataPacketNoId<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                            vrtigo::Trailer::none, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
 
-    auto result = vrtigo::RuntimeDataPacket::parse(buffer);
+    auto result = vrtigo::dynamic::DataPacket::parse(buffer);
     EXPECT_TRUE(result.ok());
 
     if (result.ok()) {
@@ -219,14 +220,14 @@ TEST_F(SecurityTest, Type0PacketValidation) {
 
 // Test 13: Type 1 (signal_data) packet parses successfully
 TEST_F(SecurityTest, Type1PacketValidation) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                                vrtigo::Trailer::none, 256>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                                       vrtigo::Trailer::none, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
     packet.set_stream_id(0x12345678);
 
-    auto result = vrtigo::RuntimeDataPacket::parse(buffer);
+    auto result = vrtigo::dynamic::DataPacket::parse(buffer);
     EXPECT_TRUE(result.ok());
 
     if (result.ok()) {
@@ -238,10 +239,10 @@ TEST_F(SecurityTest, Type1PacketValidation) {
 
 // Test 14: Parsing untrusted network data pattern
 TEST_F(SecurityTest, UntrustedNetworkDataPattern) {
-    using PacketType =
-        vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp, vrtigo::Trailer::none,
-                                 505 // Fits in 2048 byte buffer
-                                 >;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                                       vrtigo::Trailer::none,
+                                                       505 // Fits in 2048 byte buffer
+                                                       >;
 
     // Simulate receiving packet from network
     alignas(4) std::array<uint8_t, 2048> network_buffer{};
@@ -254,8 +255,8 @@ TEST_F(SecurityTest, UntrustedNetworkDataPattern) {
     auto ts = vrtigo::UtcRealTimestamp(1234567890, 999999999999ULL);
     tx_packet.set_timestamp(ts);
 
-    // Parse as untrusted data using RuntimeDataPacket
-    auto result = vrtigo::RuntimeDataPacket::parse(network_buffer);
+    // Parse as untrusted data using dynamic::DataPacket
+    auto result = vrtigo::dynamic::DataPacket::parse(network_buffer);
     EXPECT_TRUE(result.ok());
 
     if (result.ok()) {
@@ -270,8 +271,8 @@ TEST_F(SecurityTest, UntrustedNetworkDataPattern) {
 
 // Test 15: Defense against size field manipulation
 TEST_F(SecurityTest, SizeFieldManipulationDefense) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                                vrtigo::Trailer::none, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
+                                                       vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -279,7 +280,7 @@ TEST_F(SecurityTest, SizeFieldManipulationDefense) {
     // Attacker tries to claim packet is larger than buffer
     corrupt_header_field(buffer.data(), 0x0000FFFF, 65535);
 
-    auto result = vrtigo::RuntimeDataPacket::parse(buffer);
+    auto result = vrtigo::dynamic::DataPacket::parse(buffer);
     EXPECT_FALSE(result.ok());
     // Should detect that declared size exceeds buffer
     EXPECT_EQ(result.error().code, vrtigo::ValidationError::buffer_too_small);
@@ -287,8 +288,8 @@ TEST_F(SecurityTest, SizeFieldManipulationDefense) {
 
 // Test 16: ParseError provides useful information
 TEST_F(SecurityTest, ParseErrorInformation) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                                vrtigo::Trailer::none, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
+                                                       vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -296,7 +297,7 @@ TEST_F(SecurityTest, ParseErrorInformation) {
     // Corrupt to context packet type
     corrupt_header_field(buffer.data(), 0xF0000000, 0x40000000);
 
-    auto result = vrtigo::RuntimeDataPacket::parse(buffer);
+    auto result = vrtigo::dynamic::DataPacket::parse(buffer);
     EXPECT_FALSE(result.ok());
 
     const auto& error = result.error();
@@ -308,13 +309,13 @@ TEST_F(SecurityTest, ParseErrorInformation) {
 
 // Test 17: Extension data packet types parse successfully
 TEST_F(SecurityTest, ExtensionDataPacketValidation) {
-    using PacketType = vrtigo::ExtensionDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                                   vrtigo::Trailer::none, 64>;
+    using PacketType = vrtigo::typed::ExtensionDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
+                                                          vrtigo::Trailer::none, 64>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
 
-    auto result = vrtigo::RuntimeDataPacket::parse(buffer);
+    auto result = vrtigo::dynamic::DataPacket::parse(buffer);
     EXPECT_TRUE(result.ok());
 
     if (result.ok()) {
@@ -326,15 +327,14 @@ TEST_F(SecurityTest, ExtensionDataPacketValidation) {
 TEST_F(SecurityTest, TimestampVariations) {
     // Test TSI only
     {
-        using PacketType =
-            vrtigo::SignalDataPacket<vrtigo::NoClassId,
-                                     vrtigo::Timestamp<vrtigo::TsiType::utc, vrtigo::TsfType::none>,
-                                     vrtigo::Trailer::none, 32>;
+        using PacketType = vrtigo::typed::SignalDataPacket<
+            vrtigo::NoClassId, vrtigo::Timestamp<vrtigo::TsiType::utc, vrtigo::TsfType::none>,
+            vrtigo::Trailer::none, 32>;
 
         alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
         PacketType packet(buffer);
 
-        auto result = vrtigo::RuntimeDataPacket::parse(buffer);
+        auto result = vrtigo::dynamic::DataPacket::parse(buffer);
         EXPECT_TRUE(result.ok());
         if (result.ok()) {
             auto ts = result.value().timestamp();
@@ -346,14 +346,14 @@ TEST_F(SecurityTest, TimestampVariations) {
 
     // Test TSF only
     {
-        using PacketType = vrtigo::SignalDataPacket<
+        using PacketType = vrtigo::typed::SignalDataPacket<
             vrtigo::NoClassId, vrtigo::Timestamp<vrtigo::TsiType::none, vrtigo::TsfType::real_time>,
             vrtigo::Trailer::none, 32>;
 
         alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
         PacketType packet(buffer);
 
-        auto result = vrtigo::RuntimeDataPacket::parse(buffer);
+        auto result = vrtigo::dynamic::DataPacket::parse(buffer);
         EXPECT_TRUE(result.ok());
         if (result.ok()) {
             auto ts = result.value().timestamp();
@@ -365,13 +365,13 @@ TEST_F(SecurityTest, TimestampVariations) {
 
     // Test no timestamp
     {
-        using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                                    vrtigo::Trailer::none, 32>;
+        using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
+                                                           vrtigo::Trailer::none, 32>;
 
         alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
         PacketType packet(buffer);
 
-        auto result = vrtigo::RuntimeDataPacket::parse(buffer);
+        auto result = vrtigo::dynamic::DataPacket::parse(buffer);
         EXPECT_TRUE(result.ok());
         if (result.ok()) {
             EXPECT_FALSE(result.value().timestamp().has_value());

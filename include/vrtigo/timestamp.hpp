@@ -22,6 +22,9 @@ class Timestamp;
 namespace detail {
 class RuntimePacketBase;
 }
+namespace dynamic::detail {
+class PacketBase;
+}
 
 /**
  * Type-erased timestamp value for runtime packet parsing
@@ -59,7 +62,8 @@ private:
     // Construction only via Timestamp conversion or runtime packet classes
     template <TsiType, TsfType>
     friend class Timestamp;
-    friend class detail::RuntimePacketBase; // Base class for runtime packets
+    friend class detail::RuntimePacketBase;   // Base class for runtime packets (legacy)
+    friend class dynamic::detail::PacketBase; // Base class for rt namespace packets
 
     constexpr TimestampValue(uint32_t tsi, uint64_t tsf, TsiType tsi_kind,
                              TsfType tsf_kind) noexcept

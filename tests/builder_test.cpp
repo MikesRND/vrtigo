@@ -16,8 +16,8 @@ protected:
 
 // Test 1: Basic builder usage
 TEST_F(BuilderTest, BasicBuilder) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                                vrtigo::Trailer::none, 256>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                                       vrtigo::Trailer::none, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     std::array<uint8_t, 1024> payload;
@@ -38,8 +38,8 @@ TEST_F(BuilderTest, BasicBuilder) {
 
 // Test 2: Fluent chaining
 TEST_F(BuilderTest, FluentChaining) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                                vrtigo::Trailer::included, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                                       vrtigo::Trailer::included, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -64,8 +64,8 @@ TEST_F(BuilderTest, FluentChaining) {
 }
 
 TEST_F(BuilderTest, TrailerBuilderValueObject) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                                vrtigo::Trailer::included, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                                       vrtigo::Trailer::included, 64>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -88,8 +88,8 @@ TEST_F(BuilderTest, TrailerBuilderValueObject) {
 }
 
 TEST_F(BuilderTest, TrailerBuilderChaining) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                                vrtigo::Trailer::included, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                                       vrtigo::Trailer::included, 64>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -115,8 +115,8 @@ TEST_F(BuilderTest, TrailerBuilderChaining) {
 
 // Explicitly verify the legacy raw-literal setter remains available
 TEST_F(BuilderTest, RawTrailerLiteralStillSupported) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                                vrtigo::Trailer::included, 32>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                                       vrtigo::Trailer::included, 32>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -128,8 +128,8 @@ TEST_F(BuilderTest, RawTrailerLiteralStillSupported) {
 
 // Test 3: Builder with span payload
 TEST_F(BuilderTest, BuilderWithSpan) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                                vrtigo::Trailer::none, 256>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
+                                                       vrtigo::Trailer::none, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     std::array<uint8_t, 1024> payload_data;
@@ -153,8 +153,8 @@ TEST_F(BuilderTest, BuilderWithSpan) {
 
 // Test 4: Builder with container payload
 TEST_F(BuilderTest, BuilderWithContainer) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                                vrtigo::Trailer::none, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                                       vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     std::vector<uint8_t> payload_vector(512);
@@ -180,8 +180,8 @@ TEST_F(BuilderTest, BuilderWithContainer) {
 
 // Test 5: Partial builder (not all optional fields)
 TEST_F(BuilderTest, PartialBuilder) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                                vrtigo::Trailer::included, 256>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                                       vrtigo::Trailer::included, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -202,8 +202,8 @@ TEST_F(BuilderTest, PartialBuilder) {
 
 // Test 6: Builder returns reference (no copy)
 TEST_F(BuilderTest, BuilderReturnsReference) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                                vrtigo::Trailer::none, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
+                                                       vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -221,8 +221,8 @@ TEST_F(BuilderTest, BuilderReturnsReference) {
 
 // Test 7: as_bytes() method
 TEST_F(BuilderTest, AsBytesMethod) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                                vrtigo::Trailer::none, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                                       vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -239,8 +239,8 @@ TEST_F(BuilderTest, AsBytesMethod) {
 
 // Test 8: make_builder helper
 TEST_F(BuilderTest, MakeBuilderHelper) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                                vrtigo::Trailer::none, 256>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                                       vrtigo::Trailer::none, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -254,8 +254,9 @@ TEST_F(BuilderTest, MakeBuilderHelper) {
 
 // Test 9: Builder without optional fields (Type 0)
 TEST_F(BuilderTest, BuilderType0NoStream) {
-    using PacketType = vrtigo::SignalDataPacketNoId<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                                    vrtigo::Trailer::none, 128>;
+    using PacketType =
+        vrtigo::typed::SignalDataPacketNoId<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                            vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -270,8 +271,8 @@ TEST_F(BuilderTest, BuilderType0NoStream) {
 
 // Test 10: Multiple builders on different buffers
 TEST_F(BuilderTest, MultipleBuilders) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                                vrtigo::Trailer::none, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                                       vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer1;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer2;
@@ -298,8 +299,8 @@ TEST_F(BuilderTest, MultipleBuilders) {
 
 // Test 11: Builder build() method returns reference
 TEST_F(BuilderTest, BuilderBuildMethod) {
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                                vrtigo::Trailer::none, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
+                                                       vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 

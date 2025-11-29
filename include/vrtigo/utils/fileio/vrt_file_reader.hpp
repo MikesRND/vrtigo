@@ -33,9 +33,9 @@ namespace vrtigo::utils::fileio {
  * - ParseResult with value = Valid packet
  *
  * Supported packet types:
- * - Signal Data (0-1) -> RuntimeDataPacket
- * - Extension Data (2-3) -> RuntimeDataPacket
- * - Context (4-5) -> RuntimeContextPacket
+ * - Signal Data (0-1) -> dynamic::DataPacket
+ * - Extension Data (2-3) -> dynamic::DataPacket
+ * - Context (4-5) -> dynamic::ContextPacket
  * - Command (6-7) -> ParseError (not yet implemented)
  *
  * @tparam MaxPacketWords Maximum packet size in 32-bit words (default: 65535)
@@ -53,11 +53,11 @@ namespace vrtigo::utils::fileio {
  *     if (*result) {
  *         std::visit([](auto&& p) {
  *             using T = std::decay_t<decltype(p)>;
- *             if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
+ *             if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacket>) {
  *                 auto payload = p.payload();
  *                 // Process data...
  *             }
- *             else if constexpr (std::is_same_v<T, vrtigo::RuntimeContextPacket>) {
+ *             else if constexpr (std::is_same_v<T, vrtigo::dynamic::ContextPacket>) {
  *                 if (auto bw = p[vrtigo::field::bandwidth]) {
  *                     std::cout << "BW: " << bw.value() << " Hz\n";
  *                 }
@@ -69,7 +69,7 @@ namespace vrtigo::utils::fileio {
  * }
  *
  * // Or use filtered iteration
- * reader.for_each_data_packet([](const vrtigo::RuntimeDataPacket& pkt) {
+ * reader.for_each_data_packet([](const vrtigo::dynamic::DataPacket& pkt) {
  *     // Only valid data packets here
  *     return true; // continue
  * });
@@ -108,7 +108,7 @@ public:
      * Reads the next packet from the file, automatically detects its type,
      * validates it, and returns a type-safe variant containing the appropriate view.
      *
-     * @return ParseResult<PacketVariant> containing RuntimeDataPacket or RuntimeContextPacket
+     * @return ParseResult<PacketVariant> containing dynamic::DataPacket or dynamic::ContextPacket
      *         on success, or ParseError on failure. Returns std::nullopt on EOF.
      *
      * @note I/O errors (corrupt header, truncated payload, etc.) are returned as
@@ -170,15 +170,15 @@ public:
      * @brief Iterate over data packets only (signal/extension data)
      *
      * Processes only valid data packets (types 0-3), skipping context packets
-     * and invalid packets. The callback receives a validated RuntimeDataPacket.
+     * and invalid packets. The callback receives a validated dynamic::DataPacket.
      *
-     * @tparam Callback Function type with signature: bool(const vrtigo::RuntimeDataPacket&)
+     * @tparam Callback Function type with signature: bool(const vrtigo::dynamic::DataPacket&)
      * @param callback Function called for each data packet. Return false to stop.
      * @return Number of data packets processed
      *
      * Example:
      * @code
-     * reader.for_each_data_packet([](const vrtigo::RuntimeDataPacket& pkt) {
+     * reader.for_each_data_packet([](const vrtigo::dynamic::DataPacket& pkt) {
      *     auto payload = pkt.payload();
      *     process_signal_data(payload);
      *     return true;
@@ -194,15 +194,15 @@ public:
      * @brief Iterate over context packets only (context/extension context)
      *
      * Processes only valid context packets (types 4-5), skipping data packets
-     * and invalid packets. The callback receives a validated RuntimeContextPacket.
+     * and invalid packets. The callback receives a validated dynamic::ContextPacket.
      *
-     * @tparam Callback Function type with signature: bool(const vrtigo::RuntimeContextPacket&)
+     * @tparam Callback Function type with signature: bool(const vrtigo::dynamic::ContextPacket&)
      * @param callback Function called for each context packet. Return false to stop.
      * @return Number of context packets processed
      *
      * Example:
      * @code
-     * reader.for_each_context_packet([](const vrtigo::RuntimeContextPacket& pkt) {
+     * reader.for_each_context_packet([](const vrtigo::dynamic::ContextPacket& pkt) {
      *     if (auto bw = pkt.bandwidth()) {
      *         std::cout << "Bandwidth: " << bw->raw_value() << " Hz\n";
      *     }

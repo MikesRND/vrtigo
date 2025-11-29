@@ -21,7 +21,7 @@ protected:
 // =============================================================================
 
 TEST_F(InterpretedValueTest, BandwidthInterpretedRead) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -39,7 +39,7 @@ TEST_F(InterpretedValueTest, BandwidthInterpretedRead) {
 }
 
 TEST_F(InterpretedValueTest, BandwidthInterpretedWrite) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -53,7 +53,7 @@ TEST_F(InterpretedValueTest, BandwidthInterpretedWrite) {
 }
 
 TEST_F(InterpretedValueTest, BandwidthRoundTrip) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -76,7 +76,7 @@ TEST_F(InterpretedValueTest, BandwidthRoundTrip) {
 }
 
 TEST_F(InterpretedValueTest, BandwidthOperatorDereference) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -92,7 +92,7 @@ TEST_F(InterpretedValueTest, BandwidthOperatorDereference) {
 }
 
 TEST_F(InterpretedValueTest, BandwidthConversionPrecision) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -113,7 +113,7 @@ TEST_F(InterpretedValueTest, BandwidthConversionPrecision) {
 }
 
 TEST_F(InterpretedValueTest, BandwidthEdgeCases) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -136,7 +136,7 @@ TEST_F(InterpretedValueTest, BandwidthEdgeCases) {
 // =============================================================================
 
 TEST_F(InterpretedValueTest, SampleRateInterpretedRead) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -154,7 +154,7 @@ TEST_F(InterpretedValueTest, SampleRateInterpretedRead) {
 }
 
 TEST_F(InterpretedValueTest, SampleRateInterpretedWrite) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -168,7 +168,7 @@ TEST_F(InterpretedValueTest, SampleRateInterpretedWrite) {
 }
 
 TEST_F(InterpretedValueTest, SampleRateRoundTrip) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -192,7 +192,7 @@ TEST_F(InterpretedValueTest, SampleRateRoundTrip) {
 }
 
 TEST_F(InterpretedValueTest, SampleRateOperatorDereference) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -208,7 +208,7 @@ TEST_F(InterpretedValueTest, SampleRateOperatorDereference) {
 }
 
 TEST_F(InterpretedValueTest, SampleRateConversionPrecision) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -229,7 +229,7 @@ TEST_F(InterpretedValueTest, SampleRateConversionPrecision) {
 }
 
 TEST_F(InterpretedValueTest, SampleRateTypicalADCRates) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -255,7 +255,7 @@ TEST_F(InterpretedValueTest, SampleRateTypicalADCRates) {
 }
 
 TEST_F(InterpretedValueTest, SampleRateEdgeCases) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -284,7 +284,7 @@ TEST_F(InterpretedValueTest, SampleRateEdgeCases) {
 
 TEST_F(InterpretedValueTest, BandwidthAndSampleRateTogether) {
     // Typical use case: both bandwidth and sample rate in same packet
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -306,7 +306,7 @@ TEST_F(InterpretedValueTest, BandwidthAndSampleRateTogether) {
 
 TEST_F(InterpretedValueTest, RuntimeParserIntegration) {
     // Build packet with compile-time type
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext tx_packet(buffer);
@@ -316,7 +316,7 @@ TEST_F(InterpretedValueTest, RuntimeParserIntegration) {
     tx_packet[sample_rate].set_value(80'000'000.0); // 80 MSPS
 
     // Parse with runtime view
-    auto result = RuntimeContextPacket::parse(buffer);
+    auto result = dynamic::ContextPacket::parse(buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
 

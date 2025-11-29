@@ -12,7 +12,7 @@ the lower 16 bits of a 32-bit word, providing ±256 dBm range with 1/128 dBm
 resolution (approximately 0.0078 dBm).
 
 ```cpp
-    using RefLevelContext = ContextPacket<NoTimestamp, NoClassId, reference_level>;
+    using RefLevelContext = typed::ContextPacket<NoTimestamp, NoClassId, reference_level>;
 
     alignas(4) std::array<uint8_t, RefLevelContext::size_bytes()> buffer{};
     RefLevelContext packet(buffer);

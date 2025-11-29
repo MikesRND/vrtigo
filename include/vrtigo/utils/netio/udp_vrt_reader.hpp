@@ -22,8 +22,7 @@
 #include "../../detail/header_decode.hpp"
 #include "../../detail/packet_parser.hpp"
 #include "../../detail/packet_variant.hpp"
-#include "../../detail/runtime_context_packet.hpp"
-#include "../../detail/runtime_data_packet.hpp"
+#include "../../dynamic.hpp"
 #include "../../types.hpp"
 #include "../detail/iteration_helpers.hpp"
 #include "udp_transport_status.hpp"
@@ -72,7 +71,7 @@ namespace vrtigo::utils::netio {
  * while (auto pkt = reader.read_next_packet()) {
  *     std::visit([](auto&& p) {
  *         using T = std::decay_t<decltype(p)>;
- *         if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
+ *         if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacket>) {
  *             auto payload = p.payload();
  *             // Process data...
  *         }
@@ -80,7 +79,7 @@ namespace vrtigo::utils::netio {
  * }
  *
  * // Or use filtered iteration (same API as VRTFileReader)
- * reader.for_each_data_packet([](const vrtigo::RuntimeDataPacket& pkt) {
+ * reader.for_each_data_packet([](const vrtigo::dynamic::DataPacket& pkt) {
  *     // Process data packet
  *     return true; // continue
  * });
@@ -284,9 +283,9 @@ public:
      * @brief Iterate over data packets only (signal/extension data)
      *
      * Processes only valid data packets (types 0-3), skipping context packets
-     * and invalid packets. The callback receives a validated RuntimeDataPacket.
+     * and invalid packets. The callback receives a validated dynamic::DataPacket.
      *
-     * @tparam Callback Function type with signature: bool(const vrtigo::RuntimeDataPacket&)
+     * @tparam Callback Function type with signature: bool(const vrtigo::dynamic::DataPacket&)
      * @param callback Function called for each data packet. Return false to stop.
      * @return Number of data packets processed
      */
@@ -299,9 +298,9 @@ public:
      * @brief Iterate over context packets only (context/extension context)
      *
      * Processes only valid context packets (types 4-5), skipping data packets
-     * and invalid packets. The callback receives a validated RuntimeContextPacket.
+     * and invalid packets. The callback receives a validated dynamic::ContextPacket.
      *
-     * @tparam Callback Function type with signature: bool(const vrtigo::RuntimeContextPacket&)
+     * @tparam Callback Function type with signature: bool(const vrtigo::dynamic::ContextPacket&)
      * @param callback Function called for each context packet. Return false to stop.
      * @return Number of context packets processed
      */

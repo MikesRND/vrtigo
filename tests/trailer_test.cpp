@@ -8,8 +8,8 @@
 // Test fixture for trailer field manipulation
 class TrailerTest : public ::testing::Test {
 protected:
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                                vrtigo::Trailer::included, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                                       vrtigo::Trailer::included, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 

@@ -11,7 +11,7 @@ channelized signals. When present, the original frequency is RF Reference Freque
 + RF Frequency Offset. Uses 64-bit two's complement Q44.20 fixed-point format.
 
 ```cpp
-    using RFOffsetContext = ContextPacket<NoTimestamp, NoClassId, rf_frequency_offset>;
+    using RFOffsetContext = typed::ContextPacket<NoTimestamp, NoClassId, rf_frequency_offset>;
 
     alignas(4) std::array<uint8_t, RFOffsetContext::size_bytes()> buffer{};
     RFOffsetContext packet(buffer);

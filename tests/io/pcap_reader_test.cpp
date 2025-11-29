@@ -13,8 +13,8 @@
 using namespace vrtigo::utils::pcapio;
 using namespace vrtigo::utils::pcapio::test;
 using vrtigo::PacketType;
-using vrtigo::RuntimeDataPacket;
 using vrtigo::ValidationError;
+using vrtigo::dynamic::DataPacket;
 
 // =============================================================================
 // Basic Functionality Tests
@@ -51,7 +51,7 @@ TEST(PCAPReaderTest, ReadSinglePacket) {
     EXPECT_EQ(reader.packets_read(), 1);
 
     // Verify it's a data packet
-    auto* data_pkt = std::get_if<RuntimeDataPacket>(&pkt_result->value());
+    auto* data_pkt = std::get_if<DataPacket>(&pkt_result->value());
     ASSERT_NE(data_pkt, nullptr);
 
     // Verify stream ID
@@ -78,7 +78,7 @@ TEST(PCAPReaderTest, ReadMultiplePackets) {
     while (auto pkt_result = reader.read_next_packet()) {
         if (!pkt_result->ok())
             continue;
-        if (auto* data_pkt = std::get_if<RuntimeDataPacket>(&pkt_result->value())) {
+        if (auto* data_pkt = std::get_if<DataPacket>(&pkt_result->value())) {
             auto sid = data_pkt->stream_id();
             if (sid.has_value()) {
                 stream_ids.push_back(*sid);
@@ -120,8 +120,8 @@ TEST(PCAPReaderTest, RewindAndReread) {
     ASSERT_TRUE(second->ok());
 
     // Verify same packet
-    auto* first_data = std::get_if<RuntimeDataPacket>(&first->value());
-    auto* second_data = std::get_if<RuntimeDataPacket>(&second->value());
+    auto* first_data = std::get_if<DataPacket>(&first->value());
+    auto* second_data = std::get_if<DataPacket>(&second->value());
     ASSERT_NE(first_data, nullptr);
     ASSERT_NE(second_data, nullptr);
     EXPECT_EQ(first_data->stream_id().value(), second_data->stream_id().value());
@@ -141,7 +141,7 @@ TEST(PCAPReaderTest, RawLinkType) {
     ASSERT_TRUE(pkt_result.has_value());
     ASSERT_TRUE(pkt_result->ok());
 
-    auto* data_pkt = std::get_if<RuntimeDataPacket>(&pkt_result->value());
+    auto* data_pkt = std::get_if<DataPacket>(&pkt_result->value());
     ASSERT_NE(data_pkt, nullptr);
     EXPECT_EQ(data_pkt->stream_id().value(), 0x99999999);
 }
@@ -160,7 +160,7 @@ TEST(PCAPReaderTest, ConfigurableLinkHeaderSize) {
     ASSERT_TRUE(pkt_result.has_value());
     ASSERT_TRUE(pkt_result->ok());
 
-    auto* data_pkt = std::get_if<RuntimeDataPacket>(&pkt_result->value());
+    auto* data_pkt = std::get_if<DataPacket>(&pkt_result->value());
     ASSERT_NE(data_pkt, nullptr);
     EXPECT_EQ(data_pkt->stream_id().value(), 0x88888888);
 }
@@ -183,7 +183,7 @@ TEST(PCAPReaderTest, ForEachDataPacket) {
     PCAPVRTReader<> reader(test_file.path().c_str());
 
     size_t count = 0;
-    reader.for_each_data_packet([&count](const RuntimeDataPacket& pkt) {
+    reader.for_each_data_packet([&count](const DataPacket& pkt) {
         auto sid = pkt.stream_id();
         if (sid.has_value()) {
             EXPECT_GE(*sid, 0x1000);
@@ -214,7 +214,7 @@ TEST(PCAPReaderTest, ForEachPacketWithStreamID) {
 
     size_t count = 0;
     reader.for_each_packet_with_stream_id(0xAAAA, [&count](const auto& pkt) {
-        if (auto* data_pkt = std::get_if<RuntimeDataPacket>(&pkt)) {
+        if (auto* data_pkt = std::get_if<DataPacket>(&pkt)) {
             EXPECT_EQ(data_pkt->stream_id().value(), 0xAAAA);
             count++;
         }
@@ -258,7 +258,7 @@ TEST(PCAPReaderTest, ReadsBigEndianPCAP) {
     while (auto pkt_result = reader.read_next_packet()) {
         if (!pkt_result->ok())
             continue;
-        auto* data_pkt = std::get_if<RuntimeDataPacket>(&pkt_result->value());
+        auto* data_pkt = std::get_if<DataPacket>(&pkt_result->value());
         ASSERT_NE(data_pkt, nullptr);
         auto sid = data_pkt->stream_id();
         ASSERT_TRUE(sid.has_value());
@@ -294,7 +294,7 @@ TEST(PCAPReaderTest, BigEndianPCAPMovePreservesEndianness) {
     ASSERT_TRUE(pkt_result.has_value());
     ASSERT_TRUE(pkt_result->ok());
 
-    auto* data_pkt = std::get_if<RuntimeDataPacket>(&pkt_result->value());
+    auto* data_pkt = std::get_if<DataPacket>(&pkt_result->value());
     ASSERT_NE(data_pkt, nullptr);
     EXPECT_EQ(data_pkt->stream_id().value(), 0xDEADBEEF);
 }

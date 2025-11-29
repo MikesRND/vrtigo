@@ -16,8 +16,8 @@
 //
 // Context Packet Features:
 // - Context packets (types 4-5)
-// - Runtime parsing with RuntimeContextPacket
-// - Compile-time creation with ContextPacket template
+// - Runtime parsing with dynamic::ContextPacket
+// - Compile-time creation with typed::ContextPacket template
 // - CIF0, CIF1, CIF2, CIF3 field support (70+ fields)
 // - Variable-length field handling (GPS ASCII, Context Association Lists)
 // - Full Class ID support with 24-bit OUI and 32-bit PCC
@@ -40,29 +40,14 @@
 #include "vrtigo/field_tags.hpp"
 
 // ====================
-// Implementation
+// Packet APIs
 // ====================
 
-// Packet implementations (exposed via this header but users don't include detail/ directly)
+// Runtime packets (for parsing/receiving)
+#include "vrtigo/dynamic.hpp"
+
+// Compile-time packets (for building/transmitting)
+#include "vrtigo/typed.hpp"
+
+// Packet builder
 #include "vrtigo/detail/builder.hpp"
-#include "vrtigo/detail/context_packet.hpp"
-#include "vrtigo/detail/data_packet.hpp"
-#include "vrtigo/detail/runtime_context_packet.hpp"
-#include "vrtigo/detail/runtime_data_packet.hpp"
-
-// ====================
-// Convenience Aliases
-// ====================
-
-namespace vrtigo {
-
-// Convenient aliases for common packet types
-template <typename ClassIdType, typename TimestampType, Trailer TrailerType, size_t PayloadWords>
-using SignalDataPacket =
-    DataPacket<PacketType::signal_data, ClassIdType, TimestampType, TrailerType, PayloadWords>;
-
-template <typename ClassIdType, typename TimestampType, Trailer TrailerType, size_t PayloadWords>
-using ExtensionDataPacket =
-    DataPacket<PacketType::extension_data, ClassIdType, TimestampType, TrailerType, PayloadWords>;
-
-} // namespace vrtigo

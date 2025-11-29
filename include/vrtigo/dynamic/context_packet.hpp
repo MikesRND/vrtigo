@@ -5,19 +5,22 @@
 
 #include <vrtigo/types.hpp>
 
-#include "cif.hpp"
-#include "field_access.hpp"
-#include "parse_result.hpp"
-#include "runtime_packet_base.hpp"
-#include "variable_field_dispatch.hpp"
+#include "../detail/cif.hpp"
+#include "../detail/field_access.hpp"
+#include "../detail/parse_result.hpp"
+#include "../detail/variable_field_dispatch.hpp"
+#include "packet_base.hpp"
 
-namespace vrtigo {
+namespace vrtigo::dynamic {
+
+// Forward declare for FieldProxy
+class ContextPacket;
 
 /**
  * Runtime parser for context packets
  *
  * Provides safe, type-erased parsing of context packets with automatic
- * validation. Unlike ContextPacket<...>, this class doesn't require compile-time
+ * validation. Unlike typed::ContextPacket<...>, this class doesn't require compile-time
  * knowledge of the packet structure and automatically validates on construction.
  *
  * Safety:
@@ -27,10 +30,8 @@ namespace vrtigo {
  * - Makes unsafe parsing patterns impossible
  *
  * Usage:
- *   auto result = RuntimeContextPacket::parse(rx_buffer);  // rx_buffer is std::span<const uint8_t>
- *   if (result.ok()) {
- *       const auto& view = result.value();
- *       if (auto id = view.stream_id()) {
+ *   auto result = dynamic::ContextPacket::parse(rx_buffer);  // rx_buffer is std::span<const
+ * uint8_t> if (result.ok()) { const auto& view = result.value(); if (auto id = view.stream_id()) {
  *           std::cout << "Stream ID: " << *id << "\n";
  *       }
  *       if (auto bw = view[field::bandwidth]) {
@@ -41,7 +42,7 @@ namespace vrtigo {
  *       std::cerr << "Parse error: " << result.error().message() << "\n";
  *   }
  */
-class RuntimeContextPacket : public detail::RuntimePacketBase {
+class ContextPacket : public detail::PacketBase {
 private:
     struct ContextFields {
         // CIF words
@@ -241,8 +242,8 @@ private:
     }
 
     // Private constructor - use parse() to construct
-    explicit RuntimeContextPacket(std::span<const uint8_t> buffer) noexcept
-        : RuntimePacketBase(buffer),
+    explicit ContextPacket(std::span<const uint8_t> buffer) noexcept
+        : PacketBase(buffer),
           context_fields_{} {
         error_ = validate_context_packet();
     }
@@ -251,15 +252,15 @@ public:
     /**
      * @brief Parse a context packet from raw bytes
      *
-     * This is the only way to construct a RuntimeContextPacket. Returns
+     * This is the only way to construct a dynamic::ContextPacket. Returns
      * a ParseResult that either contains the valid packet or error information.
      *
      * @param buffer Raw packet bytes
-     * @return ParseResult<RuntimeContextPacket> containing either the packet or error
+     * @return ParseResult<ContextPacket> containing either the packet or error
      */
-    [[nodiscard]] static ParseResult<RuntimeContextPacket>
+    [[nodiscard]] static ParseResult<ContextPacket>
     parse(std::span<const uint8_t> buffer) noexcept {
-        RuntimeContextPacket packet(buffer);
+        ContextPacket packet(buffer);
         if (packet.error_ == ValidationError::none) {
             return packet;
         }
@@ -294,9 +295,9 @@ public:
     // Field access via subscript operator
     template <uint8_t CifWord, uint8_t Bit>
     auto operator[](field::field_tag_t<CifWord, Bit> tag) const noexcept
-        -> FieldProxy<field::field_tag_t<CifWord, Bit>, const RuntimeContextPacket> {
-        return detail::make_field_proxy(*this, tag);
+        -> FieldProxy<field::field_tag_t<CifWord, Bit>, const ContextPacket> {
+        return vrtigo::detail::make_field_proxy(*this, tag);
     }
 };
 
-} // namespace vrtigo
+} // namespace vrtigo::dynamic

@@ -8,8 +8,7 @@
 
 #include "../../detail/packet_variant.hpp"
 #include "../../detail/parse_result.hpp"
-#include "../../detail/runtime_context_packet.hpp"
-#include "../../detail/runtime_data_packet.hpp"
+#include "../../dynamic.hpp"
 
 namespace vrtigo::utils::detail {
 
@@ -62,10 +61,10 @@ size_t for_each_validated_packet(Reader& reader, Callback&& callback) noexcept {
  * @brief Iterate over data packets only (signal/extension data)
  *
  * Processes only valid data packets (types 0-3), skipping context packets
- * and parse errors. The callback receives a validated RuntimeDataPacket.
+ * and parse errors. The callback receives a validated dynamic::DataPacket.
  *
  * @tparam Reader Type satisfying PacketReader concept
- * @tparam Callback Function type with signature: bool(const vrtigo::RuntimeDataPacket&)
+ * @tparam Callback Function type with signature: bool(const vrtigo::dynamic::DataPacket&)
  * @param reader Reader providing read_next_packet()
  * @param callback Function called for each data packet. Return false to stop.
  * @return Number of data packets processed
@@ -79,7 +78,7 @@ size_t for_each_data_packet(Reader& reader, Callback&& callback) noexcept {
             continue; // Skip parse errors
         }
 
-        if (auto* data_pkt = std::get_if<vrtigo::RuntimeDataPacket>(&result->value())) {
+        if (auto* data_pkt = std::get_if<vrtigo::dynamic::DataPacket>(&result->value())) {
             bool continue_processing = callback(*data_pkt);
             count++;
 
@@ -96,10 +95,10 @@ size_t for_each_data_packet(Reader& reader, Callback&& callback) noexcept {
  * @brief Iterate over context packets only (context/extension context)
  *
  * Processes only valid context packets (types 4-5), skipping data packets
- * and parse errors. The callback receives a validated RuntimeContextPacket.
+ * and parse errors. The callback receives a validated dynamic::ContextPacket.
  *
  * @tparam Reader Type satisfying PacketReader concept
- * @tparam Callback Function type with signature: bool(const vrtigo::RuntimeContextPacket&)
+ * @tparam Callback Function type with signature: bool(const vrtigo::dynamic::ContextPacket&)
  * @param reader Reader providing read_next_packet()
  * @param callback Function called for each context packet. Return false to stop.
  * @return Number of context packets processed
@@ -113,7 +112,7 @@ size_t for_each_context_packet(Reader& reader, Callback&& callback) noexcept {
             continue; // Skip parse errors
         }
 
-        if (auto* ctx_pkt = std::get_if<vrtigo::RuntimeContextPacket>(&result->value())) {
+        if (auto* ctx_pkt = std::get_if<vrtigo::dynamic::ContextPacket>(&result->value())) {
             bool continue_processing = callback(*ctx_pkt);
             count++;
 

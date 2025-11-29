@@ -7,11 +7,11 @@
 #include <vrtigo/timestamp.hpp>
 #include <vrtigo/types.hpp>
 
-#include "buffer_io.hpp"
-#include "header_decode.hpp"
-#include "packet_header_accessor.hpp"
+#include "../detail/buffer_io.hpp"
+#include "../detail/header_decode.hpp"
+#include "../detail/packet_header_accessor.hpp"
 
-namespace vrtigo::detail {
+namespace vrtigo::dynamic::detail {
 
 /**
  * Base class for runtime packet parsers
@@ -21,17 +21,17 @@ namespace vrtigo::detail {
  * handle packet-type-specific fields (payload for data packets, CIF fields for
  * context packets).
  *
- * This is an implementation detail - users should use RuntimeDataPacket or
- * RuntimeContextPacket directly.
+ * This is an implementation detail - users should use dynamic::DataPacket or
+ * dynamic::ContextPacket directly.
  */
-class RuntimePacketBase {
+class PacketBase {
 protected:
     const uint8_t* buffer_;
     size_t buffer_size_;
     ValidationError error_;
 
     struct PrologueData {
-        DecodedHeader header{};
+        vrtigo::detail::DecodedHeader header{};
 
         // Field offsets (in bytes)
         size_t stream_id_offset = 0;
@@ -45,7 +45,7 @@ protected:
      * Protected constructor - only derived classes can construct
      * @param buffer Raw packet bytes
      */
-    explicit RuntimePacketBase(std::span<const uint8_t> buffer) noexcept
+    explicit PacketBase(std::span<const uint8_t> buffer) noexcept
         : buffer_(buffer.data()),
           buffer_size_(buffer.size()),
           error_(ValidationError::none),
@@ -67,8 +67,8 @@ protected:
         }
 
         // 2. Read and decode header
-        uint32_t header = read_u32(buffer_, 0);
-        prologue_.header = decode_header(header);
+        uint32_t header = vrtigo::detail::read_u32(buffer_, 0);
+        prologue_.header = vrtigo::detail::decode_header(header);
 
         // 3. Validate buffer size against declared packet size
         size_t required_bytes = prologue_.header.size_words * vrt_word_size;
@@ -80,7 +80,7 @@ protected:
         size_t offset_words = 1; // After header
 
         // Stream ID (presence determined by packet type)
-        if (HeaderView::has_stream_id(prologue_.header.type)) {
+        if (vrtigo::detail::HeaderView::has_stream_id(prologue_.header.type)) {
             prologue_.stream_id_offset = offset_words * vrt_word_size;
             offset_words++;
         }
@@ -117,7 +117,9 @@ public:
      * Get header accessor
      * @return Const accessor for header word fields
      */
-    HeaderView header() const noexcept { return HeaderView{&prologue_.header}; }
+    vrtigo::detail::HeaderView header() const noexcept {
+        return vrtigo::detail::HeaderView{&prologue_.header};
+    }
 
     /**
      * Get packet type
@@ -163,7 +165,7 @@ public:
         if (!has_stream_id()) {
             return std::nullopt;
         }
-        return read_u32(buffer_, prologue_.stream_id_offset);
+        return vrtigo::detail::read_u32(buffer_, prologue_.stream_id_offset);
     }
 
     /**
@@ -174,8 +176,8 @@ public:
         if (!prologue_.header.has_class_id) {
             return std::nullopt;
         }
-        uint32_t word0 = read_u32(buffer_, prologue_.class_id_offset);
-        uint32_t word1 = read_u32(buffer_, prologue_.class_id_offset + 4);
+        uint32_t word0 = vrtigo::detail::read_u32(buffer_, prologue_.class_id_offset);
+        uint32_t word1 = vrtigo::detail::read_u32(buffer_, prologue_.class_id_offset + 4);
         return ClassIdValue::fromWords(word0, word1);
     }
 
@@ -187,10 +189,12 @@ public:
         if (!has_timestamp()) {
             return std::nullopt;
         }
-        uint32_t tsi_val =
-            (prologue_.header.tsi != TsiType::none) ? read_u32(buffer_, prologue_.tsi_offset) : 0;
-        uint64_t tsf_val =
-            (prologue_.header.tsf != TsfType::none) ? read_u64(buffer_, prologue_.tsf_offset) : 0;
+        uint32_t tsi_val = (prologue_.header.tsi != TsiType::none)
+                               ? vrtigo::detail::read_u32(buffer_, prologue_.tsi_offset)
+                               : 0;
+        uint64_t tsf_val = (prologue_.header.tsf != TsfType::none)
+                               ? vrtigo::detail::read_u64(buffer_, prologue_.tsf_offset)
+                               : 0;
         return TimestampValue{tsi_val, tsf_val, prologue_.header.tsi, prologue_.header.tsf};
     }
 
@@ -227,4 +231,4 @@ public:
     }
 };
 
-} // namespace vrtigo::detail
+} // namespace vrtigo::dynamic::detail

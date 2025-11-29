@@ -12,13 +12,13 @@
  * - RawVRTFileReader: Low-level reader returning raw packet bytes
  * - PCAPVRTReader: Read VRT packets from PCAP capture files (for testing/validation)
  * - PCAPVRTWriter: Write VRT packets to PCAP capture files (for testing/validation)
- * - PacketVariant: Type-safe union of RuntimeDataPacket or RuntimeContextPacket
+ * - PacketVariant: Type-safe union of dynamic::DataPacket or dynamic::ContextPacket
  * - ParseResult: Result wrapper with either valid packet or ParseError
  *
  * Parsing functions (defined in packet_parser.hpp, exported here):
  * - parse_packet(): Parse any packet type, returns ParseResult<PacketVariant>
- * - parse_data_packet(): Parse data packet, returns ParseResult<RuntimeDataPacket>
- * - parse_context_packet(): Parse context packet, returns ParseResult<RuntimeContextPacket>
+ * - parse_data_packet(): Parse data packet, returns ParseResult<dynamic::DataPacket>
+ * - parse_context_packet(): Parse context packet, returns ParseResult<dynamic::ContextPacket>
  */
 
 #include "detail/packet_parser.hpp"

@@ -41,8 +41,8 @@ namespace vrtigo::utils::netio {
  *
  * Supported Packet Types:
  * - PacketVariant (runtime packets)
- * - RuntimeDataPacket (runtime data packets)
- * - RuntimeContextPacket (runtime context packets)
+ * - dynamic::DataPacket (runtime data packets)
+ * - dynamic::ContextPacket (runtime context packets)
  * - Any compile-time packet (from PacketBuilder)
  *
  * Parse Error Handling:
@@ -93,7 +93,7 @@ namespace vrtigo::utils::netio {
  *
  * // Convert to variant for per-destination API
  * auto bytes = packet.as_bytes();
- * vrtigo::RuntimeDataPacket packet_view{bytes.data(), bytes.size()};
+ * vrtigo::dynamic::DataPacket packet_view{bytes.data(), bytes.size()};
  * vrtigo::PacketVariant variant = packet_view;
  *
  * multi_writer.write_packet(variant, dest1);
@@ -239,15 +239,16 @@ public:
      */
     bool write_packet(const vrtigo::PacketVariant& packet) noexcept {
         // Write the packet using visitor pattern
-        // PacketVariant now only contains valid packets (RuntimeDataPacket or RuntimeContextPacket)
+        // PacketVariant now only contains valid packets (dynamic::DataPacket or
+        // dynamic::ContextPacket)
         return std::visit(
             [this](auto&& pkt) -> bool {
                 using T = std::decay_t<decltype(pkt)>;
 
-                if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
+                if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacket>) {
                     return this->write_packet_impl(pkt.as_bytes());
-                } else if constexpr (std::is_same_v<T, vrtigo::RuntimeContextPacket>) {
-                    // RuntimeContextPacket uses context_buffer() instead of as_bytes()
+                } else if constexpr (std::is_same_v<T, vrtigo::dynamic::ContextPacket>) {
+                    // dynamic::ContextPacket uses context_buffer() instead of as_bytes()
                     std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.size_bytes()};
                     return this->write_packet_impl(bytes);
                 } else {
@@ -263,7 +264,7 @@ public:
      * @param packet The data packet to write
      * @return true on success, false on error
      */
-    bool write_packet(const vrtigo::RuntimeDataPacket& packet) noexcept {
+    bool write_packet(const vrtigo::dynamic::DataPacket& packet) noexcept {
         return write_packet_impl(packet.as_bytes());
     }
 
@@ -273,8 +274,8 @@ public:
      * @param packet The context packet to write
      * @return true on success, false on error
      */
-    bool write_packet(const vrtigo::RuntimeContextPacket& packet) noexcept {
-        // RuntimeContextPacket uses context_buffer() instead of as_bytes()
+    bool write_packet(const vrtigo::dynamic::ContextPacket& packet) noexcept {
+        // dynamic::ContextPacket uses context_buffer() instead of as_bytes()
         std::span<const uint8_t> bytes{packet.context_buffer(), packet.size_bytes()};
         return write_packet_impl(bytes);
     }
@@ -306,15 +307,16 @@ public:
     bool write_packet(const vrtigo::PacketVariant& packet,
                       const struct sockaddr_in& dest) noexcept {
         // Write the packet using visitor pattern
-        // PacketVariant now only contains valid packets (RuntimeDataPacket or RuntimeContextPacket)
+        // PacketVariant now only contains valid packets (dynamic::DataPacket or
+        // dynamic::ContextPacket)
         return std::visit(
             [this, &dest](auto&& pkt) -> bool {
                 using T = std::decay_t<decltype(pkt)>;
 
-                if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
+                if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacket>) {
                     return this->write_packet_to(pkt.as_bytes(), dest);
-                } else if constexpr (std::is_same_v<T, vrtigo::RuntimeContextPacket>) {
-                    // RuntimeContextPacket uses context_buffer() instead of as_bytes()
+                } else if constexpr (std::is_same_v<T, vrtigo::dynamic::ContextPacket>) {
+                    // dynamic::ContextPacket uses context_buffer() instead of as_bytes()
                     std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.size_bytes()};
                     return this->write_packet_to(bytes, dest);
                 } else {

@@ -18,9 +18,9 @@
 // Helper: Create a valid data packet buffer for testing
 // In real code, this would come from a network socket or file
 static auto create_test_data_packet() {
-    using PacketType =
-        vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp, vrtigo::Trailer::none,
-                                 2>; // 8 bytes payload
+    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                                       vrtigo::Trailer::none,
+                                                       2>; // 8 bytes payload
 
     alignas(4) static std::array<uint8_t, PacketType::size_bytes()> buffer{};
     std::array<uint8_t, 8> payload{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
@@ -38,8 +38,8 @@ static auto create_test_data_packet() {
 // Helper: Create a valid context packet buffer for testing
 static auto create_test_context_packet() {
     using namespace vrtigo::field;
-    using PacketType = vrtigo::ContextPacket<vrtigo::NoTimestamp, vrtigo::NoClassId, sample_rate,
-                                             bandwidth, reference_level>;
+    using PacketType = vrtigo::typed::ContextPacket<vrtigo::NoTimestamp, vrtigo::NoClassId,
+                                                    sample_rate, bandwidth, reference_level>;
 
     alignas(4) static std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -71,7 +71,7 @@ TEST(PacketParsing, ParseUnknownPacket) {
     std::span<const uint8_t> received_bytes = buffer;
 
     // parse_packet() returns a ParseResult<PacketVariant>:
-    // - On success: contains RuntimeDataPacket or RuntimeContextPacket
+    // - On success: contains dynamic::DataPacket or dynamic::ContextPacket
     // - On failure: contains ParseError with error details
     auto result = vrtigo::parse_packet(received_bytes);
 
@@ -128,7 +128,7 @@ TEST(PacketParsing, AccessDataPacket) {
 
     // [SNIPPET]
     // Extract the data packet view from the variant
-    const auto& data = std::get<vrtigo::RuntimeDataPacket>(packet);
+    const auto& data = std::get<vrtigo::dynamic::DataPacket>(packet);
 
     // Access packet metadata
     std::cout << "Size: " << data.size_bytes() << " bytes\n";
@@ -186,7 +186,7 @@ TEST(PacketParsing, AccessContextPacket) {
 
     // [SNIPPET]
     // Extract the context packet view from the variant
-    const auto& ctx = std::get<vrtigo::RuntimeContextPacket>(packet);
+    const auto& ctx = std::get<vrtigo::dynamic::ContextPacket>(packet);
     using namespace vrtigo::field;
 
     // Access stream ID (always present in context packets)

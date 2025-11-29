@@ -16,7 +16,7 @@ a valid packet variant or parse error information.
     std::span<const uint8_t> received_bytes = buffer;
 
     // parse_packet() returns a ParseResult<PacketVariant>:
-    // - On success: contains RuntimeDataPacket or RuntimeContextPacket
+    // - On success: contains dynamic::DataPacket or dynamic::ContextPacket
     // - On failure: contains ParseError with error details
     auto result = vrtigo::parse_packet(received_bytes);
 
@@ -55,7 +55,7 @@ to access payload data and packet-specific fields.
 
 ```cpp
     // Extract the data packet view from the variant
-    const auto& data = std::get<vrtigo::RuntimeDataPacket>(packet);
+    const auto& data = std::get<vrtigo::dynamic::DataPacket>(packet);
 
     // Access packet metadata
     std::cout << "Size: " << data.size_bytes() << " bytes\n";
@@ -95,7 +95,7 @@ for interpreted units and `.encoded()` for the raw wire format.
 
 ```cpp
     // Extract the context packet view from the variant
-    const auto& ctx = std::get<vrtigo::RuntimeContextPacket>(packet);
+    const auto& ctx = std::get<vrtigo::dynamic::ContextPacket>(packet);
     using namespace vrtigo::field;
 
     // Access stream ID (always present in context packets)

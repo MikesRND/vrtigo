@@ -24,7 +24,7 @@ TEST_F(ContextPacketTest, CIF0_28_BasicAccess) {
     // [/DESCRIPTION]
 
     // [SNIPPET]
-    using IFRefContext = ContextPacket<NoTimestamp, NoClassId, if_reference_frequency>;
+    using IFRefContext = typed::ContextPacket<NoTimestamp, NoClassId, if_reference_frequency>;
 
     alignas(4) std::array<uint8_t, IFRefContext::size_bytes()> buffer{};
     IFRefContext packet(buffer);
@@ -43,7 +43,7 @@ TEST_F(ContextPacketTest, CIF0_28_BasicAccess) {
 // Additional tests (not included in documentation)
 
 TEST_F(ContextPacketTest, CIF0_28_PositiveFrequencies) {
-    using IFRefContext = ContextPacket<NoTimestamp, NoClassId, if_reference_frequency>;
+    using IFRefContext = typed::ContextPacket<NoTimestamp, NoClassId, if_reference_frequency>;
     alignas(4) std::array<uint8_t, IFRefContext::size_bytes()> buffer{};
     IFRefContext packet(buffer);
 
@@ -65,7 +65,7 @@ TEST_F(ContextPacketTest, CIF0_28_PositiveFrequencies) {
 }
 
 TEST_F(ContextPacketTest, CIF0_28_NegativeFrequencies) {
-    using IFRefContext = ContextPacket<NoTimestamp, NoClassId, if_reference_frequency>;
+    using IFRefContext = typed::ContextPacket<NoTimestamp, NoClassId, if_reference_frequency>;
     alignas(4) std::array<uint8_t, IFRefContext::size_bytes()> buffer{};
     IFRefContext packet(buffer);
 
@@ -80,7 +80,7 @@ TEST_F(ContextPacketTest, CIF0_28_NegativeFrequencies) {
 }
 
 TEST_F(ContextPacketTest, CIF0_28_SpecExamples) {
-    using IFRefContext = ContextPacket<NoTimestamp, NoClassId, if_reference_frequency>;
+    using IFRefContext = typed::ContextPacket<NoTimestamp, NoClassId, if_reference_frequency>;
     alignas(4) std::array<uint8_t, IFRefContext::size_bytes()> buffer{};
     IFRefContext packet(buffer);
 
@@ -100,14 +100,14 @@ TEST_F(ContextPacketTest, CIF0_28_SpecExamples) {
 
 TEST_F(ContextPacketTest, CIF0_28_RuntimeAccess) {
     // Create a compile-time packet
-    using IFRefContext = ContextPacket<NoTimestamp, NoClassId, if_reference_frequency>;
+    using IFRefContext = typed::ContextPacket<NoTimestamp, NoClassId, if_reference_frequency>;
     alignas(4) std::array<uint8_t, IFRefContext::size_bytes()> buffer{};
     IFRefContext packet(buffer);
 
     packet[if_reference_frequency].set_value(10.7e6);
 
     // Parse with runtime packet
-    auto result = RuntimeContextPacket::parse(buffer);
+    auto result = dynamic::ContextPacket::parse(buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& runtime_packet = result.value();
 

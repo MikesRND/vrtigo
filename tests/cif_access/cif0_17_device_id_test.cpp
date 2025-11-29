@@ -25,7 +25,7 @@ TEST_F(ContextPacketTest, CIF0_17_BasicAccess) {
     // [/DESCRIPTION]
 
     // [SNIPPET]
-    using DeviceIdContext = ContextPacket<NoTimestamp, NoClassId, device_id>;
+    using DeviceIdContext = typed::ContextPacket<NoTimestamp, NoClassId, device_id>;
 
     alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes()> buffer{};
     DeviceIdContext packet(buffer);
@@ -51,7 +51,7 @@ TEST_F(ContextPacketTest, CIF0_17_BasicAccess) {
 // Additional tests (not included in documentation)
 
 TEST_F(ContextPacketTest, CIF0_17_ZeroValues) {
-    using DeviceIdContext = ContextPacket<NoTimestamp, NoClassId, device_id>;
+    using DeviceIdContext = typed::ContextPacket<NoTimestamp, NoClassId, device_id>;
     alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes()> buffer{};
     DeviceIdContext packet(buffer);
 
@@ -66,7 +66,7 @@ TEST_F(ContextPacketTest, CIF0_17_ZeroValues) {
 }
 
 TEST_F(ContextPacketTest, CIF0_17_MaxValues) {
-    using DeviceIdContext = ContextPacket<NoTimestamp, NoClassId, device_id>;
+    using DeviceIdContext = typed::ContextPacket<NoTimestamp, NoClassId, device_id>;
     alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes()> buffer{};
     DeviceIdContext packet(buffer);
 
@@ -82,7 +82,7 @@ TEST_F(ContextPacketTest, CIF0_17_MaxValues) {
 }
 
 TEST_F(ContextPacketTest, CIF0_17_TypicalOUIValues) {
-    using DeviceIdContext = ContextPacket<NoTimestamp, NoClassId, device_id>;
+    using DeviceIdContext = typed::ContextPacket<NoTimestamp, NoClassId, device_id>;
     alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes()> buffer{};
     DeviceIdContext packet(buffer);
 
@@ -109,7 +109,7 @@ TEST_F(ContextPacketTest, CIF0_17_TypicalOUIValues) {
 }
 
 TEST_F(ContextPacketTest, CIF0_17_ReservedBitsIsolation) {
-    using DeviceIdContext = ContextPacket<NoTimestamp, NoClassId, device_id>;
+    using DeviceIdContext = typed::ContextPacket<NoTimestamp, NoClassId, device_id>;
     alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes()> buffer{};
     DeviceIdContext packet(buffer);
 
@@ -128,7 +128,7 @@ TEST_F(ContextPacketTest, CIF0_17_ReservedBitsIsolation) {
 
 TEST_F(ContextPacketTest, CIF0_17_RuntimeAccess) {
     // Create a compile-time packet with Device ID
-    using DeviceIdContext = ContextPacket<NoTimestamp, NoClassId, device_id>;
+    using DeviceIdContext = typed::ContextPacket<NoTimestamp, NoClassId, device_id>;
     alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes()> buffer{};
     DeviceIdContext packet(buffer);
 
@@ -137,7 +137,7 @@ TEST_F(ContextPacketTest, CIF0_17_RuntimeAccess) {
     view.set(DeviceIdentifier::device_code, 0x5678);
 
     // Parse with runtime packet
-    auto result = RuntimeContextPacket::parse(buffer);
+    auto result = dynamic::ContextPacket::parse(buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& runtime_packet = result.value();
 
@@ -150,7 +150,7 @@ TEST_F(ContextPacketTest, CIF0_17_RuntimeAccess) {
 }
 
 TEST_F(ContextPacketTest, CIF0_17_EncodedAccess) {
-    using DeviceIdContext = ContextPacket<NoTimestamp, NoClassId, device_id>;
+    using DeviceIdContext = typed::ContextPacket<NoTimestamp, NoClassId, device_id>;
     alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes()> buffer{};
     DeviceIdContext packet(buffer);
 
@@ -172,7 +172,8 @@ TEST_F(ContextPacketTest, CIF0_17_EncodedAccess) {
 
 TEST_F(ContextPacketTest, CIF0_17_WithOtherFields) {
     // Device ID combined with other fields
-    using CombinedContext = ContextPacket<NoTimestamp, NoClassId, device_id, reference_point_id>;
+    using CombinedContext =
+        typed::ContextPacket<NoTimestamp, NoClassId, device_id, reference_point_id>;
 
     alignas(4) std::array<uint8_t, CombinedContext::size_bytes()> buffer{};
     CombinedContext packet(buffer);

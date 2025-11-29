@@ -24,7 +24,7 @@ TEST_F(ContextPacketTest, GPSASCIIVariableField) {
     const char* msg = "Hello World!";
     std::memcpy(buffer.data() + 16, msg, 12);
 
-    auto result = RuntimeContextPacket::parse(std::span<const uint8_t>(buffer.data(), 7 * 4));
+    auto result = dynamic::ContextPacket::parse(std::span<const uint8_t>(buffer.data(), 7 * 4));
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
 
@@ -70,7 +70,7 @@ TEST_F(ContextPacketTest, ContextAssociationLists) {
     // Context ID
     cif::write_u32_safe(buffer.data(), 24, 0x3333);
 
-    auto result = RuntimeContextPacket::parse(std::span<const uint8_t>(buffer.data(), 7 * 4));
+    auto result = dynamic::ContextPacket::parse(std::span<const uint8_t>(buffer.data(), 7 * 4));
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
 
@@ -84,7 +84,7 @@ TEST_F(ContextPacketTest, ContextAssociationLists) {
 TEST_F(ContextPacketTest, CompileTimeForbidsVariable) {
     // This should not compile (static_assert failure):
     // constexpr uint32_t bad_cif0 = (1U << 10);  // GPS ASCII
-    // using BadContext = ContextPacket<true, NoTimestamp, NoClassId,
+    // using BadContext = typed::ContextPacket<true, NoTimestamp, NoClassId,
     //                                   bad_cif0, 0, 0, 0>;
 
     // Test passes by not having the above code compile

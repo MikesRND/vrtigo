@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <vrtigo/types.hpp>
 
+#include "packet_header_accessor.hpp"
 #include "parse_result.hpp"
 #include "trailer_view.hpp"
 
@@ -99,7 +100,7 @@ concept ContextPacketLike = CompileTimePacketLike<T> && requires(const T& pkt) {
  * Runtime packets - read-only, guaranteed valid.
  *
  * These are packets where the structure is determined at runtime by parsing
- * the header and CIF fields (RuntimeDataPacket, RuntimeContextPacket).
+ * the header and CIF fields (dynamic::DataPacket, dynamic::ContextPacket).
  *
  * Key characteristics:
  * - Constructed only via static parse() method returning ParseResult<T>
@@ -127,7 +128,7 @@ concept RuntimePacketLike =
 /**
  * Runtime data packets - has payload.
  *
- * Examples: RuntimeDataPacket
+ * Examples: dynamic::DataPacket
  */
 template <typename T>
 concept RuntimeDataPacketLike = RuntimePacketLike<T> && requires(const T& pkt) {
@@ -138,7 +139,7 @@ concept RuntimeDataPacketLike = RuntimePacketLike<T> && requires(const T& pkt) {
 /**
  * Runtime context packets - has CIF field access.
  *
- * Examples: RuntimeContextPacket
+ * Examples: dynamic::ContextPacket
  */
 template <typename T>
 concept RuntimeContextPacketLike = RuntimePacketLike<T> && requires(const T& pkt) {

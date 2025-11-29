@@ -12,16 +12,13 @@
 using namespace vrtigo::utils::netio;
 
 // Import specific types from vrtigo namespace to avoid ambiguity
-using vrtigo::ContextPacket;
 using vrtigo::NoClassId;
 using vrtigo::NoTimestamp;
 using vrtigo::PacketBuilder;
 using vrtigo::PacketVariant;
-using vrtigo::RuntimeContextPacket;
-using vrtigo::RuntimeDataPacket;
-using vrtigo::SignalDataPacket;
 using vrtigo::Trailer;
 using vrtigo::UtcRealTimestamp;
+using vrtigo::typed::SignalDataPacket;
 
 // Test fixture for UDP writer tests
 class UDPWriterTest : public ::testing::Test {
@@ -61,7 +58,7 @@ TEST_F(UDPWriterTest, WriteCompileTimePacket) {
     UDPVRTWriter writer("127.0.0.1", test_port);
 
     // Create and send packet
-    using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     auto packet = PacketBuilder<PacketType>(buffer).stream_id(0x12345678).packet_count(1).build();
@@ -74,9 +71,9 @@ TEST_F(UDPWriterTest, WriteCompileTimePacket) {
     auto received = reader.read_next_packet();
     ASSERT_TRUE(received.has_value());
     ASSERT_TRUE(received->ok()) << received->error().message();
-    EXPECT_TRUE(is_data_packet(received->value()));
+    EXPECT_TRUE(vrtigo::is_data_packet(received->value()));
 
-    auto data_pkt = std::get<RuntimeDataPacket>(received->value());
+    auto data_pkt = std::get<vrtigo::dynamic::DataPacket>(received->value());
     EXPECT_EQ(data_pkt.stream_id(), 0x12345678);
 }
 
@@ -86,7 +83,7 @@ TEST_F(UDPWriterTest, WriteMultiplePackets) {
 
     UDPVRTWriter writer("127.0.0.1", test_port);
 
-    using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     // Send 10 packets
@@ -106,7 +103,7 @@ TEST_F(UDPWriterTest, WriteMultiplePackets) {
         ASSERT_TRUE(received.has_value());
         ASSERT_TRUE(received->ok()) << received->error().message();
 
-        auto data_pkt = std::get<RuntimeDataPacket>(received->value());
+        auto data_pkt = std::get<vrtigo::dynamic::DataPacket>(received->value());
         EXPECT_EQ(data_pkt.stream_id(), i);
     }
 }
@@ -122,7 +119,8 @@ TEST_F(UDPWriterTest, RoundTripDataPacket) {
     UDPVRTWriter writer("127.0.0.1", test_port);
 
     // Create packet with stream ID and timestamp
-    using PacketType = SignalDataPacket<NoClassId, UtcRealTimestamp, Trailer::none, 64>;
+    using PacketType =
+        vrtigo::typed::SignalDataPacket<NoClassId, UtcRealTimestamp, Trailer::none, 64>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     const uint32_t test_stream_id = 0xABCDEF01;
@@ -141,7 +139,7 @@ TEST_F(UDPWriterTest, RoundTripDataPacket) {
     ASSERT_TRUE(received.has_value());
     ASSERT_TRUE(received->ok()) << received->error().message();
 
-    auto data_pkt = std::get<RuntimeDataPacket>(received->value());
+    auto data_pkt = std::get<vrtigo::dynamic::DataPacket>(received->value());
     EXPECT_EQ(data_pkt.stream_id(), test_stream_id);
 
     auto ts = data_pkt.timestamp();
@@ -157,7 +155,8 @@ TEST_F(UDPWriterTest, RoundTripContextPacket) {
     UDPVRTWriter writer("127.0.0.1", test_port);
 
     // Create context packet
-    using PacketType = ContextPacket<NoTimestamp, NoClassId, vrtigo::field::reference_point_id>;
+    using PacketType =
+        vrtigo::typed::ContextPacket<NoTimestamp, NoClassId, vrtigo::field::reference_point_id>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     const uint32_t test_stream_id = 0x87654321;
@@ -173,9 +172,9 @@ TEST_F(UDPWriterTest, RoundTripContextPacket) {
     auto received = reader.read_next_packet();
     ASSERT_TRUE(received.has_value());
     ASSERT_TRUE(received->ok()) << received->error().message();
-    EXPECT_TRUE(is_context_packet(received->value()));
+    EXPECT_TRUE(vrtigo::is_context_packet(received->value()));
 
-    auto ctx_pkt = std::get<RuntimeContextPacket>(received->value());
+    auto ctx_pkt = std::get<vrtigo::dynamic::ContextPacket>(received->value());
     EXPECT_EQ(ctx_pkt.stream_id(), test_stream_id);
 }
 
@@ -193,7 +192,7 @@ TEST_F(UDPWriterTest, EnforceMTU) {
     writer.set_mtu(100);
 
     // Create packet larger than MTU
-    using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 256>;
+    using PacketType = vrtigo::typed::SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 256>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     std::array<uint8_t, 1024> large_payload{};
@@ -218,7 +217,7 @@ TEST_F(UDPWriterTest, MTUAllowsValidPacket) {
     writer.set_mtu(1500);
 
     // Create packet within MTU
-    using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     std::array<uint8_t, 256> payload{};
@@ -252,14 +251,14 @@ TEST_F(UDPWriterTest, UnboundModeMultipleDestinations) {
     UDPVRTWriter writer(0);
 
     // Create packet
-    using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     auto packet = PacketBuilder<PacketType>(buffer).stream_id(0x55555555).packet_count(1).build();
 
     // Convert to PacketVariant for the per-destination API
     auto packet_bytes = packet.as_bytes();
-    auto parse_result = RuntimeDataPacket::parse(packet_bytes);
+    auto parse_result = vrtigo::dynamic::DataPacket::parse(packet_bytes);
     ASSERT_TRUE(parse_result.ok()) << parse_result.error().message();
     PacketVariant variant = parse_result.value();
 
@@ -302,7 +301,7 @@ TEST_F(UDPWriterTest, FlushIsNoOp) {
     EXPECT_TRUE(writer.flush());
 
     // Create and send packet
-    using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     auto packet = PacketBuilder<PacketType>(buffer).stream_id(0x12345678).packet_count(1).build();
@@ -324,7 +323,7 @@ TEST_F(UDPWriterTest, MoveConstructor) {
     UDPVRTWriter writer1("127.0.0.1", test_port);
 
     // Send packet with writer1
-    using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     auto packet = PacketBuilder<PacketType>(buffer).stream_id(0x11111111).packet_count(1).build();
@@ -345,7 +344,7 @@ TEST_F(UDPWriterTest, MoveAssignment) {
     UDPVRTWriter writer1("127.0.0.1", test_port);
     UDPVRTWriter writer2("127.0.0.1", test_port_2);
 
-    using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     auto packet = PacketBuilder<PacketType>(buffer).stream_id(0x22222222).packet_count(1).build();

@@ -8,7 +8,7 @@
 
 This example demonstrates reading a VRT file with the high-level reader:
 - Automatic packet validation
-- Type-safe variant access (RuntimeDataPacket, RuntimeContextPacket)
+- Type-safe variant access (dynamic::DataPacket, dynamic::ContextPacket)
 - Elegant iteration with for_each helpers
 - Zero-copy access to packet data
 
@@ -30,7 +30,7 @@ This example demonstrates reading a VRT file with the high-level reader:
             data_packets++;
 
             // Access type-safe data packet view
-            const auto& data = std::get<vrtigo::RuntimeDataPacket>(pkt);
+            const auto& data = std::get<vrtigo::dynamic::DataPacket>(pkt);
 
             // Get payload - zero-copy span into file buffer!
             auto payload = data.payload();
@@ -40,7 +40,7 @@ This example demonstrates reading a VRT file with the high-level reader:
             context_packets++;
 
             // Access context packet view
-            const auto& ctx = std::get<vrtigo::RuntimeContextPacket>(pkt);
+            const auto& ctx = std::get<vrtigo::dynamic::ContextPacket>(pkt);
             if (auto sr = ctx[sample_rate]) {
                 std::cout << "Context packet sample rate: " << sr.value() << " Hz\n";
             }
@@ -76,7 +76,7 @@ custom processing logic.
 
             // Process based on type
             if (vrtigo::is_data_packet(pkt->value())) {
-                const auto& data = std::get<vrtigo::RuntimeDataPacket>(pkt->value());
+                const auto& data = std::get<vrtigo::dynamic::DataPacket>(pkt->value());
                 auto payload = data.payload();
                 // Process payload...
                 (void)payload;

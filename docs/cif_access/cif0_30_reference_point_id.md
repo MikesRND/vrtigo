@@ -12,7 +12,7 @@ point in the signal processing architecture (often an analog signal like an
 air interface) where the timing reference applies.
 
 ```cpp
-    using RefPointContext = ContextPacket<NoTimestamp, NoClassId, reference_point_id>;
+    using RefPointContext = typed::ContextPacket<NoTimestamp, NoClassId, reference_point_id>;
 
     alignas(4) std::array<uint8_t, RefPointContext::size_bytes()> buffer{};
     RefPointContext packet(buffer);

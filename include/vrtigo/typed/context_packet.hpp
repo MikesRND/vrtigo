@@ -7,14 +7,14 @@
 #include <vrtigo/field_tags.hpp>
 #include <vrtigo/types.hpp>
 
-#include "cif.hpp"
-#include "compile_time_packet_base.hpp"
-#include "field_access.hpp"
-#include "field_mask.hpp"
-#include "prologue.hpp"
-#include "timestamp_traits.hpp"
+#include "../detail/cif.hpp"
+#include "../detail/field_access.hpp"
+#include "../detail/field_mask.hpp"
+#include "../detail/prologue.hpp"
+#include "../detail/timestamp_traits.hpp"
+#include "packet_base.hpp"
 
-namespace vrtigo {
+namespace vrtigo::typed {
 
 // Base compile-time context packet template (low-level API)
 // Creates packets with known structure at compile time using CIF bitmasks
@@ -28,14 +28,15 @@ namespace vrtigo {
 // which automatically computes CIF bitmasks from field tags.
 template <typename TimestampType = NoTimestamp, typename ClassIdType = NoClassId, uint32_t CIF0 = 0,
           uint32_t CIF1 = 0, uint32_t CIF2 = 0, uint32_t CIF3 = 0>
-    requires ValidTimestampType<TimestampType> && ValidClassIdType<ClassIdType>
-class ContextPacketBase : public detail::CompileTimePacketBase<
-                              ContextPacketBase<TimestampType, ClassIdType, CIF0, CIF1, CIF2, CIF3>,
-                              Prologue<PacketType::context, ClassIdType, TimestampType, true>> {
+    requires vrtigo::ValidTimestampType<TimestampType> && vrtigo::ValidClassIdType<ClassIdType>
+class ContextPacketBase
+    : public detail::PacketBase<
+          ContextPacketBase<TimestampType, ClassIdType, CIF0, CIF1, CIF2, CIF3>,
+          vrtigo::Prologue<PacketType::context, ClassIdType, TimestampType, true>> {
 private:
-    using Base = detail::CompileTimePacketBase<
-        ContextPacketBase<TimestampType, ClassIdType, CIF0, CIF1, CIF2, CIF3>,
-        Prologue<PacketType::context, ClassIdType, TimestampType, true>>;
+    using Base =
+        detail::PacketBase<ContextPacketBase<TimestampType, ClassIdType, CIF0, CIF1, CIF2, CIF3>,
+                           vrtigo::Prologue<PacketType::context, ClassIdType, TimestampType, true>>;
 
     friend Base;
 
@@ -163,7 +164,7 @@ public:
     }
 
     // ========================================================================
-    // Inherited from CompileTimePacketBase:
+    // Inherited from typed::detail::PacketBase:
     //   - header(), header() const
     //   - packet_count(), set_packet_count()
     //   - stream_id(), set_stream_id()
@@ -225,13 +226,13 @@ public:
     template <uint8_t CifWord, uint8_t Bit>
     auto operator[](field::field_tag_t<CifWord, Bit> tag) noexcept
         -> FieldProxy<field::field_tag_t<CifWord, Bit>, ContextPacketBase> {
-        return detail::make_field_proxy(*this, tag);
+        return vrtigo::detail::make_field_proxy(*this, tag);
     }
 
     template <uint8_t CifWord, uint8_t Bit>
     auto operator[](field::field_tag_t<CifWord, Bit> tag) const noexcept
         -> FieldProxy<field::field_tag_t<CifWord, Bit>, const ContextPacketBase> {
-        return detail::make_field_proxy(*this, tag);
+        return vrtigo::detail::make_field_proxy(*this, tag);
     }
 
     // Internal implementation details - DO NOT USE DIRECTLY
@@ -279,25 +280,26 @@ public:
 //
 // Example usage:
 //     using namespace vrtigo::field;
-//     using MyPacket = ContextPacket<NoTimestamp, NoClassId,
-//                                     bandwidth, sample_rate, gain>;
+//     using MyPacket = typed::ContextPacket<NoTimestamp, NoClassId,
+//                                         bandwidth, sample_rate, gain>;
 //
 // This is the recommended API for most users.
 template <typename TimestampType = NoTimestamp, typename ClassIdType = NoClassId, auto... Fields>
-    requires ValidTimestampType<TimestampType> && ValidClassIdType<ClassIdType>
+    requires vrtigo::ValidTimestampType<TimestampType> && vrtigo::ValidClassIdType<ClassIdType>
 class ContextPacket
-    : public ContextPacketBase<TimestampType, ClassIdType, detail::FieldMask<Fields...>::cif0,
-                               detail::FieldMask<Fields...>::cif1,
-                               detail::FieldMask<Fields...>::cif2,
-                               detail::FieldMask<Fields...>::cif3> {
+    : public ContextPacketBase<
+          TimestampType, ClassIdType, vrtigo::detail::FieldMask<Fields...>::cif0,
+          vrtigo::detail::FieldMask<Fields...>::cif1, vrtigo::detail::FieldMask<Fields...>::cif2,
+          vrtigo::detail::FieldMask<Fields...>::cif3> {
 public:
     using Base =
-        ContextPacketBase<TimestampType, ClassIdType, detail::FieldMask<Fields...>::cif0,
-                          detail::FieldMask<Fields...>::cif1, detail::FieldMask<Fields...>::cif2,
-                          detail::FieldMask<Fields...>::cif3>;
+        ContextPacketBase<TimestampType, ClassIdType, vrtigo::detail::FieldMask<Fields...>::cif0,
+                          vrtigo::detail::FieldMask<Fields...>::cif1,
+                          vrtigo::detail::FieldMask<Fields...>::cif2,
+                          vrtigo::detail::FieldMask<Fields...>::cif3>;
 
     // Inherit constructors
     using Base::Base;
 };
 
-} // namespace vrtigo
+} // namespace vrtigo::typed

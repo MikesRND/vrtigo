@@ -24,7 +24,7 @@ TEST_F(ContextPacketTest, CIF0_26_BasicAccess) {
     // [/DESCRIPTION]
 
     // [SNIPPET]
-    using RFOffsetContext = ContextPacket<NoTimestamp, NoClassId, rf_frequency_offset>;
+    using RFOffsetContext = typed::ContextPacket<NoTimestamp, NoClassId, rf_frequency_offset>;
 
     alignas(4) std::array<uint8_t, RFOffsetContext::size_bytes()> buffer{};
     RFOffsetContext packet(buffer);
@@ -43,7 +43,7 @@ TEST_F(ContextPacketTest, CIF0_26_BasicAccess) {
 // Additional tests (not included in documentation)
 
 TEST_F(ContextPacketTest, CIF0_26_ChannelizerOffsets) {
-    using RFOffsetContext = ContextPacket<NoTimestamp, NoClassId, rf_frequency_offset>;
+    using RFOffsetContext = typed::ContextPacket<NoTimestamp, NoClassId, rf_frequency_offset>;
     alignas(4) std::array<uint8_t, RFOffsetContext::size_bytes()> buffer{};
     RFOffsetContext packet(buffer);
 
@@ -65,7 +65,7 @@ TEST_F(ContextPacketTest, CIF0_26_ChannelizerOffsets) {
 }
 
 TEST_F(ContextPacketTest, CIF0_26_SpecExamples) {
-    using RFOffsetContext = ContextPacket<NoTimestamp, NoClassId, rf_frequency_offset>;
+    using RFOffsetContext = typed::ContextPacket<NoTimestamp, NoClassId, rf_frequency_offset>;
     alignas(4) std::array<uint8_t, RFOffsetContext::size_bytes()> buffer{};
     RFOffsetContext packet(buffer);
 
@@ -85,14 +85,14 @@ TEST_F(ContextPacketTest, CIF0_26_SpecExamples) {
 
 TEST_F(ContextPacketTest, CIF0_26_RuntimeAccess) {
     // Create a compile-time packet
-    using RFOffsetContext = ContextPacket<NoTimestamp, NoClassId, rf_frequency_offset>;
+    using RFOffsetContext = typed::ContextPacket<NoTimestamp, NoClassId, rf_frequency_offset>;
     alignas(4) std::array<uint8_t, RFOffsetContext::size_bytes()> buffer{};
     RFOffsetContext packet(buffer);
 
     packet[rf_frequency_offset].set_value(1.0e6);
 
     // Parse with runtime packet
-    auto result = RuntimeContextPacket::parse(buffer);
+    auto result = dynamic::ContextPacket::parse(buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& runtime_packet = result.value();
 

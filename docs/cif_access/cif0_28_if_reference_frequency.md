@@ -11,7 +11,7 @@ of the described signal. It uses 64-bit two's complement Q44.20 fixed-point form
 (radix point right of bit 20), providing ±8.79 THz range with 0.95 µHz resolution.
 
 ```cpp
-    using IFRefContext = ContextPacket<NoTimestamp, NoClassId, if_reference_frequency>;
+    using IFRefContext = typed::ContextPacket<NoTimestamp, NoClassId, if_reference_frequency>;
 
     alignas(4) std::array<uint8_t, IFRefContext::size_bytes()> buffer{};
     IFRefContext packet(buffer);
