@@ -175,14 +175,15 @@ public:
      */
     bool write_packet(const vrtigo::PacketVariant& pkt) noexcept {
         // Get packet buffer
-        // PacketVariant now only contains valid packets (RuntimeDataPacket or RuntimeContextPacket)
+        // PacketVariant now only contains valid packets (dynamic::DataPacket or
+        // dynamic::ContextPacket)
         std::span<const uint8_t> vrt_bytes;
         std::visit(
             [&vrt_bytes](auto&& p) {
                 using T = std::decay_t<decltype(p)>;
-                if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
+                if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacket>) {
                     vrt_bytes = p.as_bytes();
-                } else if constexpr (std::is_same_v<T, vrtigo::RuntimeContextPacket>) {
+                } else if constexpr (std::is_same_v<T, vrtigo::dynamic::ContextPacket>) {
                     vrt_bytes = std::span<const uint8_t>{p.context_buffer(), p.size_bytes()};
                 }
             },

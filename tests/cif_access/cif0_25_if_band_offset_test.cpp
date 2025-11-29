@@ -24,7 +24,7 @@ TEST_F(ContextPacketTest, CIF0_25_BasicAccess) {
     // [/DESCRIPTION]
 
     // [SNIPPET]
-    using IFOffsetContext = ContextPacket<NoTimestamp, NoClassId, if_band_offset>;
+    using IFOffsetContext = typed::ContextPacket<NoTimestamp, NoClassId, if_band_offset>;
 
     alignas(4) std::array<uint8_t, IFOffsetContext::size_bytes()> buffer{};
     IFOffsetContext packet(buffer);
@@ -43,7 +43,7 @@ TEST_F(ContextPacketTest, CIF0_25_BasicAccess) {
 // Additional tests (not included in documentation)
 
 TEST_F(ContextPacketTest, CIF0_25_PositiveAndNegativeOffsets) {
-    using IFOffsetContext = ContextPacket<NoTimestamp, NoClassId, if_band_offset>;
+    using IFOffsetContext = typed::ContextPacket<NoTimestamp, NoClassId, if_band_offset>;
     alignas(4) std::array<uint8_t, IFOffsetContext::size_bytes()> buffer{};
     IFOffsetContext packet(buffer);
 
@@ -66,7 +66,7 @@ TEST_F(ContextPacketTest, CIF0_25_PositiveAndNegativeOffsets) {
 }
 
 TEST_F(ContextPacketTest, CIF0_25_SpecExamples) {
-    using IFOffsetContext = ContextPacket<NoTimestamp, NoClassId, if_band_offset>;
+    using IFOffsetContext = typed::ContextPacket<NoTimestamp, NoClassId, if_band_offset>;
     alignas(4) std::array<uint8_t, IFOffsetContext::size_bytes()> buffer{};
     IFOffsetContext packet(buffer);
 
@@ -86,14 +86,14 @@ TEST_F(ContextPacketTest, CIF0_25_SpecExamples) {
 
 TEST_F(ContextPacketTest, CIF0_25_RuntimeAccess) {
     // Create a compile-time packet
-    using IFOffsetContext = ContextPacket<NoTimestamp, NoClassId, if_band_offset>;
+    using IFOffsetContext = typed::ContextPacket<NoTimestamp, NoClassId, if_band_offset>;
     alignas(4) std::array<uint8_t, IFOffsetContext::size_bytes()> buffer{};
     IFOffsetContext packet(buffer);
 
     packet[if_band_offset].set_value(500.0e3);
 
     // Parse with runtime packet
-    auto result = RuntimeContextPacket::parse(buffer);
+    auto result = dynamic::ContextPacket::parse(buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& runtime_packet = result.value();
 

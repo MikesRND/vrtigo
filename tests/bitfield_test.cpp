@@ -163,7 +163,7 @@ int main() {
         std::cout << "  Full-width test passed!\n\n";
     }
 
-    // Test 6: Runtime validation-as-data (RuntimeDataPacket style)
+    // Test 6: Runtime validation-as-data (dynamic::DataPacket style)
     {
         std::cout << "Test 6: Runtime validation-as-data\n";
 
@@ -218,7 +218,7 @@ int main() {
         assert(val2.has_value() && *val2 == 0x5678);
         std::cout << "  get_multiple() returns tuple of optionals\n";
 
-        std::cout << "  Runtime validation-as-data works! (RuntimeDataPacket style)\n\n";
+        std::cout << "  Runtime validation-as-data works! (dynamic::DataPacket style)\n\n";
     }
 
     // Test 7: Mixed storage types with VRT 32-bit word alignment

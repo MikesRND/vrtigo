@@ -13,16 +13,13 @@
 using namespace vrtigo::utils::fileio;
 
 // Import specific types from vrtigo namespace to avoid ambiguity
-using vrtigo::ContextPacket;
 using vrtigo::NoClassId;
 using vrtigo::NoTimestamp;
 using vrtigo::PacketBuilder;
 using vrtigo::PacketVariant;
-using vrtigo::RuntimeContextPacket;
-using vrtigo::RuntimeDataPacket;
-using vrtigo::SignalDataPacket;
 using vrtigo::Trailer;
 using vrtigo::UtcRealTimestamp;
+using vrtigo::typed::SignalDataPacket;
 
 // Test fixture for file writer tests
 class FileWriterTest : public ::testing::Test {
@@ -62,7 +59,8 @@ TEST_F(FileWriterTest, WriteCompileTimePacket) {
     auto test_file = temp_dir_ / "test_compile_time.vrt";
 
     // Create a simple data packet using correct API
-    using PacketType = SignalDataPacket<NoClassId, UtcRealTimestamp, Trailer::none, 256>;
+    using PacketType =
+        vrtigo::typed::SignalDataPacket<NoClassId, UtcRealTimestamp, Trailer::none, 256>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     auto packet = PacketBuilder<PacketType>(buffer)
@@ -86,7 +84,7 @@ TEST_F(FileWriterTest, WriteCompileTimePacket) {
 TEST_F(FileWriterTest, WriteMultiplePackets) {
     auto test_file = temp_dir_ / "test_multiple.vrt";
 
-    using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     VRTFileWriter<> writer(test_file.string());
@@ -107,7 +105,7 @@ TEST_F(FileWriterTest, WriteMultiplePackets) {
 TEST_F(FileWriterTest, FlushBufferedData) {
     auto test_file = temp_dir_ / "test_flush.vrt";
 
-    using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     auto packet = PacketBuilder<PacketType>(buffer).stream_id(0x1234).packet_count(1).build();
@@ -132,7 +130,8 @@ TEST_F(FileWriterTest, RoundTripSinglePacket) {
     auto test_file = temp_dir_ / "test_roundtrip_single.vrt";
 
     // Write packet
-    using PacketType = SignalDataPacket<NoClassId, UtcRealTimestamp, Trailer::none, 256>;
+    using PacketType =
+        vrtigo::typed::SignalDataPacket<NoClassId, UtcRealTimestamp, Trailer::none, 256>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     const uint32_t test_stream_id = 0xABCDEF01;
@@ -158,7 +157,7 @@ TEST_F(FileWriterTest, RoundTripSinglePacket) {
     ASSERT_TRUE(read_packet_var->ok()) << read_packet_var->error().message();
     EXPECT_TRUE(is_data_packet(*read_packet_var));
 
-    auto read_packet = std::get<RuntimeDataPacket>(read_packet_var->value());
+    auto read_packet = std::get<vrtigo::dynamic::DataPacket>(read_packet_var->value());
     EXPECT_EQ(read_packet.stream_id(), test_stream_id);
 
     auto ts = read_packet.timestamp();
@@ -171,7 +170,7 @@ TEST_F(FileWriterTest, RoundTripMultiplePackets) {
     auto test_file = temp_dir_ / "test_roundtrip_multi.vrt";
 
     const size_t num_packets = 100;
-    using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, 64>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     // Write packets
@@ -195,7 +194,7 @@ TEST_F(FileWriterTest, RoundTripMultiplePackets) {
         ASSERT_TRUE(pkt_var->ok()) << pkt_var->error().message();
         EXPECT_TRUE(is_data_packet(*pkt_var));
 
-        auto pkt = std::get<RuntimeDataPacket>(pkt_var->value());
+        auto pkt = std::get<vrtigo::dynamic::DataPacket>(pkt_var->value());
         EXPECT_EQ(pkt.stream_id(), count);
         count++;
     }
@@ -207,7 +206,8 @@ TEST_F(FileWriterTest, RoundTripContextPacket) {
     auto test_file = temp_dir_ / "test_roundtrip_context.vrt";
 
     // Write context packet
-    using PacketType = ContextPacket<NoTimestamp, NoClassId, vrtigo::field::reference_point_id,
+    using PacketType =
+        vrtigo::typed::ContextPacket<NoTimestamp, NoClassId, vrtigo::field::reference_point_id,
                                      vrtigo::field::bandwidth>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -231,9 +231,9 @@ TEST_F(FileWriterTest, RoundTripContextPacket) {
 
     ASSERT_TRUE(read_packet_var.has_value());
     ASSERT_TRUE(read_packet_var->ok()) << read_packet_var->error().message();
-    EXPECT_TRUE(is_context_packet(read_packet_var->value()));
+    EXPECT_TRUE(vrtigo::is_context_packet(read_packet_var->value()));
 
-    auto read_packet = std::get<RuntimeContextPacket>(read_packet_var->value());
+    auto read_packet = std::get<vrtigo::dynamic::ContextPacket>(read_packet_var->value());
     EXPECT_EQ(read_packet.stream_id(), test_stream_id);
 }
 
@@ -249,7 +249,8 @@ TEST_F(FileWriterTest, WriteLargePacket) {
 
     // Create packet with large payload (exceeds default buffer size)
     const size_t payload_words = 32 * 1024; // 128 KB
-    using PacketType = SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, payload_words>;
+    using PacketType =
+        vrtigo::typed::SignalDataPacket<NoClassId, NoTimestamp, Trailer::none, payload_words>;
     std::vector<uint8_t> large_buffer(PacketType::size_bytes());
 
     std::vector<uint8_t> payload(payload_words * 4, 0xAA);

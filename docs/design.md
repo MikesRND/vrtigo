@@ -29,29 +29,29 @@ for system errors so they can integrate cleanly with host I/O abstractions.
 
 ## Dual API Design
 
-### Compile-Time Path
-- Use when packet structure known at compile time (transmit side)
-- Template parameters encode structure: `DataPacket<Type, ClassId, Timestamp>`
-- Zero runtime overhead - all offsets computed at compile time
-- Strong type safety - compilation fails if accessing unsupported field
-- Examples: `DataPacket`, `ContextPacket`
-
-### Runtime Path
+### Runtime Path (`vrtigo::dynamic`)
 - Use when packet structure unknown (receive side)
 - Type-erased parsing with automatic validation
 - All field access returns `std::optional` for safety
 - Read-only (const) - cannot modify received packets
-- Examples: `RuntimeDataPacket`, `RuntimeContextPacket`
+- Types: `dynamic::DataPacket`, `dynamic::ContextPacket`
+
+### Compile-Time Path (`vrtigo::typed`)
+- Use when packet structure known at compile time (transmit side)
+- Template parameters encode structure: `typed::DataPacket<Type, ClassId, Timestamp>`
+- Zero runtime overhead - all offsets computed at compile time
+- Strong type safety - compilation fails if accessing unsupported field
+- Types: `typed::DataPacket`, `typed::ContextPacket`
 
 ## Type Hierarchy (C++20 Concepts)
 
-- `PacketBase` - minimal interface all packets support
-- `CompileTimePacket` - packets with static structure
-  - `FixedPacketLike` - data packets with fixed layout
-  - `VariablePacketLike` - context packets with CIF-determined layout
-- `RuntimePacket` - runtime packet parsers
-  - `RuntimeDataPacket` - data packet parsers
-  - `RuntimeContextPacket` - context packet parsers
+- `PacketMetadataLike` - minimal interface all packets support
+- `CompileTimePacketLike` - packets with static structure
+  - `typed::DataPacket` - data packets with fixed layout
+  - `typed::ContextPacket` - context packets with CIF-determined layout
+- `RuntimePacketLike` - runtime packet parsers
+  - `dynamic::DataPacket` - data packet parser
+  - `dynamic::ContextPacket` - context packet parser
 
 ### Concept Usage
 - Enable/disable methods based on packet capabilities
@@ -72,9 +72,10 @@ for system errors so they can integrate cleanly with host I/O abstractions.
 
 ## Minimal API
 
-- Only 4 public headers: types.hpp, timestamp.hpp, class_id.hpp, field_tags.hpp
-- Single entry point: vrtigo.hpp (includes all public headers and implementations)
-- All implementation in vrtigo/detail/ (never include directly)
+- Public headers: types.hpp, timestamp.hpp, class_id.hpp, field_tags.hpp, dynamic.hpp, typed.hpp
+- Single entry point: vrtigo.hpp (includes all public headers)
+- Namespace separation: `dynamic::` for runtime parsing, `typed::` for compile-time packets
+- All implementation in vrtigo/detail/, vrtigo/dynamic/, vrtigo/typed/ (never include directly)
 - Optional utilities in vrtigo/utils/ (may allocate/throw)
 - Concept-constrained to prevent misuse
 

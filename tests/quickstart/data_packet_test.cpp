@@ -28,11 +28,12 @@ TEST(QuickstartSnippet, CreateDataPacket) {
     // Create a VRT Signal Data Packet with timestamp and payload
 
     // Define packet type with UTC timestamp
-    using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId,        // No class ID
-                                                vrtigo::UtcRealTimestamp, // Include UTC timestamp
-                                                vrtigo::Trailer::none,    // No trailer
-                                                2 // Max payload words (8 bytes)
-                                                >;
+    using PacketType =
+        vrtigo::typed::SignalDataPacket<vrtigo::NoClassId,        // No class ID
+                                        vrtigo::UtcRealTimestamp, // Include UTC timestamp
+                                        vrtigo::Trailer::none,    // No trailer
+                                        2                         // Max payload words (8 bytes)
+                                        >;
 
     // Allocate aligned buffer for the packet
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};

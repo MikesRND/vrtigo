@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <span>
 
 #include <cstring>
@@ -7,28 +8,28 @@
 #include <vrtigo/timestamp.hpp>
 #include <vrtigo/types.hpp>
 
-#include "compile_time_packet_base.hpp"
-#include "concepts.hpp"
-#include "prologue.hpp"
-#include "timestamp_traits.hpp"
-#include "trailer.hpp"
-#include "trailer_view.hpp"
+#include "../detail/concepts.hpp"
+#include "../detail/prologue.hpp"
+#include "../detail/timestamp_traits.hpp"
+#include "../detail/trailer.hpp"
+#include "../detail/trailer_view.hpp"
+#include "packet_base.hpp"
 
-namespace vrtigo {
+namespace vrtigo::typed {
 
 template <PacketType Type, typename ClassIdType = NoClassId, typename TimestampType = NoTimestamp,
           Trailer HasTrailer = Trailer::none, size_t PayloadWords = 0>
     requires(Type == PacketType::signal_data_no_id || Type == PacketType::signal_data ||
              Type == PacketType::extension_data_no_id || Type == PacketType::extension_data) &&
-            ValidPayloadWords<PayloadWords> && ValidTimestampType<TimestampType> &&
-            ValidClassIdType<ClassIdType>
-class DataPacket : public detail::CompileTimePacketBase<
+            vrtigo::ValidPayloadWords<PayloadWords> && vrtigo::ValidTimestampType<TimestampType> &&
+            vrtigo::ValidClassIdType<ClassIdType>
+class DataPacket : public detail::PacketBase<
                        DataPacket<Type, ClassIdType, TimestampType, HasTrailer, PayloadWords>,
-                       Prologue<Type, ClassIdType, TimestampType, false>> {
+                       vrtigo::Prologue<Type, ClassIdType, TimestampType, false>> {
 private:
-    using Base = detail::CompileTimePacketBase<
-        DataPacket<Type, ClassIdType, TimestampType, HasTrailer, PayloadWords>,
-        Prologue<Type, ClassIdType, TimestampType, false>>;
+    using Base =
+        detail::PacketBase<DataPacket<Type, ClassIdType, TimestampType, HasTrailer, PayloadWords>,
+                           vrtigo::Prologue<Type, ClassIdType, TimestampType, false>>;
 
     friend Base;
 
@@ -93,7 +94,7 @@ public:
     }
 
     // ========================================================================
-    // Inherited from CompileTimePacketBase:
+    // Inherited from typed::detail::PacketBase:
     //   - header(), header() const
     //   - packet_count(), set_packet_count()
     //   - stream_id(), set_stream_id() [requires has_stream_id()]
@@ -104,16 +105,16 @@ public:
 
     // Trailer view access
 
-    MutableTrailerView trailer() noexcept
+    vrtigo::MutableTrailerView trailer() noexcept
         requires(HasTrailer == Trailer::included)
     {
-        return MutableTrailerView(this->buffer_ + trailer_offset * vrt_word_size);
+        return vrtigo::MutableTrailerView(this->buffer_ + trailer_offset * vrt_word_size);
     }
 
-    TrailerView trailer() const noexcept
+    vrtigo::TrailerView trailer() const noexcept
         requires(HasTrailer == Trailer::included)
     {
-        return TrailerView(this->buffer_ + trailer_offset * vrt_word_size);
+        return vrtigo::TrailerView(this->buffer_ + trailer_offset * vrt_word_size);
     }
 
     // Payload access
@@ -153,6 +154,7 @@ private:
 // User-facing type aliases for convenient usage
 
 // Specific aliases that line up with PacketType enum names
+
 template <typename ClassIdType = NoClassId, typename TimestampType = NoTimestamp,
           Trailer HasTrailer = Trailer::none, size_t PayloadWords = 0>
 using SignalDataPacket =
@@ -173,5 +175,4 @@ template <typename ClassIdType = NoClassId, typename TimestampType = NoTimestamp
 using ExtensionDataPacketNoId = DataPacket<PacketType::extension_data_no_id, ClassIdType,
                                            TimestampType, HasTrailer, PayloadWords>;
 
-// Deprecated legacy alias retained for source compatibility. Will be removed in a future release.
-} // namespace vrtigo
+} // namespace vrtigo::typed

@@ -25,8 +25,8 @@ namespace vrtigo::utils::fileio {
  *
  * Supported Packet Types:
  * - PacketVariant (runtime packets from readers)
- * - RuntimeDataPacket (runtime data packets)
- * - RuntimeContextPacket (runtime context packets)
+ * - dynamic::DataPacket (runtime data packets)
+ * - dynamic::ContextPacket (runtime context packets)
  * - Any compile-time packet (from PacketBuilder)
  *
  * Parse Error Handling:
@@ -78,15 +78,16 @@ public:
      */
     bool write_packet(const PacketVariant& packet) noexcept {
         // Write the packet using visitor pattern
-        // PacketVariant now only contains valid packets (RuntimeDataPacket or RuntimeContextPacket)
+        // PacketVariant now only contains valid packets (dynamic::DataPacket or
+        // dynamic::ContextPacket)
         bool result = std::visit(
             [this](auto&& pkt) -> bool {
                 using T = std::decay_t<decltype(pkt)>;
 
-                if constexpr (std::is_same_v<T, vrtigo::RuntimeDataPacket>) {
+                if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacket>) {
                     return this->write_packet_impl(pkt);
-                } else if constexpr (std::is_same_v<T, vrtigo::RuntimeContextPacket>) {
-                    // RuntimeContextPacket uses context_buffer() instead of as_bytes()
+                } else if constexpr (std::is_same_v<T, vrtigo::dynamic::ContextPacket>) {
+                    // dynamic::ContextPacket uses context_buffer() instead of as_bytes()
                     std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.size_bytes()};
                     return this->raw_writer_.write_packet(bytes);
                 } else {
@@ -109,7 +110,7 @@ public:
      * @param packet The data packet to write
      * @return true on success, false on error
      */
-    bool write_packet(const vrtigo::RuntimeDataPacket& packet) noexcept {
+    bool write_packet(const vrtigo::dynamic::DataPacket& packet) noexcept {
         bool result = write_packet_impl(packet);
         if (result) {
             high_level_status_ = WriterStatus::ready;
@@ -123,8 +124,8 @@ public:
      * @param packet The context packet to write
      * @return true on success, false on error
      */
-    bool write_packet(const vrtigo::RuntimeContextPacket& packet) noexcept {
-        // RuntimeContextPacket uses context_buffer() instead of as_bytes()
+    bool write_packet(const vrtigo::dynamic::ContextPacket& packet) noexcept {
+        // dynamic::ContextPacket uses context_buffer() instead of as_bytes()
         std::span<const uint8_t> bytes{packet.context_buffer(), packet.size_bytes()};
         bool result = raw_writer_.write_packet(bytes);
         if (result) {
@@ -258,7 +259,7 @@ private:
     /**
      * @brief Write runtime packet view
      *
-     * Common implementation for RuntimeDataPacket and RuntimeContextPacket.
+     * Common implementation for dynamic::DataPacket and dynamic::ContextPacket.
      */
     template <typename PacketView>
     bool write_packet_impl(const PacketView& packet) noexcept {

@@ -13,7 +13,7 @@ Per VITA 49.2: false = no changes, true = at least one field changed.
 > **Special Case:** Accessed via packet-level methods, not the field proxy pattern.
 
 ```cpp
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);

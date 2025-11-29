@@ -23,7 +23,7 @@ TEST_F(ContextPacketTest, CIF0_21_BasicAccess) {
     // [/DESCRIPTION]
 
     // [SNIPPET]
-    using SampleRateContext = ContextPacket<NoTimestamp, NoClassId, sample_rate>;
+    using SampleRateContext = typed::ContextPacket<NoTimestamp, NoClassId, sample_rate>;
 
     alignas(4) std::array<uint8_t, SampleRateContext::size_bytes()> buffer{};
     SampleRateContext packet(buffer);

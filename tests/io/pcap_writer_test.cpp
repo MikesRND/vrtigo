@@ -12,7 +12,7 @@
 using namespace vrtigo::utils::pcapio;
 using namespace vrtigo::utils::pcapio::test;
 using vrtigo::PacketType;
-using vrtigo::RuntimeDataPacket;
+using vrtigo::dynamic::DataPacket;
 
 // =============================================================================
 // Basic Functionality Tests
@@ -142,7 +142,7 @@ TEST(PCAPWriterTest, RoundTripSinglePacket) {
         ASSERT_TRUE(pkt_result.has_value());
         ASSERT_TRUE(pkt_result->ok());
 
-        auto* data_pkt = std::get_if<RuntimeDataPacket>(&pkt_result->value());
+        auto* data_pkt = std::get_if<DataPacket>(&pkt_result->value());
         ASSERT_NE(data_pkt, nullptr);
 
         auto sid = data_pkt->stream_id();
@@ -178,7 +178,7 @@ TEST(PCAPWriterTest, RoundTripMultiplePackets) {
         while (auto pkt_result = reader.read_next_packet()) {
             if (!pkt_result->ok())
                 continue;
-            if (auto* data_pkt = std::get_if<RuntimeDataPacket>(&pkt_result->value())) {
+            if (auto* data_pkt = std::get_if<DataPacket>(&pkt_result->value())) {
                 auto sid = data_pkt->stream_id();
                 if (sid.has_value()) {
                     read_ids.push_back(*sid);
@@ -219,7 +219,7 @@ TEST(PCAPWriterTest, RoundTripRawLinkType) {
         ASSERT_TRUE(pkt_result.has_value());
         ASSERT_TRUE(pkt_result->ok());
 
-        auto* data_pkt = std::get_if<RuntimeDataPacket>(&pkt_result->value());
+        auto* data_pkt = std::get_if<DataPacket>(&pkt_result->value());
         ASSERT_NE(data_pkt, nullptr);
 
         EXPECT_EQ(data_pkt->stream_id().value(), expected_stream_id);

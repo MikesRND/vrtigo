@@ -105,7 +105,7 @@ public:
      * @param bytes Raw bytes to write (must match field size)
      *
      * Note: Only available for packets with mutable_context_buffer() method.
-     *       RuntimeContextPacket is read-only and will NOT have this method.
+     *       dynamic::ContextPacket is read-only and will NOT have this method.
      *       ContextPacket (compile-time) DOES have this method.
      */
     void set_bytes(std::span<const uint8_t> bytes) noexcept

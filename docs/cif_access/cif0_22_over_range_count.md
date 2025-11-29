@@ -14,7 +14,7 @@ For complex Cartesian samples, the count includes samples where either the real
 or imaginary component was beyond range (Rule 9.10.6-2).
 
 ```cpp
-    using OverRangeContext = ContextPacket<NoTimestamp, NoClassId, over_range_count>;
+    using OverRangeContext = typed::ContextPacket<NoTimestamp, NoClassId, over_range_count>;
 
     alignas(4) std::array<uint8_t, OverRangeContext::size_bytes()> buffer{};
     OverRangeContext packet(buffer);

@@ -129,7 +129,7 @@ auto make_field_proxy(Packet& packet, field::field_tag_t<CifWord, Bit>) noexcept
 /// Read a field value without checking presence (undefined behavior if not present)
 /// Use this only if you've already verified presence with has() or other means
 /// IMPORTANT: Only available for compile-time packets (ContextPacket<>).
-/// For runtime packets (RuntimeContextPacket), use the checked get() API instead.
+/// For runtime packets (dynamic::ContextPacket), use the checked get() API instead.
 /// @tparam Tag Field tag type
 /// @param packet Compile-time context packet
 /// @param tag Field tag

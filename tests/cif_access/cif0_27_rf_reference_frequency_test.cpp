@@ -24,7 +24,7 @@ TEST_F(ContextPacketTest, CIF0_27_BasicAccess) {
     // [/DESCRIPTION]
 
     // [SNIPPET]
-    using RFRefContext = ContextPacket<NoTimestamp, NoClassId, rf_reference_frequency>;
+    using RFRefContext = typed::ContextPacket<NoTimestamp, NoClassId, rf_reference_frequency>;
 
     alignas(4) std::array<uint8_t, RFRefContext::size_bytes()> buffer{};
     RFRefContext packet(buffer);
@@ -43,7 +43,7 @@ TEST_F(ContextPacketTest, CIF0_27_BasicAccess) {
 // Additional tests (not included in documentation)
 
 TEST_F(ContextPacketTest, CIF0_27_CommonRFFrequencies) {
-    using RFRefContext = ContextPacket<NoTimestamp, NoClassId, rf_reference_frequency>;
+    using RFRefContext = typed::ContextPacket<NoTimestamp, NoClassId, rf_reference_frequency>;
     alignas(4) std::array<uint8_t, RFRefContext::size_bytes()> buffer{};
     RFRefContext packet(buffer);
 
@@ -65,7 +65,7 @@ TEST_F(ContextPacketTest, CIF0_27_CommonRFFrequencies) {
 }
 
 TEST_F(ContextPacketTest, CIF0_27_SpecExamples) {
-    using RFRefContext = ContextPacket<NoTimestamp, NoClassId, rf_reference_frequency>;
+    using RFRefContext = typed::ContextPacket<NoTimestamp, NoClassId, rf_reference_frequency>;
     alignas(4) std::array<uint8_t, RFRefContext::size_bytes()> buffer{};
     RFRefContext packet(buffer);
 
@@ -85,14 +85,14 @@ TEST_F(ContextPacketTest, CIF0_27_SpecExamples) {
 
 TEST_F(ContextPacketTest, CIF0_27_RuntimeAccess) {
     // Create a compile-time packet
-    using RFRefContext = ContextPacket<NoTimestamp, NoClassId, rf_reference_frequency>;
+    using RFRefContext = typed::ContextPacket<NoTimestamp, NoClassId, rf_reference_frequency>;
     alignas(4) std::array<uint8_t, RFRefContext::size_bytes()> buffer{};
     RFRefContext packet(buffer);
 
     packet[rf_reference_frequency].set_value(2.4e9);
 
     // Parse with runtime packet
-    auto result = RuntimeContextPacket::parse(buffer);
+    auto result = dynamic::ContextPacket::parse(buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& runtime_packet = result.value();
 

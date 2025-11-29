@@ -5,22 +5,23 @@
 
 #include <vrtigo/types.hpp>
 
-#include "parse_result.hpp"
-#include "runtime_packet_base.hpp"
-#include "trailer_view.hpp"
+#include "../detail/parse_result.hpp"
+#include "../detail/trailer_view.hpp"
+#include "packet_base.hpp"
 
-namespace vrtigo {
+namespace vrtigo::dynamic {
 
 /**
  * Runtime parser for data packets (signal and extension data)
  *
  * Provides safe, type-erased parsing of data packets with automatic
- * validation. Unlike DataPacket<...>, this class doesn't require compile-time
+ * validation. Unlike typed::DataPacket<...>, this class doesn't require compile-time
  * knowledge of the packet structure and automatically validates on construction.
  *
  * Design Pattern: Runtime Parser vs Compile-Time Template
- * - DataPacket<...>: Compile-time template for building/modifying packets with known structure
- * - RuntimeDataPacket: Runtime parser for reading received packets with unknown structure
+ * - typed::DataPacket<...>: Compile-time template for building/modifying packets with known
+ * structure
+ * - dynamic::DataPacket: Runtime parser for reading received packets with unknown structure
  * This separation ensures type safety while allowing flexible packet parsing.
  *
  * Safety:
@@ -34,7 +35,7 @@ namespace vrtigo {
  * - Use TimestampValue::as<TSI, TSF>() to narrow to typed Timestamp when needed
  *
  * Usage:
- *   auto result = RuntimeDataPacket::parse(rx_buffer);  // rx_buffer is std::span<const uint8_t>
+ *   auto result = dynamic::DataPacket::parse(rx_buffer);  // rx_buffer is std::span<const uint8_t>
  *   if (result.ok()) {
  *       const auto& view = result.value();
  *       if (auto ts = view.timestamp()) {
@@ -47,7 +48,7 @@ namespace vrtigo {
  *       std::cerr << "Parse error: " << result.error().message() << "\n";
  *   }
  */
-class RuntimeDataPacket : public detail::RuntimePacketBase {
+class DataPacket : public detail::PacketBase {
 private:
     struct DataFields {
         size_t payload_size_bytes = 0;
@@ -55,8 +56,8 @@ private:
     } data_fields_;
 
     // Private constructor - use parse() to construct
-    explicit RuntimeDataPacket(std::span<const uint8_t> buffer) noexcept
-        : RuntimePacketBase(buffer),
+    explicit DataPacket(std::span<const uint8_t> buffer) noexcept
+        : PacketBase(buffer),
           data_fields_{} {
         error_ = validate_data_packet();
     }
@@ -99,15 +100,14 @@ public:
     /**
      * @brief Parse a data packet from raw bytes
      *
-     * This is the only way to construct a RuntimeDataPacket. Returns
+     * This is the only way to construct a dynamic::DataPacket. Returns
      * a ParseResult that either contains the valid packet or error information.
      *
      * @param buffer Raw packet bytes
-     * @return ParseResult<RuntimeDataPacket> containing either the packet or error
+     * @return ParseResult<DataPacket> containing either the packet or error
      */
-    [[nodiscard]] static ParseResult<RuntimeDataPacket>
-    parse(std::span<const uint8_t> buffer) noexcept {
-        RuntimeDataPacket packet(buffer);
+    [[nodiscard]] static ParseResult<DataPacket> parse(std::span<const uint8_t> buffer) noexcept {
+        DataPacket packet(buffer);
         if (packet.error_ == ValidationError::none) {
             return packet;
         }
@@ -156,4 +156,4 @@ public:
     }
 };
 
-} // namespace vrtigo
+} // namespace vrtigo::dynamic

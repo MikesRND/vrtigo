@@ -25,7 +25,7 @@ TEST_F(ContextPacketTest, CIF0_30_BasicAccess) {
     // [/DESCRIPTION]
 
     // [SNIPPET]
-    using RefPointContext = ContextPacket<NoTimestamp, NoClassId, reference_point_id>;
+    using RefPointContext = typed::ContextPacket<NoTimestamp, NoClassId, reference_point_id>;
 
     alignas(4) std::array<uint8_t, RefPointContext::size_bytes()> buffer{};
     RefPointContext packet(buffer);
@@ -45,7 +45,7 @@ TEST_F(ContextPacketTest, CIF0_30_BasicAccess) {
 // Additional tests (not included in documentation)
 
 TEST_F(ContextPacketTest, CIF0_30_MultipleValues) {
-    using RefPointContext = ContextPacket<NoTimestamp, NoClassId, reference_point_id>;
+    using RefPointContext = typed::ContextPacket<NoTimestamp, NoClassId, reference_point_id>;
     alignas(4) std::array<uint8_t, RefPointContext::size_bytes()> buffer{};
     RefPointContext packet(buffer);
 
@@ -60,7 +60,7 @@ TEST_F(ContextPacketTest, CIF0_30_MultipleValues) {
 
 TEST_F(ContextPacketTest, CIF0_30_RuntimeAccess) {
     // Create a compile-time packet with Reference Point ID
-    using RefPointContext = ContextPacket<NoTimestamp, NoClassId, reference_point_id>;
+    using RefPointContext = typed::ContextPacket<NoTimestamp, NoClassId, reference_point_id>;
     alignas(4) std::array<uint8_t, RefPointContext::size_bytes()> buffer{};
     RefPointContext packet(buffer);
 
@@ -68,7 +68,7 @@ TEST_F(ContextPacketTest, CIF0_30_RuntimeAccess) {
     packet[reference_point_id].set_value(ref_point_sid);
 
     // Parse with runtime packet
-    auto result = RuntimeContextPacket::parse(buffer);
+    auto result = dynamic::ContextPacket::parse(buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& runtime_packet = result.value();
 

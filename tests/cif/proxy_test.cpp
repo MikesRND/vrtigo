@@ -21,7 +21,7 @@ protected:
 // =============================================================================
 
 TEST_F(FieldProxyTest, BasicSetAndGet) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -37,7 +37,7 @@ TEST_F(FieldProxyTest, BasicSetAndGet) {
 
 TEST_F(FieldProxyTest, FieldPresenceCheck) {
     // Create packet WITH bandwidth
-    using WithBandwidth = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using WithBandwidth = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, WithBandwidth::size_bytes()> buffer1{};
     WithBandwidth pkt1(buffer1);
@@ -47,7 +47,7 @@ TEST_F(FieldProxyTest, FieldPresenceCheck) {
 
     // Create packet WITHOUT bandwidth
     using WithoutBandwidth =
-        ContextPacket<NoTimestamp, NoClassId, sample_rate>; // Has sample_rate, NOT bandwidth
+        typed::ContextPacket<NoTimestamp, NoClassId, sample_rate>; // Has sample_rate, NOT bandwidth
 
     alignas(4) std::array<uint8_t, WithoutBandwidth::size_bytes()> buf2{};
     WithoutBandwidth pkt2(buf2);
@@ -57,7 +57,7 @@ TEST_F(FieldProxyTest, FieldPresenceCheck) {
 }
 
 TEST_F(FieldProxyTest, UncheckedAccess) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -75,7 +75,7 @@ TEST_F(FieldProxyTest, UncheckedAccess) {
 // =============================================================================
 
 TEST_F(FieldProxyTest, RawBytesAccess) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -94,7 +94,7 @@ TEST_F(FieldProxyTest, RawBytesAccess) {
 }
 
 TEST_F(FieldProxyTest, RawBytesManipulation) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -113,7 +113,7 @@ TEST_F(FieldProxyTest, RawBytesManipulation) {
 }
 
 TEST_F(FieldProxyTest, OffsetAndSize) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -129,7 +129,7 @@ TEST_F(FieldProxyTest, OffsetAndSize) {
 
 TEST_F(FieldProxyTest, MissingFieldHandling) {
     using TestContext =
-        ContextPacket<NoTimestamp, NoClassId, sample_rate>; // Has sample_rate, NOT bandwidth
+        typed::ContextPacket<NoTimestamp, NoClassId, sample_rate>; // Has sample_rate, NOT bandwidth
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -144,7 +144,7 @@ TEST_F(FieldProxyTest, MissingFieldHandling) {
 }
 
 TEST_F(FieldProxyTest, DifferentFieldSizes) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate, gain>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate, gain>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -163,7 +163,7 @@ TEST_F(FieldProxyTest, DifferentFieldSizes) {
 }
 
 TEST_F(FieldProxyTest, ConditionalPatternCompatibility) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, gain>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, gain>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -179,7 +179,7 @@ TEST_F(FieldProxyTest, ConditionalPatternCompatibility) {
 }
 
 TEST_F(FieldProxyTest, MultipleProxiesToSameField) {
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -197,7 +197,7 @@ TEST_F(FieldProxyTest, MultipleProxiesToSameField) {
 
 TEST_F(FieldProxyTest, MultiFieldPacket) {
     // Packet with bandwidth + sample_rate + gain
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate, gain>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate, gain>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -220,7 +220,7 @@ TEST_F(FieldProxyTest, MultiFieldPacket) {
 TEST_F(FieldProxyTest, MultiCIFWordPacket) {
     // Packet with fields spanning CIF0, CIF1, CIF2
     using TestContext =
-        ContextPacket<NoTimestamp, NoClassId, bandwidth, aux_frequency, controller_uuid>;
+        typed::ContextPacket<NoTimestamp, NoClassId, bandwidth, aux_frequency, controller_uuid>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -239,7 +239,7 @@ TEST_F(FieldProxyTest, MultiCIFWordPacket) {
 
 TEST_F(FieldProxyTest, RuntimeParserIntegration) {
     // Build packet with compile-time type
-    using TestContext = ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext tx_packet(buffer);
@@ -248,7 +248,7 @@ TEST_F(FieldProxyTest, RuntimeParserIntegration) {
     tx_packet[bandwidth].set_encoded(75'000'000ULL);
 
     // Parse with runtime view
-    auto result = RuntimeContextPacket::parse(buffer);
+    auto result = dynamic::ContextPacket::parse(buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
 
