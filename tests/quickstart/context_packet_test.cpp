@@ -28,11 +28,11 @@ TEST(QuickstartSnippet, CreateContextPacket) {
 
     // Define context packet type with sample rate and bandwidth fields
     using PacketType =
-        vrtigo::typed::ContextPacket<vrtigo::NoTimestamp, // No timestamp for this example
-                                     vrtigo::NoClassId,   // No class ID
-                                     sample_rate,         // Include sample rate field
-                                     bandwidth            // Include bandwidth field
-                                     >;
+        vrtigo::typed::ContextPacketBuilder<vrtigo::NoTimestamp, // No timestamp for this example
+                                            vrtigo::NoClassId,   // No class ID
+                                            sample_rate,         // Include sample rate field
+                                            bandwidth            // Include bandwidth field
+                                            >;
 
     // Allocate aligned buffer for the packet
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};

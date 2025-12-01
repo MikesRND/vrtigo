@@ -21,13 +21,14 @@ namespace vrtigo::utils::fileio {
  *
  * Wraps RawVRTFileWriter to provide type-safe packet writing with
  * automatic validation. Accepts both compile-time packets (from
- * PacketBuilder) and runtime packets (from readers/parsers).
+ * DataPacketBuilder or ContextPacketBuilder) and runtime packets
+ * (from readers/parsers).
  *
  * Supported Packet Types:
  * - PacketVariant (runtime packets from readers)
- * - dynamic::DataPacket (runtime data packets)
- * - dynamic::ContextPacket (runtime context packets)
- * - Any compile-time packet (from PacketBuilder)
+ * - dynamic::DataPacketView (runtime data packets)
+ * - dynamic::ContextPacketView (runtime context packets)
+ * - Any compile-time packet (from DataPacketBuilder or ContextPacketBuilder)
  *
  * Parse Error Handling:
  * - ParseResult errors are rejected (never written)
@@ -78,16 +79,16 @@ public:
      */
     bool write_packet(const PacketVariant& packet) noexcept {
         // Write the packet using visitor pattern
-        // PacketVariant now only contains valid packets (dynamic::DataPacket or
-        // dynamic::ContextPacket)
+        // PacketVariant now only contains valid packets (dynamic::DataPacketView or
+        // dynamic::ContextPacketView)
         bool result = std::visit(
             [this](auto&& pkt) -> bool {
                 using T = std::decay_t<decltype(pkt)>;
 
-                if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacket>) {
+                if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacketView>) {
                     return this->write_packet_impl(pkt);
-                } else if constexpr (std::is_same_v<T, vrtigo::dynamic::ContextPacket>) {
-                    // dynamic::ContextPacket uses context_buffer() instead of as_bytes()
+                } else if constexpr (std::is_same_v<T, vrtigo::dynamic::ContextPacketView>) {
+                    // dynamic::ContextPacketView uses context_buffer() instead of as_bytes()
                     std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.size_bytes()};
                     return this->raw_writer_.write_packet(bytes);
                 } else {
@@ -110,7 +111,7 @@ public:
      * @param packet The data packet to write
      * @return true on success, false on error
      */
-    bool write_packet(const vrtigo::dynamic::DataPacket& packet) noexcept {
+    bool write_packet(const vrtigo::dynamic::DataPacketView& packet) noexcept {
         bool result = write_packet_impl(packet);
         if (result) {
             high_level_status_ = WriterStatus::ready;
@@ -124,8 +125,8 @@ public:
      * @param packet The context packet to write
      * @return true on success, false on error
      */
-    bool write_packet(const vrtigo::dynamic::ContextPacket& packet) noexcept {
-        // dynamic::ContextPacket uses context_buffer() instead of as_bytes()
+    bool write_packet(const vrtigo::dynamic::ContextPacketView& packet) noexcept {
+        // dynamic::ContextPacketView uses context_buffer() instead of as_bytes()
         std::span<const uint8_t> bytes{packet.context_buffer(), packet.size_bytes()};
         bool result = raw_writer_.write_packet(bytes);
         if (result) {
@@ -137,8 +138,9 @@ public:
     /**
      * @brief Write compile-time packet
      *
-     * Accepts packets from PacketBuilder or any type satisfying
-     * CompileTimePacketLike concept. No conversion to variant needed.
+     * Accepts packets from DataPacketBuilder or ContextPacketBuilder,
+     * or any type satisfying CompileTimePacketLike concept. No conversion
+     * to variant needed.
      *
      * @tparam PacketType Type satisfying CompileTimePacketLike concept
      * @param packet The packet to write
@@ -259,7 +261,7 @@ private:
     /**
      * @brief Write runtime packet view
      *
-     * Common implementation for dynamic::DataPacket and dynamic::ContextPacket.
+     * Common implementation for dynamic::DataPacketView and dynamic::ContextPacketView.
      */
     template <typename PacketView>
     bool write_packet_impl(const PacketView& packet) noexcept {

@@ -25,7 +25,7 @@ TEST_F(ContextPacketTest, CIF0_15_RealSignal) {
     // [/DESCRIPTION]
 
     // [SNIPPET]
-    using FormatContext = typed::ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
+    using FormatContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, data_payload_format>;
 
     alignas(4) std::array<uint8_t, FormatContext::size_bytes()> buffer{};
     FormatContext packet(buffer);
@@ -60,7 +60,7 @@ TEST_F(ContextPacketTest, CIF0_15_ComplexFloat) {
     // [/DESCRIPTION]
 
     // [SNIPPET]
-    using FormatContext = typed::ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
+    using FormatContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, data_payload_format>;
 
     alignas(4) std::array<uint8_t, FormatContext::size_bytes()> buffer{};
     FormatContext packet(buffer);
@@ -97,7 +97,7 @@ TEST_F(ContextPacketTest, CIF0_15_BatchAccess) {
     // [/DESCRIPTION]
 
     // [SNIPPET]
-    using FormatContext = typed::ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
+    using FormatContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, data_payload_format>;
 
     alignas(4) std::array<uint8_t, FormatContext::size_bytes()> buffer{};
     FormatContext packet(buffer);
@@ -134,7 +134,7 @@ TEST_F(ContextPacketTest, CIF0_15_ParseFormat) {
     // [/DESCRIPTION]
 
     // [SNIPPET]
-    using FormatContext = typed::ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
+    using FormatContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, data_payload_format>;
 
     alignas(4) std::array<uint8_t, FormatContext::size_bytes()> buffer{};
     FormatContext packet(buffer);

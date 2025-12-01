@@ -29,14 +29,14 @@ namespace vrtigo::typed {
 template <typename TimestampType = NoTimestamp, typename ClassIdType = NoClassId, uint32_t CIF0 = 0,
           uint32_t CIF1 = 0, uint32_t CIF2 = 0, uint32_t CIF3 = 0>
     requires vrtigo::ValidTimestampType<TimestampType> && vrtigo::ValidClassIdType<ClassIdType>
-class ContextPacketBase
+class ContextPacketBuilderBase
     : public detail::PacketBase<
-          ContextPacketBase<TimestampType, ClassIdType, CIF0, CIF1, CIF2, CIF3>,
+          ContextPacketBuilderBase<TimestampType, ClassIdType, CIF0, CIF1, CIF2, CIF3>,
           vrtigo::Prologue<PacketType::context, ClassIdType, TimestampType, true>> {
 private:
-    using Base =
-        detail::PacketBase<ContextPacketBase<TimestampType, ClassIdType, CIF0, CIF1, CIF2, CIF3>,
-                           vrtigo::Prologue<PacketType::context, ClassIdType, TimestampType, true>>;
+    using Base = detail::PacketBase<
+        ContextPacketBuilderBase<TimestampType, ClassIdType, CIF0, CIF1, CIF2, CIF3>,
+        vrtigo::Prologue<PacketType::context, ClassIdType, TimestampType, true>>;
 
     friend Base;
 
@@ -152,7 +152,8 @@ public:
     static constexpr uint32_t cif2_value = CIF2;
     static constexpr uint32_t cif3_value = CIF3;
 
-    explicit ContextPacketBase(std::span<uint8_t, size_bytes()> buffer, bool init = true) noexcept
+    explicit ContextPacketBuilderBase(std::span<uint8_t, size_bytes()> buffer,
+                                      bool init = true) noexcept
         : Base(buffer.data()) {
         if (init) {
             init_header();
@@ -225,13 +226,13 @@ public:
     // Field access via subscript operator
     template <uint8_t CifWord, uint8_t Bit>
     auto operator[](field::field_tag_t<CifWord, Bit> tag) noexcept
-        -> FieldProxy<field::field_tag_t<CifWord, Bit>, ContextPacketBase> {
+        -> FieldProxy<field::field_tag_t<CifWord, Bit>, ContextPacketBuilderBase> {
         return vrtigo::detail::make_field_proxy(*this, tag);
     }
 
     template <uint8_t CifWord, uint8_t Bit>
     auto operator[](field::field_tag_t<CifWord, Bit> tag) const noexcept
-        -> FieldProxy<field::field_tag_t<CifWord, Bit>, const ContextPacketBase> {
+        -> FieldProxy<field::field_tag_t<CifWord, Bit>, const ContextPacketBuilderBase> {
         return vrtigo::detail::make_field_proxy(*this, tag);
     }
 
@@ -275,28 +276,27 @@ public:
     }
 };
 
-// Field-based ContextPacket template (user-friendly API)
+// Field-based ContextPacketBuilder template (user-friendly API)
 // Automatically computes CIF bitmasks from field tags
 //
 // Example usage:
 //     using namespace vrtigo::field;
-//     using MyPacket = typed::ContextPacket<NoTimestamp, NoClassId,
+//     using MyPacket = typed::ContextPacketBuilder<NoTimestamp, NoClassId,
 //                                         bandwidth, sample_rate, gain>;
 //
 // This is the recommended API for most users.
 template <typename TimestampType = NoTimestamp, typename ClassIdType = NoClassId, auto... Fields>
     requires vrtigo::ValidTimestampType<TimestampType> && vrtigo::ValidClassIdType<ClassIdType>
-class ContextPacket
-    : public ContextPacketBase<
+class ContextPacketBuilder
+    : public ContextPacketBuilderBase<
           TimestampType, ClassIdType, vrtigo::detail::FieldMask<Fields...>::cif0,
           vrtigo::detail::FieldMask<Fields...>::cif1, vrtigo::detail::FieldMask<Fields...>::cif2,
           vrtigo::detail::FieldMask<Fields...>::cif3> {
 public:
-    using Base =
-        ContextPacketBase<TimestampType, ClassIdType, vrtigo::detail::FieldMask<Fields...>::cif0,
-                          vrtigo::detail::FieldMask<Fields...>::cif1,
-                          vrtigo::detail::FieldMask<Fields...>::cif2,
-                          vrtigo::detail::FieldMask<Fields...>::cif3>;
+    using Base = ContextPacketBuilderBase<
+        TimestampType, ClassIdType, vrtigo::detail::FieldMask<Fields...>::cif0,
+        vrtigo::detail::FieldMask<Fields...>::cif1, vrtigo::detail::FieldMask<Fields...>::cif2,
+        vrtigo::detail::FieldMask<Fields...>::cif3>;
 
     // Inherit constructors
     using Base::Base;

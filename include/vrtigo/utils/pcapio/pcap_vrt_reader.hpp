@@ -54,7 +54,7 @@ namespace vrtigo::utils::pcapio {
  * PCAPVRTReader<> reader("raw_capture.pcap", 0);  // No link-layer header
  *
  * // Identical API to VRTFileReader
- * reader.for_each_data_packet([](const dynamic::DataPacket& pkt) {
+ * reader.for_each_data_packet([](const dynamic::DataPacketView& pkt) {
  *     auto payload = pkt.payload();
  *     validate_payload(payload);
  *     return true;
@@ -176,8 +176,8 @@ public:
      *
      * Skips PCAP record header and link-layer header, then validates VRT packet.
      *
-     * @return ParseResult<PacketVariant> containing dynamic::DataPacket or dynamic::ContextPacket
-     *         on success, or ParseError on failure. Returns std::nullopt on EOF.
+     * @return ParseResult<PacketVariant> containing dynamic::DataPacketView or
+     * dynamic::ContextPacketView on success, or ParseError on failure. Returns std::nullopt on EOF.
      *
      * @note Malformed packets (too small, read errors) are skipped and reading continues.
      *       Only true EOF returns std::nullopt.
@@ -266,9 +266,9 @@ public:
      * @brief Iterate over data packets only (signal/extension data)
      *
      * Processes only valid data packets (types 0-3), skipping context packets
-     * and invalid packets. The callback receives a validated dynamic::DataPacket.
+     * and invalid packets. The callback receives a validated dynamic::DataPacketView.
      *
-     * @tparam Callback Function type with signature: bool(const vrtigo::dynamic::DataPacket&)
+     * @tparam Callback Function type with signature: bool(const vrtigo::dynamic::DataPacketView&)
      * @param callback Function called for each data packet. Return false to stop.
      * @return Number of data packets processed
      */
@@ -281,9 +281,10 @@ public:
      * @brief Iterate over context packets only (context/extension context)
      *
      * Processes only valid context packets (types 4-5), skipping data packets
-     * and invalid packets. The callback receives a validated dynamic::ContextPacket.
+     * and invalid packets. The callback receives a validated dynamic::ContextPacketView.
      *
-     * @tparam Callback Function type with signature: bool(const vrtigo::dynamic::ContextPacket&)
+     * @tparam Callback Function type with signature: bool(const
+     * vrtigo::dynamic::ContextPacketView&)
      * @param callback Function called for each context packet. Return false to stop.
      * @return Number of context packets processed
      */

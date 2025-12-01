@@ -5,7 +5,7 @@ using namespace vrtigo::field;
 TEST_F(ContextPacketTest, CIF1Fields) {
     // Create packet with CIF1 spectrum field
     // Note: Context packets always have Stream ID per VITA 49.2 spec
-    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, spectrum>;
+    using TestContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, spectrum>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -16,8 +16,9 @@ TEST_F(ContextPacketTest, CIF1Fields) {
 }
 
 TEST_F(ContextPacketTest, NewCIF1Fields) {
-    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, health_status, phase_offset,
-                                             polarization, pointing_vector_3d_single>;
+    using TestContext =
+        typed::ContextPacketBuilder<NoTimestamp, NoClassId, health_status, phase_offset,
+                                    polarization, pointing_vector_3d_single>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -63,7 +64,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF1) {
     cif::write_u64_safe(buffer.data(), 16, expected_freq);
 
     // Parse and validate
-    auto result = dynamic::ContextPacket::parse(buffer);
+    auto result = dynamic::ContextPacketView::parse(buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
 
@@ -79,7 +80,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF1) {
 
 TEST_F(ContextPacketTest, CompileTimeCIF1RuntimeParse) {
     // Create packet with CIF1 field at compile time
-    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, aux_frequency>;
+    using TestContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, aux_frequency>;
 
     // Compile-time assertion: verify CIF1 enable bit is auto-set
     static_assert((TestContext::cif0_value & (1U << cif::CIF1_ENABLE_BIT)) != 0,
@@ -93,7 +94,7 @@ TEST_F(ContextPacketTest, CompileTimeCIF1RuntimeParse) {
     tx_packet[aux_frequency].set_encoded(15'000'000ULL); // 15 MHz
 
     // Parse with runtime view
-    auto result = dynamic::ContextPacket::parse(buffer);
+    auto result = dynamic::ContextPacketView::parse(buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
     EXPECT_EQ(view.stream_id().value(), 0xAABBCCDD);

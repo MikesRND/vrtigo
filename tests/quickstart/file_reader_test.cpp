@@ -26,7 +26,7 @@ const auto sine_wave_file = test_data_dir / "VITA49SineWaveData.bin";
 // [DESCRIPTION]
 // This example demonstrates reading a VRT file with the high-level reader:
 // - Automatic packet validation
-// - Type-safe variant access (dynamic::DataPacket, dynamic::ContextPacket)
+// - Type-safe variant access (dynamic::DataPacketView, dynamic::ContextPacketView)
 // - Elegant iteration with for_each helpers
 // - Zero-copy access to packet data
 // [/DESCRIPTION]
@@ -55,7 +55,7 @@ TEST(QuickstartSnippet, ReadVRTFile) {
             data_packets++;
 
             // Access type-safe data packet view
-            const auto& data = std::get<vrtigo::dynamic::DataPacket>(pkt);
+            const auto& data = std::get<vrtigo::dynamic::DataPacketView>(pkt);
 
             // Get payload - zero-copy span into file buffer!
             auto payload = data.payload();
@@ -65,7 +65,7 @@ TEST(QuickstartSnippet, ReadVRTFile) {
             context_packets++;
 
             // Access context packet view
-            const auto& ctx = std::get<vrtigo::dynamic::ContextPacket>(pkt);
+            const auto& ctx = std::get<vrtigo::dynamic::ContextPacketView>(pkt);
             if (auto sr = ctx[sample_rate]) {
                 std::cout << "Context packet sample rate: " << sr.value() << " Hz\n";
             }
@@ -119,7 +119,7 @@ TEST(QuickstartSnippet, ReadVRTFileManual) {
 
             // Process based on type
             if (vrtigo::is_data_packet(pkt->value())) {
-                const auto& data = std::get<vrtigo::dynamic::DataPacket>(pkt->value());
+                const auto& data = std::get<vrtigo::dynamic::DataPacketView>(pkt->value());
                 auto payload = data.payload();
                 // Process payload...
                 (void)payload;

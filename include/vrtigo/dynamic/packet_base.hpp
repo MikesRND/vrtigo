@@ -21,10 +21,10 @@ namespace vrtigo::dynamic::detail {
  * handle packet-type-specific fields (payload for data packets, CIF fields for
  * context packets).
  *
- * This is an implementation detail - users should use dynamic::DataPacket or
- * dynamic::ContextPacket directly.
+ * This is an implementation detail - users should use dynamic::DataPacketView or
+ * dynamic::ContextPacketView directly.
  */
-class PacketBase {
+class PacketViewBase {
 protected:
     const uint8_t* buffer_;
     size_t buffer_size_;
@@ -45,7 +45,7 @@ protected:
      * Protected constructor - only derived classes can construct
      * @param buffer Raw packet bytes
      */
-    explicit PacketBase(std::span<const uint8_t> buffer) noexcept
+    explicit PacketViewBase(std::span<const uint8_t> buffer) noexcept
         : buffer_(buffer.data()),
           buffer_size_(buffer.size()),
           error_(ValidationError::none),

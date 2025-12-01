@@ -61,10 +61,10 @@ size_t for_each_validated_packet(Reader& reader, Callback&& callback) noexcept {
  * @brief Iterate over data packets only (signal/extension data)
  *
  * Processes only valid data packets (types 0-3), skipping context packets
- * and parse errors. The callback receives a validated dynamic::DataPacket.
+ * and parse errors. The callback receives a validated dynamic::DataPacketView.
  *
  * @tparam Reader Type satisfying PacketReader concept
- * @tparam Callback Function type with signature: bool(const vrtigo::dynamic::DataPacket&)
+ * @tparam Callback Function type with signature: bool(const vrtigo::dynamic::DataPacketView&)
  * @param reader Reader providing read_next_packet()
  * @param callback Function called for each data packet. Return false to stop.
  * @return Number of data packets processed
@@ -78,7 +78,7 @@ size_t for_each_data_packet(Reader& reader, Callback&& callback) noexcept {
             continue; // Skip parse errors
         }
 
-        if (auto* data_pkt = std::get_if<vrtigo::dynamic::DataPacket>(&result->value())) {
+        if (auto* data_pkt = std::get_if<vrtigo::dynamic::DataPacketView>(&result->value())) {
             bool continue_processing = callback(*data_pkt);
             count++;
 
@@ -95,10 +95,10 @@ size_t for_each_data_packet(Reader& reader, Callback&& callback) noexcept {
  * @brief Iterate over context packets only (context/extension context)
  *
  * Processes only valid context packets (types 4-5), skipping data packets
- * and parse errors. The callback receives a validated dynamic::ContextPacket.
+ * and parse errors. The callback receives a validated dynamic::ContextPacketView.
  *
  * @tparam Reader Type satisfying PacketReader concept
- * @tparam Callback Function type with signature: bool(const vrtigo::dynamic::ContextPacket&)
+ * @tparam Callback Function type with signature: bool(const vrtigo::dynamic::ContextPacketView&)
  * @param reader Reader providing read_next_packet()
  * @param callback Function called for each context packet. Return false to stop.
  * @return Number of context packets processed
@@ -112,7 +112,7 @@ size_t for_each_context_packet(Reader& reader, Callback&& callback) noexcept {
             continue; // Skip parse errors
         }
 
-        if (auto* ctx_pkt = std::get_if<vrtigo::dynamic::ContextPacket>(&result->value())) {
+        if (auto* ctx_pkt = std::get_if<vrtigo::dynamic::ContextPacketView>(&result->value())) {
             bool continue_processing = callback(*ctx_pkt);
             count++;
 

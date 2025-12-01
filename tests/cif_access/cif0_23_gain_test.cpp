@@ -28,7 +28,7 @@ TEST_F(ContextPacketTest, CIF0_23_BasicAccess) {
     // [/DESCRIPTION]
 
     // [SNIPPET]
-    using GainContext = typed::ContextPacket<NoTimestamp, NoClassId, gain>;
+    using GainContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, gain>;
 
     alignas(4) std::array<uint8_t, GainContext::size_bytes()> buffer{};
     GainContext packet(buffer);
@@ -52,7 +52,7 @@ TEST_F(ContextPacketTest, CIF0_23_BasicAccess) {
 // Additional tests (not included in documentation)
 
 TEST_F(ContextPacketTest, CIF0_23_DualStageGain) {
-    using GainContext = typed::ContextPacket<NoTimestamp, NoClassId, gain>;
+    using GainContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, gain>;
     alignas(4) std::array<uint8_t, GainContext::size_bytes()> buffer{};
     GainContext packet(buffer);
 
@@ -66,7 +66,7 @@ TEST_F(ContextPacketTest, CIF0_23_DualStageGain) {
 }
 
 TEST_F(ContextPacketTest, CIF0_23_Attenuation) {
-    using GainContext = typed::ContextPacket<NoTimestamp, NoClassId, gain>;
+    using GainContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, gain>;
     alignas(4) std::array<uint8_t, GainContext::size_bytes()> buffer{};
     GainContext packet(buffer);
 
@@ -80,7 +80,7 @@ TEST_F(ContextPacketTest, CIF0_23_Attenuation) {
 }
 
 TEST_F(ContextPacketTest, CIF0_23_SpecExamples) {
-    using GainContext = typed::ContextPacket<NoTimestamp, NoClassId, gain>;
+    using GainContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, gain>;
     alignas(4) std::array<uint8_t, GainContext::size_bytes()> buffer{};
     GainContext packet(buffer);
 
@@ -158,7 +158,7 @@ TEST_F(ContextPacketTest, CIF0_23_SpecExamples) {
 }
 
 TEST_F(ContextPacketTest, CIF0_23_CommonGainValues) {
-    using GainContext = typed::ContextPacket<NoTimestamp, NoClassId, gain>;
+    using GainContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, gain>;
     alignas(4) std::array<uint8_t, GainContext::size_bytes()> buffer{};
     GainContext packet(buffer);
 
@@ -183,7 +183,7 @@ TEST_F(ContextPacketTest, CIF0_23_CommonGainValues) {
 }
 
 TEST_F(ContextPacketTest, CIF0_23_Saturation) {
-    using GainContext = typed::ContextPacket<NoTimestamp, NoClassId, gain>;
+    using GainContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, gain>;
     alignas(4) std::array<uint8_t, GainContext::size_bytes()> buffer{};
     GainContext packet(buffer);
 
@@ -208,14 +208,14 @@ TEST_F(ContextPacketTest, CIF0_23_Saturation) {
 
 TEST_F(ContextPacketTest, CIF0_23_RuntimeAccess) {
     // Create a compile-time packet
-    using GainContext = typed::ContextPacket<NoTimestamp, NoClassId, gain>;
+    using GainContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, gain>;
     alignas(4) std::array<uint8_t, GainContext::size_bytes()> buffer{};
     GainContext packet(buffer);
 
     packet[gain].set_value({15.0, 10.0});
 
     // Parse with runtime packet
-    auto result = dynamic::ContextPacket::parse(buffer);
+    auto result = dynamic::ContextPacketView::parse(buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& runtime_packet = result.value();
 

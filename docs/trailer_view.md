@@ -26,8 +26,8 @@ Trailer views are obtained through packet's `trailer()` method. Both compile-tim
 
 | Packet Type | Non-const Method | Const Method |
 |-------------|------------------|--------------|
-| `DataPacket<..., Trailer::included>` | `trailer()` → `MutableTrailerView` | `trailer() const` → `TrailerView` |
-| `RuntimeDataPacket` | — | `trailer()` → `optional<TrailerView>` |
+| `DataPacketBuilder<..., Trailer::included>` | `trailer()` → `MutableTrailerView` | `trailer() const` → `TrailerView` |
+| `dynamic::DataPacketView` | — | `trailer()` → `optional<TrailerView>` |
 
 Runtime packets wrap the view in `std::optional` to handle cases where the trailer is absent or the packet is invalid.
 
@@ -152,12 +152,11 @@ auto trailer_cfg = TrailerBuilder{}
     .calibrated_time(true)         // Sets enable bit 31 and indicator bit 19
     .context_packet_count(3);      // Sets E bit 7 and count bits 6-0
 
-// Apply to a packet builder
+// Apply to a packet
 alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
-auto packet = PacketBuilder<PacketType>(buffer)
-    .stream_id(0x1234)
-    .trailer(trailer_cfg)
-    .build();
+PacketType packet(buffer);
+packet.set_stream_id(0x1234);
+packet.trailer().set_raw(trailer_cfg.value());
 ```
 
 ### Builder Methods
@@ -190,7 +189,7 @@ All setter methods return `TrailerBuilder&` for chaining:
 
 ```cpp
 // Compile-time packet with trailer
-using PacketType = SignalDataPacket<NoClassId, UtcRealTimestamp, Trailer::included, 128>;
+using PacketType = SignalDataPacketBuilder<NoClassId, UtcRealTimestamp, Trailer::included, 128>;
 alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 PacketType packet(buffer);
 
@@ -226,13 +225,14 @@ if (auto count = packet.trailer().context_packet_count()) {
 bool frame_bit = packet.trailer().sample_frame_1();
 ```
 
-### Reading Trailer from Runtime Packets
+### Reading Trailer from Dynamic Packets
 
 ```cpp
-// Runtime packet parsing - uniform TrailerView access
-RuntimeDataPacket view(rx_buffer);
+// Dynamic packet parsing - uniform TrailerView access
+auto result = dynamic::DataPacketView::parse(rx_buffer);
+if (result.ok()) {
+    const auto& view = result.value();
 
-if (view.is_valid()) {
     // trailer() returns optional<TrailerView>
     if (auto trailer = view.trailer()) {
         // Same API as compile-time packets
@@ -268,11 +268,11 @@ packet.trailer().clear_valid_data();           // Clears bit 30
 packet.trailer().clear();                      // All bits = 0
 ```
 
-### Using TrailerBuilder with PacketBuilder
+### Using TrailerBuilder with Packet Types
 
 ```cpp
 // Build packet with comprehensive status
-using PacketType = SignalDataPacket<NoClassId, UtcRealTimestamp, Trailer::included, 128>;
+using PacketType = SignalDataPacketBuilder<NoClassId, UtcRealTimestamp, Trailer::included, 128>;
 alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
 // Compose trailer configuration
@@ -282,14 +282,13 @@ auto good_status = TrailerBuilder{}
     .reference_lock(true)
     .context_packet_count(2);
 
-// Build packet
+// Create and configure packet
 auto ts = UtcRealTimestamp(1000000, 0);
-auto packet = PacketBuilder<PacketType>(buffer)
-    .stream_id(0x12345678)
-    .timestamp(ts)
-    .trailer(good_status)
-    .packet_count(0)
-    .build();
+PacketType packet(buffer);
+packet.set_stream_id(0x12345678);
+packet.set_timestamp(ts);
+packet.trailer().set_raw(good_status.value());
+packet.set_packet_count(0);
 
 // Verify
 assert(packet.trailer().valid_data() == true);
@@ -306,10 +305,9 @@ auto error_trailer = TrailerBuilder{}
     .sample_loss(true);   // Sample loss detected
 
 alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
-auto packet = PacketBuilder<PacketType>(buffer)
-    .stream_id(0xAABBCCDD)
-    .trailer(error_trailer)
-    .build();
+PacketType packet(buffer);
+packet.set_stream_id(0xAABBCCDD);
+packet.trailer().set_raw(error_trailer.value());
 
 // Check on receive
 if (packet.trailer().over_range().value_or(false) ||
@@ -324,17 +322,16 @@ if (packet.trailer().over_range().value_or(false) ||
 }
 ```
 
-### Inline Trailer Configuration
+### Direct Trailer Configuration
 
 ```cpp
-// For simple cases, use PacketBuilder's trailer methods directly
+// For simple cases, configure trailer fields directly
 alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
-auto packet = PacketBuilder<PacketType>(buffer)
-    .stream_id(0x1234)
-    .trailer_valid_data(true)
-    .trailer_calibrated_time(true)
-    .trailer_context_packet_count(1)
-    .build();
+PacketType packet(buffer);
+packet.set_stream_id(0x1234);
+packet.trailer().set_valid_data(true);
+packet.trailer().set_calibrated_time(true);
+packet.trailer().set_context_packet_count(1);
 ```
 
 ## Bit Field Reference

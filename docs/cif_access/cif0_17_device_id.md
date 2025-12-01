@@ -12,7 +12,7 @@ device generating the VRT packet stream. Per VITA 49.2 Section 9.10.1:
 - Device Code: 16-bit manufacturer-assigned device model identifier
 
 ```cpp
-    using DeviceIdContext = typed::ContextPacket<NoTimestamp, NoClassId, device_id>;
+    using DeviceIdContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, device_id>;
 
     alignas(4) std::array<uint8_t, DeviceIdContext::size_bytes()> buffer{};
     DeviceIdContext packet(buffer);

@@ -27,7 +27,6 @@ endif()
 
 vrtigo_add_gtest(roundtrip_test roundtrip_test.cpp)
 vrtigo_add_gtest(endian_test endian_test.cpp)
-vrtigo_add_gtest(builder_test builder_test.cpp)
 vrtigo_add_gtest(security_test security_test.cpp)
 vrtigo_add_gtest(trailer_test trailer_test.cpp)
 vrtigo_add_gtest(timestamp_test timestamp_test.cpp)

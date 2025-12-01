@@ -7,16 +7,16 @@ using namespace vrtigo;
 
 // Test basic signal packet without stream ID
 TEST(RtDataPacketTest, BasicPacketNoStream) {
-    using PacketType = typed::SignalDataPacketNoId<vrtigo::NoClassId, NoTimestamp,
-                                                   vrtigo::Trailer::none, // no trailer
-                                                   64                     // 64 words payload
-                                                   >;
+    using PacketType = typed::SignalDataPacketBuilderNoId<vrtigo::NoClassId, NoTimestamp,
+                                                          vrtigo::Trailer::none, // no trailer
+                                                          64                     // 64 words payload
+                                                          >;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
 
     // Parse with runtime view
-    auto result = dynamic::DataPacket::parse(buffer);
+    auto result = dynamic::DataPacketView::parse(buffer);
 
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
@@ -31,14 +31,15 @@ TEST(RtDataPacketTest, BasicPacketNoStream) {
 // Test signal packet with stream ID
 TEST(RtDataPacketTest, PacketWithStreamID) {
     using PacketType =
-        typed::SignalDataPacket<vrtigo::NoClassId, NoTimestamp, vrtigo::Trailer::none, 64>;
+        typed::SignalDataPacketBuilder<vrtigo::NoClassId, NoTimestamp, vrtigo::Trailer::none, 64>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
-    [[maybe_unused]] auto packet = PacketBuilder<PacketType>(buffer).stream_id(0x12345678).build();
+    PacketType packet(buffer);
+    packet.set_stream_id(0x12345678);
 
     // Parse with runtime view
-    auto result = dynamic::DataPacket::parse(buffer);
+    auto result = dynamic::DataPacketView::parse(buffer);
 
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
@@ -52,17 +53,18 @@ TEST(RtDataPacketTest, PacketWithStreamID) {
 
 // Test signal packet with timestamps
 TEST(RtDataPacketTest, PacketWithTimestamps) {
-    using PacketType =
-        typed::SignalDataPacket<vrtigo::NoClassId, UtcRealTimestamp, vrtigo::Trailer::none, 64>;
+    using PacketType = typed::SignalDataPacketBuilder<vrtigo::NoClassId, UtcRealTimestamp,
+                                                      vrtigo::Trailer::none, 64>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
+    PacketType packet(buffer);
+    packet.set_stream_id(0xABCDEF00);
     auto build_ts = UtcRealTimestamp(1234567890, 500000000000ULL);
-    [[maybe_unused]] auto packet =
-        PacketBuilder<PacketType>(buffer).stream_id(0xABCDEF00).timestamp(build_ts).build();
+    packet.set_timestamp(build_ts);
 
     // Parse with runtime view
-    auto result = dynamic::DataPacket::parse(buffer);
+    auto result = dynamic::DataPacketView::parse(buffer);
 
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
@@ -80,19 +82,19 @@ TEST(RtDataPacketTest, PacketWithTimestamps) {
 
 // Test signal packet with trailer
 TEST(RtDataPacketTest, PacketWithTrailer) {
-    using PacketType = typed::SignalDataPacket<vrtigo::NoClassId, NoTimestamp,
-                                               vrtigo::Trailer::included, // has trailer
-                                               64>;
+    using PacketType = typed::SignalDataPacketBuilder<vrtigo::NoClassId, NoTimestamp,
+                                                      vrtigo::Trailer::included, // has trailer
+                                                      64>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
+    PacketType packet(buffer);
+    packet.set_stream_id(0x11111111);
     auto trailer_cfg = vrtigo::TrailerBuilder{0xDEADBEEF};
-
-    [[maybe_unused]] auto packet =
-        PacketBuilder<PacketType>(buffer).stream_id(0x11111111).trailer(trailer_cfg).build();
+    trailer_cfg.apply(packet.trailer());
 
     // Parse with runtime view
-    auto result = dynamic::DataPacket::parse(buffer);
+    auto result = dynamic::DataPacketView::parse(buffer);
 
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
@@ -105,24 +107,23 @@ TEST(RtDataPacketTest, PacketWithTrailer) {
 
 // Test full-featured packet (stream ID + timestamps + trailer)
 TEST(RtDataPacketTest, FullFeaturedPacket) {
-    using PacketType = typed::SignalDataPacket<vrtigo::NoClassId, UtcRealTimestamp,
-                                               vrtigo::Trailer::included, // has trailer
-                                               128                        // larger payload
-                                               >;
+    using PacketType = typed::SignalDataPacketBuilder<vrtigo::NoClassId, UtcRealTimestamp,
+                                                      vrtigo::Trailer::included, // has trailer
+                                                      128                        // larger payload
+                                                      >;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
+    PacketType packet(buffer);
+    packet.set_stream_id(0xCAFEBABE);
     auto build_ts = UtcRealTimestamp(9999999, 123456789012ULL);
-    [[maybe_unused]] auto packet = PacketBuilder<PacketType>(buffer)
-                                       .stream_id(0xCAFEBABE)
-                                       .timestamp(build_ts)
-                                       .trailer_valid_data(true)
-                                       .trailer_calibrated_time(true)
-                                       .packet_count(7)
-                                       .build();
+    packet.set_timestamp(build_ts);
+    auto trailer_cfg = vrtigo::TrailerBuilder{}.valid_data(true).calibrated_time(true);
+    trailer_cfg.apply(packet.trailer());
+    packet.set_packet_count(7);
 
     // Parse with runtime view
-    auto result = dynamic::DataPacket::parse(buffer);
+    auto result = dynamic::DataPacketView::parse(buffer);
 
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
@@ -143,9 +144,9 @@ TEST(RtDataPacketTest, FullFeaturedPacket) {
 // Test payload access
 TEST(RtDataPacketTest, PayloadAccess) {
     using PacketType =
-        typed::SignalDataPacketNoId<vrtigo::NoClassId, NoTimestamp, vrtigo::Trailer::none,
-                                    16 // 16 words = 64 bytes
-                                    >;
+        typed::SignalDataPacketBuilderNoId<vrtigo::NoClassId, NoTimestamp, vrtigo::Trailer::none,
+                                           16 // 16 words = 64 bytes
+                                           >;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -157,7 +158,7 @@ TEST(RtDataPacketTest, PayloadAccess) {
     }
 
     // Parse with runtime view
-    auto result = dynamic::DataPacket::parse(buffer);
+    auto result = dynamic::DataPacketView::parse(buffer);
 
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
@@ -175,15 +176,15 @@ TEST(RtDataPacketTest, PayloadAccess) {
 
 // Test validation: buffer too small
 TEST(RtDataPacketTest, ValidationBufferTooSmall) {
-    using PacketType =
-        typed::SignalDataPacketNoId<vrtigo::NoClassId, NoTimestamp, vrtigo::Trailer::none, 64>;
+    using PacketType = typed::SignalDataPacketBuilderNoId<vrtigo::NoClassId, NoTimestamp,
+                                                          vrtigo::Trailer::none, 64>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
 
     // Parse with smaller buffer size
-    auto result =
-        dynamic::DataPacket::parse(std::span<const uint8_t>(buffer.data(), 10)); // Only 10 bytes
+    auto result = dynamic::DataPacketView::parse(
+        std::span<const uint8_t>(buffer.data(), 10)); // Only 10 bytes
 
     EXPECT_FALSE(result.ok());
     EXPECT_EQ(result.error().code, ValidationError::buffer_too_small);
@@ -199,7 +200,7 @@ TEST(RtDataPacketTest, ValidationWrongPacketType) {
     std::memcpy(buffer.data(), &header_be, sizeof(header_be));
 
     // Try to parse as signal packet
-    auto result = dynamic::DataPacket::parse(buffer);
+    auto result = dynamic::DataPacketView::parse(buffer);
 
     EXPECT_FALSE(result.ok());
     EXPECT_EQ(result.error().code, ValidationError::packet_type_mismatch);
@@ -207,7 +208,7 @@ TEST(RtDataPacketTest, ValidationWrongPacketType) {
 
 // Test validation: empty buffer
 TEST(RtDataPacketTest, ValidationEmptyBuffer) {
-    auto result = dynamic::DataPacket::parse(std::span<const uint8_t>{});
+    auto result = dynamic::DataPacketView::parse(std::span<const uint8_t>{});
 
     EXPECT_FALSE(result.ok());
     EXPECT_EQ(result.error().code, ValidationError::buffer_too_small);
@@ -215,9 +216,9 @@ TEST(RtDataPacketTest, ValidationEmptyBuffer) {
 
 // Test round-trip: build → parse → verify
 TEST(RtDataPacketTest, RoundTripBuildParse) {
-    using PacketType =
-        typed::SignalDataPacket<vrtigo::NoClassId, Timestamp<TsiType::gps, TsfType::real_time>,
-                                vrtigo::Trailer::included, 256>;
+    using PacketType = typed::SignalDataPacketBuilder<vrtigo::NoClassId,
+                                                      Timestamp<TsiType::gps, TsfType::real_time>,
+                                                      vrtigo::Trailer::included, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -227,20 +228,18 @@ TEST(RtDataPacketTest, RoundTripBuildParse) {
         payload_data[i] = static_cast<uint8_t>((i * 7) & 0xFF);
     }
 
-    auto trailer_cfg = vrtigo::TrailerBuilder{0x12345678};
-
+    PacketType packet(buffer);
+    packet.set_stream_id(0x87654321);
     using GPSTimestamp = Timestamp<TsiType::gps, TsfType::real_time>;
     auto ts = GPSTimestamp(2000000000, 999999999999ULL);
-    [[maybe_unused]] auto packet = PacketBuilder<PacketType>(buffer)
-                                       .stream_id(0x87654321)
-                                       .timestamp(ts)
-                                       .trailer(trailer_cfg)
-                                       .packet_count(15)
-                                       .payload(payload_data.data(), payload_data.size())
-                                       .build();
+    packet.set_timestamp(ts);
+    auto trailer_cfg = vrtigo::TrailerBuilder{0x12345678};
+    trailer_cfg.apply(packet.trailer());
+    packet.set_packet_count(15);
+    packet.set_payload(payload_data.data(), payload_data.size());
 
     // Parse with view
-    auto result = dynamic::DataPacket::parse(buffer);
+    auto result = dynamic::DataPacketView::parse(buffer);
 
     // Verify all fields
     ASSERT_TRUE(result.ok()) << result.error().message();
@@ -297,7 +296,7 @@ TEST(RtDataPacketTest, ValidationAcceptsClassIdBit) {
     std::memcpy(buffer.data() + 12, &word1_be, sizeof(word1_be));
 
     // Parse packet - should be valid
-    auto result = dynamic::DataPacket::parse(buffer);
+    auto result = dynamic::DataPacketView::parse(buffer);
 
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
@@ -331,7 +330,7 @@ TEST(RtDataPacketTest, Bit25IsIndependentOfPacketType) {
     uint32_t header_be = detail::host_to_network32(header_type0_with_nd0);
     std::memcpy(buffer.data(), &header_be, sizeof(header_be));
 
-    auto result1 = dynamic::DataPacket::parse(buffer);
+    auto result1 = dynamic::DataPacketView::parse(buffer);
     ASSERT_TRUE(result1.ok()) << result1.error().message();
     EXPECT_FALSE(result1.value().has_stream_id()); // No stream ID (type 0)
 
@@ -343,7 +342,7 @@ TEST(RtDataPacketTest, Bit25IsIndependentOfPacketType) {
     header_be = detail::host_to_network32(header_type1_without_nd0);
     std::memcpy(buffer.data(), &header_be, sizeof(header_be));
 
-    auto result2 = dynamic::DataPacket::parse(buffer);
+    auto result2 = dynamic::DataPacketView::parse(buffer);
     ASSERT_TRUE(result2.ok()) << result2.error().message();
     EXPECT_TRUE(result2.value().has_stream_id()); // Has stream ID (type 1)
 }

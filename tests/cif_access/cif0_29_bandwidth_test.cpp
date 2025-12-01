@@ -23,7 +23,7 @@ TEST_F(ContextPacketTest, CIF0_29_BasicAccess) {
     // [/DESCRIPTION]
 
     // [SNIPPET]
-    using BandwidthContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using BandwidthContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, BandwidthContext::size_bytes()> buffer{};
     BandwidthContext packet(buffer);

@@ -3,8 +3,8 @@
 TEST_F(ContextPacketTest, CIF3FieldsBasic) {
     // Test a selection of 1-word and 2-word CIF3 fields using field-based API
     using namespace vrtigo::field;
-    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, network_id, tropospheric_state,
-                                             jitter, pulse_width>;
+    using TestContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, network_id,
+                                                    tropospheric_state, jitter, pulse_width>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -47,7 +47,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF3) {
     cif::write_u32_safe(buffer.data(), 16, 0xDEADBEEF);
 
     // Parse and validate
-    auto result = dynamic::ContextPacket::parse(buffer);
+    auto result = dynamic::ContextPacketView::parse(buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
 
@@ -62,7 +62,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF3) {
 TEST_F(ContextPacketTest, CompileTimeCIF3) {
     using namespace vrtigo::field;
     using TestContext =
-        typed::ContextPacket<NoTimestamp, NoClassId, network_id, tropospheric_state>;
+        typed::ContextPacketBuilder<NoTimestamp, NoClassId, network_id, tropospheric_state>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -81,7 +81,7 @@ TEST_F(ContextPacketTest, CompileTimeCIF3) {
     EXPECT_EQ(packet[tropospheric_state].encoded(), 0x22222222);
 
     // Parse as runtime packet to verify structure
-    auto result = dynamic::ContextPacket::parse(buffer);
+    auto result = dynamic::ContextPacketView::parse(buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
     EXPECT_EQ(view.cif3(), expected_cif3);

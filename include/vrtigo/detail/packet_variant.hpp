@@ -16,14 +16,14 @@ namespace vrtigo {
  * @brief Type-safe variant holding validated packet views
  *
  * PacketVariant holds only valid, successfully parsed packets:
- * - dynamic::DataPacket: Signal or Extension data packets (types 0-3)
- * - dynamic::ContextPacket: Context or Extension Context packets (types 4-5)
+ * - dynamic::DataPacketView: Signal or Extension data packets (types 0-3)
+ * - dynamic::ContextPacketView: Context or Extension Context packets (types 4-5)
  *
  * To parse a packet, use parse_packet() which returns ParseResult<PacketVariant>.
  * If parsing fails, the error information is in the ParseError, not in the variant.
  */
-using PacketVariant = std::variant<dynamic::DataPacket,   // Signal/Extension data packets
-                                   dynamic::ContextPacket // Context/Extension context packets
+using PacketVariant = std::variant<dynamic::DataPacketView,   // Signal/Extension data packets
+                                   dynamic::ContextPacketView // Context/Extension context packets
                                    >;
 
 // ==========
@@ -40,9 +40,9 @@ inline PacketType packet_type(const PacketVariant& pkt) noexcept {
         [](auto&& p) -> PacketType {
             using T = std::decay_t<decltype(p)>;
 
-            if constexpr (std::is_same_v<T, dynamic::DataPacket>) {
+            if constexpr (std::is_same_v<T, dynamic::DataPacketView>) {
                 return p.type();
-            } else if constexpr (std::is_same_v<T, dynamic::ContextPacket>) {
+            } else if constexpr (std::is_same_v<T, dynamic::ContextPacketView>) {
                 return p.type();
             }
 
@@ -62,9 +62,9 @@ inline std::optional<uint32_t> stream_id(const PacketVariant& pkt) noexcept {
         [](auto&& p) -> std::optional<uint32_t> {
             using T = std::decay_t<decltype(p)>;
 
-            if constexpr (std::is_same_v<T, dynamic::DataPacket>) {
+            if constexpr (std::is_same_v<T, dynamic::DataPacketView>) {
                 return p.stream_id();
-            } else if constexpr (std::is_same_v<T, dynamic::ContextPacket>) {
+            } else if constexpr (std::is_same_v<T, dynamic::ContextPacketView>) {
                 return p.stream_id();
             }
 
@@ -76,19 +76,19 @@ inline std::optional<uint32_t> stream_id(const PacketVariant& pkt) noexcept {
 /**
  * @brief Check if a packet variant holds a data packet
  * @param pkt The packet variant to check
- * @return true if the packet is a dynamic::DataPacket, false otherwise
+ * @return true if the packet is a dynamic::DataPacketView, false otherwise
  */
 inline bool is_data_packet(const PacketVariant& pkt) noexcept {
-    return std::holds_alternative<dynamic::DataPacket>(pkt);
+    return std::holds_alternative<dynamic::DataPacketView>(pkt);
 }
 
 /**
  * @brief Check if a packet variant holds a context packet
  * @param pkt The packet variant to check
- * @return true if the packet is a dynamic::ContextPacket, false otherwise
+ * @return true if the packet is a dynamic::ContextPacketView, false otherwise
  */
 inline bool is_context_packet(const PacketVariant& pkt) noexcept {
-    return std::holds_alternative<dynamic::ContextPacket>(pkt);
+    return std::holds_alternative<dynamic::ContextPacketView>(pkt);
 }
 
 // ==========
@@ -135,7 +135,7 @@ inline std::optional<uint32_t> stream_id(const ParseResult<PacketVariant>& resul
 /**
  * @brief Check if a parse result holds a data packet
  * @param result The parse result to check
- * @return true if parsing succeeded and holds a dynamic::DataPacket, false otherwise
+ * @return true if parsing succeeded and holds a dynamic::DataPacketView, false otherwise
  */
 inline bool is_data_packet(const ParseResult<PacketVariant>& result) noexcept {
     return result.ok() && is_data_packet(result.value());
@@ -144,7 +144,7 @@ inline bool is_data_packet(const ParseResult<PacketVariant>& result) noexcept {
 /**
  * @brief Check if a parse result holds a context packet
  * @param result The parse result to check
- * @return true if parsing succeeded and holds a dynamic::ContextPacket, false otherwise
+ * @return true if parsing succeeded and holds a dynamic::ContextPacketView, false otherwise
  */
 inline bool is_context_packet(const ParseResult<PacketVariant>& result) noexcept {
     return result.ok() && is_context_packet(result.value());

@@ -11,7 +11,8 @@ translated to the IF Reference Frequency. It uses 64-bit two's complement Q44.20
 fixed-point format, providing ±8.79 THz range with 0.95 µHz resolution.
 
 ```cpp
-    using RFRefContext = typed::ContextPacket<NoTimestamp, NoClassId, rf_reference_frequency>;
+    using RFRefContext =
+        typed::ContextPacketBuilder<NoTimestamp, NoClassId, rf_reference_frequency>;
 
     alignas(4) std::array<uint8_t, RFRefContext::size_bytes()> buffer{};
     RFRefContext packet(buffer);

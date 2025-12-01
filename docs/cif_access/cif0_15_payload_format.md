@@ -10,7 +10,7 @@ Configure the Payload Format field for real-valued 16-bit signed fixed-point
 samples in Q3.12 format with 1024 samples per vector.
 
 ```cpp
-    using FormatContext = typed::ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
+    using FormatContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, data_payload_format>;
 
     alignas(4) std::array<uint8_t, FormatContext::size_bytes()> buffer{};
     FormatContext packet(buffer);
@@ -32,7 +32,7 @@ Configure for complex-valued signals using IEEE 754 single-precision floating-po
 format (32 bits per component) with 512 samples per vector and link-efficient packing.
 
 ```cpp
-    using FormatContext = typed::ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
+    using FormatContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, data_payload_format>;
 
     alignas(4) std::array<uint8_t, FormatContext::size_bytes()> buffer{};
     FormatContext packet(buffer);
@@ -55,7 +55,7 @@ The `get_multiple()` method allows reading multiple bitfield values in a single
 call, returning a tuple. This is more efficient than individual get() calls.
 
 ```cpp
-    using FormatContext = typed::ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
+    using FormatContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, data_payload_format>;
 
     alignas(4) std::array<uint8_t, FormatContext::size_bytes()> buffer{};
     FormatContext packet(buffer);
@@ -80,7 +80,7 @@ When receiving VRT packets, `get()` automatically returns strongly-typed
 enum values for fields that declare them, requiring no manual casting.
 
 ```cpp
-    using FormatContext = typed::ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
+    using FormatContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, data_payload_format>;
 
     alignas(4) std::array<uint8_t, FormatContext::size_bytes()> buffer{};
     FormatContext packet(buffer);

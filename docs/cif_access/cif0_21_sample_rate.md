@@ -10,7 +10,7 @@ The Sample Rate field is a 64-bit Q52.12 fixed-point value representing
 the sample rate in Hz. Set and read the encoded value directly.
 
 ```cpp
-    using SampleRateContext = typed::ContextPacket<NoTimestamp, NoClassId, sample_rate>;
+    using SampleRateContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, sample_rate>;
 
     alignas(4) std::array<uint8_t, SampleRateContext::size_bytes()> buffer{};
     SampleRateContext packet(buffer);

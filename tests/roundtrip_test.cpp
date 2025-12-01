@@ -32,10 +32,11 @@ protected:
 // Test 1: Minimal packet (no stream, no timestamps, no trailer)
 TEST_F(RoundTripTest, MinimalPacket) {
     using PacketType =
-        vrtigo::typed::SignalDataPacketNoId<vrtigo::NoClassId, vrtigo::NoTimestamp, // No timestamps
-                                            vrtigo::Trailer::none,                  // No trailer
-                                            128 // 512 bytes payload
-                                            >;
+        vrtigo::typed::SignalDataPacketBuilderNoId<vrtigo::NoClassId,
+                                                   vrtigo::NoTimestamp,   // No timestamps
+                                                   vrtigo::Trailer::none, // No trailer
+                                                   128                    // 512 bytes payload
+                                                   >;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -45,7 +46,7 @@ TEST_F(RoundTripTest, MinimalPacket) {
     fill_test_payload(packet.payload());
 
     // Verify packet can be parsed with runtime parser
-    auto result = vrtigo::dynamic::DataPacket::parse(buffer);
+    auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
     ASSERT_TRUE(result.ok());
 
     // Use compile-time packet for field access
@@ -60,8 +61,9 @@ TEST_F(RoundTripTest, MinimalPacket) {
 
 // Test 2: Packet with stream ID (type 1)
 TEST_F(RoundTripTest, PacketWithStreamId) {
-    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                                       vrtigo::Trailer::none, 256>;
+    using PacketType =
+        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId, vrtigo::NoTimestamp,
+                                               vrtigo::Trailer::none, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -83,9 +85,9 @@ TEST_F(RoundTripTest, PacketWithStreamId) {
 // Test 3: Packet with integer timestamp (TSI)
 TEST_F(RoundTripTest, PacketWithIntegerTimestamp) {
     using PacketType =
-        vrtigo::typed::SignalDataPacket<vrtigo::NoClassId,
-                                        vrtigo::UtcRealTimestamp, // Using UTC timestamps
-                                        vrtigo::Trailer::none, 128>;
+        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId,
+                                               vrtigo::UtcRealTimestamp, // Using UTC timestamps
+                                               vrtigo::Trailer::none, 128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -111,10 +113,10 @@ TEST_F(RoundTripTest, PacketWithIntegerTimestamp) {
 // Test 4: Packet with fractional timestamp (TSF)
 TEST_F(RoundTripTest, PacketWithFractionalTimestamp) {
     using PacketType =
-        vrtigo::typed::SignalDataPacket<vrtigo::NoClassId,
-                                        vrtigo::UtcRealTimestamp, // Using UTC timestamps
-                                                                  // (with picoseconds)
-                                        vrtigo::Trailer::none, 256>;
+        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId,
+                                               vrtigo::UtcRealTimestamp, // Using UTC timestamps
+                                                                         // (with picoseconds)
+                                               vrtigo::Trailer::none, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -142,10 +144,10 @@ TEST_F(RoundTripTest, PacketWithFractionalTimestamp) {
 // Test 5: Packet with trailer
 TEST_F(RoundTripTest, PacketWithTrailer) {
     using PacketType =
-        vrtigo::typed::SignalDataPacket<vrtigo::NoClassId,
-                                        vrtigo::UtcRealTimestamp,  // Using UTC timestamps
-                                        vrtigo::Trailer::included, // Has trailer
-                                        128>;
+        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId,
+                                               vrtigo::UtcRealTimestamp,  // Using UTC timestamps
+                                               vrtigo::Trailer::included, // Has trailer
+                                               128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -173,11 +175,11 @@ TEST_F(RoundTripTest, PacketWithTrailer) {
 // Test 6: Full-featured packet (all optional fields)
 TEST_F(RoundTripTest, FullFeaturedPacket) {
     using PacketType =
-        vrtigo::typed::SignalDataPacket<vrtigo::NoClassId,
-                                        vrtigo::UtcRealTimestamp,  // UTC with picoseconds
-                                        vrtigo::Trailer::included, // Has trailer
-                                        512                        // 2048 bytes payload
-                                        >;
+        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId,
+                                               vrtigo::UtcRealTimestamp,  // UTC with picoseconds
+                                               vrtigo::Trailer::included, // Has trailer
+                                               512                        // 2048 bytes payload
+                                               >;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -191,7 +193,7 @@ TEST_F(RoundTripTest, FullFeaturedPacket) {
     fill_test_payload(packet.payload());
 
     // Verify packet can be parsed with runtime parser
-    auto result = vrtigo::dynamic::DataPacket::parse(buffer);
+    auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
     ASSERT_TRUE(result.ok());
 
     // Use compile-time packet for field access
@@ -210,10 +212,10 @@ TEST_F(RoundTripTest, FullFeaturedPacket) {
 // Test 7: Builder round-trip
 TEST_F(RoundTripTest, BuilderRoundTrip) {
     using PacketType =
-        vrtigo::typed::SignalDataPacket<vrtigo::NoClassId,
-                                        vrtigo::UtcRealTimestamp,  // UTC with picoseconds
-                                        vrtigo::Trailer::included, // Trailer included
-                                        256>;
+        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId,
+                                               vrtigo::UtcRealTimestamp,  // UTC with picoseconds
+                                               vrtigo::Trailer::included, // Trailer included
+                                               256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> tx_buffer;
     alignas(4) std::array<uint8_t, 1024> payload_data;
@@ -223,17 +225,15 @@ TEST_F(RoundTripTest, BuilderRoundTrip) {
         payload_data[i] = static_cast<uint8_t>(i & 0xFF);
     }
 
-    // Build packet using fluent API
-    auto trailer_cfg = vrtigo::TrailerBuilder{}.clear().context_packet_count(1);
-
+    // Build packet using direct setter API
+    PacketType packet(tx_buffer);
+    packet.set_stream_id(0xFEEDFACE);
     auto ts = vrtigo::UtcRealTimestamp(1700000000, 500000000000ULL);
-    vrtigo::PacketBuilder<PacketType>(tx_buffer)
-        .stream_id(0xFEEDFACE)
-        .timestamp(ts)
-        .trailer(trailer_cfg)
-        .packet_count(9)
-        .payload(payload_data.data(), payload_data.size())
-        .build();
+    packet.set_timestamp(ts);
+    auto trailer_cfg = vrtigo::TrailerBuilder{}.clear().context_packet_count(1);
+    trailer_cfg.apply(packet.trailer());
+    packet.set_packet_count(9);
+    packet.set_payload(payload_data.data(), payload_data.size());
 
     // Simulate network transmission by copying buffer
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> rx_buffer;
@@ -261,8 +261,9 @@ TEST_F(RoundTripTest, BuilderRoundTrip) {
 
 // Test 8: Multiple sequential packets
 TEST_F(RoundTripTest, MultiplePackets) {
-    using PacketType = vrtigo::typed::SignalDataPacket<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                                       vrtigo::Trailer::none, 128>;
+    using PacketType =
+        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
+                                               vrtigo::Trailer::none, 128>;
 
     constexpr size_t NUM_PACKETS = 10;
     alignas(4) std::array<uint8_t, PacketType::size_bytes() * NUM_PACKETS> buffer;
@@ -308,10 +309,10 @@ TEST_F(RoundTripTest, MultiplePackets) {
 // Test 9: Verify header bits are set correctly
 TEST_F(RoundTripTest, HeaderBitsCorrect) {
     using PacketType =
-        vrtigo::typed::SignalDataPacket<vrtigo::NoClassId,
-                                        vrtigo::UtcRealTimestamp,  // UTC with picoseconds
-                                        vrtigo::Trailer::included, // Has trailer
-                                        256>;
+        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId,
+                                               vrtigo::UtcRealTimestamp,  // UTC with picoseconds
+                                               vrtigo::Trailer::included, // Has trailer
+                                               256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -340,9 +341,9 @@ TEST_F(RoundTripTest, HeaderBitsCorrect) {
 // Test 10: Type 0 packet (no stream ID)
 TEST_F(RoundTripTest, Type0PacketNoStreamId) {
     using PacketType =
-        vrtigo::typed::SignalDataPacketNoId<vrtigo::NoClassId,
-                                            vrtigo::UtcRealTimestamp, // Using UTC timestamps
-                                            vrtigo::Trailer::none, 256>;
+        vrtigo::typed::SignalDataPacketBuilderNoId<vrtigo::NoClassId,
+                                                   vrtigo::UtcRealTimestamp, // Using UTC timestamps
+                                                   vrtigo::Trailer::none, 256>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 

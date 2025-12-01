@@ -13,7 +13,7 @@ using namespace vrtigo::utils::fileio;
 using namespace vrtigo::detail;
 using vrtigo::PacketType;
 using vrtigo::ValidationError;
-using vrtigo::dynamic::ContextPacket;
+using vrtigo::dynamic::ContextPacketView;
 
 // Test data file paths
 const std::filesystem::path test_data_dir = TEST_DATA_DIR;
@@ -179,7 +179,7 @@ TEST(FileReaderTest, ParseContextPackets) {
 
             // Verify we can attempt parsing (result may fail if unsupported fields)
             // The file reader's job is just to read packets correctly
-            (void)vrtigo::dynamic::ContextPacket::parse(packet);
+            (void)vrtigo::dynamic::ContextPacketView::parse(packet);
             EXPECT_GE(packet.size(), 4); // At least a header
             break;
         }

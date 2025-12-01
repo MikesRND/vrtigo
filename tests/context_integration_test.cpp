@@ -5,7 +5,7 @@ using namespace vrtigo::field;
 TEST_F(ContextPacketTest, RoundTrip) {
     // Create packet with template
     // Note: Context packets always have Stream ID per VITA 49.2 spec
-    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth, gain>;
+    using TestContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, bandwidth, gain>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
     TestContext tx_packet(pkt_buffer);
@@ -14,7 +14,7 @@ TEST_F(ContextPacketTest, RoundTrip) {
     tx_packet[gain].set_encoded(0x12345678U);
 
     // Parse same buffer with view
-    auto result = dynamic::ContextPacket::parse(pkt_buffer);
+    auto result = dynamic::ContextPacketView::parse(pkt_buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
 
@@ -25,8 +25,8 @@ TEST_F(ContextPacketTest, RoundTrip) {
 
 TEST_F(ContextPacketTest, CombinedCIF1AndCIF2CompileTime) {
     // Create packet with both CIF1 and CIF2 fields
-    using TestContext =
-        typed::ContextPacket<NoTimestamp, NoClassId, bandwidth, aux_frequency, controller_uuid>;
+    using TestContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, bandwidth,
+                                                    aux_frequency, controller_uuid>;
 
     // Compile-time assertions: verify both enable bits are auto-set
     static_assert((TestContext::cif0_value & (1U << cif::CIF1_ENABLE_BIT)) != 0,
@@ -43,7 +43,7 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2CompileTime) {
     tx_packet[aux_frequency].set_encoded(25'000'000ULL); // Raw (no interpreted support)
 
     // Parse with runtime view
-    auto result = dynamic::ContextPacket::parse(pkt_buffer);
+    auto result = dynamic::ContextPacketView::parse(pkt_buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
 
@@ -96,7 +96,8 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2Runtime) {
     cif::write_u32_safe(buffer.data(), 48, 0x22222222);
 
     // Parse and validate
-    auto result = dynamic::ContextPacket::parse(std::span<const uint8_t>(buffer.data(), 13 * 4));
+    auto result =
+        dynamic::ContextPacketView::parse(std::span<const uint8_t>(buffer.data(), 13 * 4));
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
 
@@ -118,7 +119,7 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2Runtime) {
 
 TEST_F(ContextPacketTest, MultiWordFieldWrite) {
     // Create a compile-time packet with Data Payload Format (2 words, FieldView<2>)
-    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
+    using TestContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, data_payload_format>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
     TestContext packet(pkt_buffer);
@@ -141,7 +142,7 @@ TEST_F(ContextPacketTest, MultiWordFieldWrite) {
     EXPECT_EQ(read_value.encoded().word(1), 0x11223344);
 
     // Verify round-trip through runtime parser
-    auto result = dynamic::ContextPacket::parse(pkt_buffer);
+    auto result = dynamic::ContextPacketView::parse(pkt_buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
 
