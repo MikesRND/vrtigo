@@ -9,8 +9,8 @@
 class TrailerTest : public ::testing::Test {
 protected:
     using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                               vrtigo::Trailer::included, 128>;
+        vrtigo::typed::SignalDataPacketBuilder<128, vrtigo::UtcRealTimestamp, vrtigo::NoClassId,
+                                               vrtigo::WithTrailer>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 

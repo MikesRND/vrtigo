@@ -7,10 +7,7 @@ using namespace vrtigo;
 
 // Test basic signal packet without stream ID
 TEST(RtDataPacketTest, BasicPacketNoStream) {
-    using PacketType = typed::SignalDataPacketBuilderNoId<vrtigo::NoClassId, NoTimestamp,
-                                                          vrtigo::Trailer::none, // no trailer
-                                                          64                     // 64 words payload
-                                                          >;
+    using PacketType = typed::SignalDataPacketBuilderNoId<64>; // 64 words payload
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -30,8 +27,7 @@ TEST(RtDataPacketTest, BasicPacketNoStream) {
 
 // Test signal packet with stream ID
 TEST(RtDataPacketTest, PacketWithStreamID) {
-    using PacketType =
-        typed::SignalDataPacketBuilder<vrtigo::NoClassId, NoTimestamp, vrtigo::Trailer::none, 64>;
+    using PacketType = typed::SignalDataPacketBuilder<64>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -53,8 +49,7 @@ TEST(RtDataPacketTest, PacketWithStreamID) {
 
 // Test signal packet with timestamps
 TEST(RtDataPacketTest, PacketWithTimestamps) {
-    using PacketType = typed::SignalDataPacketBuilder<vrtigo::NoClassId, UtcRealTimestamp,
-                                                      vrtigo::Trailer::none, 64>;
+    using PacketType = typed::SignalDataPacketBuilder<64, UtcRealTimestamp>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -82,9 +77,7 @@ TEST(RtDataPacketTest, PacketWithTimestamps) {
 
 // Test signal packet with trailer
 TEST(RtDataPacketTest, PacketWithTrailer) {
-    using PacketType = typed::SignalDataPacketBuilder<vrtigo::NoClassId, NoTimestamp,
-                                                      vrtigo::Trailer::included, // has trailer
-                                                      64>;
+    using PacketType = typed::SignalDataPacketBuilder<64, NoTimestamp, NoClassId, WithTrailer>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -107,10 +100,8 @@ TEST(RtDataPacketTest, PacketWithTrailer) {
 
 // Test full-featured packet (stream ID + timestamps + trailer)
 TEST(RtDataPacketTest, FullFeaturedPacket) {
-    using PacketType = typed::SignalDataPacketBuilder<vrtigo::NoClassId, UtcRealTimestamp,
-                                                      vrtigo::Trailer::included, // has trailer
-                                                      128                        // larger payload
-                                                      >;
+    using PacketType =
+        typed::SignalDataPacketBuilder<128, UtcRealTimestamp, NoClassId, WithTrailer>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -143,10 +134,7 @@ TEST(RtDataPacketTest, FullFeaturedPacket) {
 
 // Test payload access
 TEST(RtDataPacketTest, PayloadAccess) {
-    using PacketType =
-        typed::SignalDataPacketBuilderNoId<vrtigo::NoClassId, NoTimestamp, vrtigo::Trailer::none,
-                                           16 // 16 words = 64 bytes
-                                           >;
+    using PacketType = typed::SignalDataPacketBuilderNoId<16>; // 16 words = 64 bytes
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -176,8 +164,7 @@ TEST(RtDataPacketTest, PayloadAccess) {
 
 // Test validation: buffer too small
 TEST(RtDataPacketTest, ValidationBufferTooSmall) {
-    using PacketType = typed::SignalDataPacketBuilderNoId<vrtigo::NoClassId, NoTimestamp,
-                                                          vrtigo::Trailer::none, 64>;
+    using PacketType = typed::SignalDataPacketBuilderNoId<64>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -216,9 +203,9 @@ TEST(RtDataPacketTest, ValidationEmptyBuffer) {
 
 // Test round-trip: build → parse → verify
 TEST(RtDataPacketTest, RoundTripBuildParse) {
-    using PacketType = typed::SignalDataPacketBuilder<vrtigo::NoClassId,
-                                                      Timestamp<TsiType::gps, TsfType::real_time>,
-                                                      vrtigo::Trailer::included, 256>;
+    using PacketType =
+        typed::SignalDataPacketBuilder<256, Timestamp<TsiType::gps, TsfType::real_time>, NoClassId,
+                                       WithTrailer>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 

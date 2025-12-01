@@ -31,7 +31,7 @@ namespace vrtigo {
  * while maintaining zero runtime overhead through compile-time calculations.
  *
  * @tparam Type The packet type (determines stream ID presence for data packets)
- * @tparam ClassIdType NoClassId or ClassId marker type
+ * @tparam ClassIdType NoClassId or WithClassId marker type
  * @tparam TimestampType NoTimestamp or Timestamp<TSI,TSF> type
  * @tparam IsContext True for context packets (stream ID always present)
  */

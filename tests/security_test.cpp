@@ -22,8 +22,8 @@ protected:
 // Test 1: Valid packet should parse successfully
 TEST_F(SecurityTest, ValidPacketParsesSuccessfully) {
     using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                               vrtigo::Trailer::included, 256>;
+        vrtigo::typed::SignalDataPacketBuilder<256, vrtigo::UtcRealTimestamp, vrtigo::NoClassId,
+                                               vrtigo::WithTrailer>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -52,9 +52,7 @@ TEST_F(SecurityTest, BufferTooSmallForHeader) {
 
 // Test 3: Buffer too small for declared size
 TEST_F(SecurityTest, BufferTooSmallForDeclaredSize) {
-    using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                               vrtigo::Trailer::none, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -68,9 +66,7 @@ TEST_F(SecurityTest, BufferTooSmallForDeclaredSize) {
 
 // Test 4: Wrong packet type (context packet)
 TEST_F(SecurityTest, ContextPacketTypeMismatch) {
-    using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                               vrtigo::Trailer::none, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -85,9 +81,7 @@ TEST_F(SecurityTest, ContextPacketTypeMismatch) {
 
 // Test 5: Wrong packet type (extension context)
 TEST_F(SecurityTest, ExtensionContextPacketTypeMismatch) {
-    using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                               vrtigo::Trailer::none, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -102,9 +96,7 @@ TEST_F(SecurityTest, ExtensionContextPacketTypeMismatch) {
 
 // Test 6: Size field mismatch (too large)
 TEST_F(SecurityTest, SizeFieldTooLarge) {
-    using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                               vrtigo::Trailer::none, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -119,9 +111,7 @@ TEST_F(SecurityTest, SizeFieldTooLarge) {
 
 // Test 7: Size field mismatch (zero)
 TEST_F(SecurityTest, SizeFieldZero) {
-    using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                               vrtigo::Trailer::none, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -137,11 +127,7 @@ TEST_F(SecurityTest, SizeFieldZero) {
 
 // Test 8: Minimal packet validation (header only)
 TEST_F(SecurityTest, MinimalPacketValidation) {
-    using PacketType =
-        vrtigo::typed::SignalDataPacketBuilderNoId<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                                   vrtigo::Trailer::none,
-                                                   0 // Zero payload
-                                                   >;
+    using PacketType = vrtigo::typed::SignalDataPacketBuilderNoId<0>; // Zero payload
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -158,10 +144,8 @@ TEST_F(SecurityTest, MinimalPacketValidation) {
 // Test 9: Maximum configuration validation
 TEST_F(SecurityTest, MaximumConfigurationValidation) {
     using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                               vrtigo::Trailer::included,
-                                               1024 // Large payload
-                                               >;
+        vrtigo::typed::SignalDataPacketBuilder<1024, vrtigo::UtcRealTimestamp, vrtigo::NoClassId,
+                                               vrtigo::WithTrailer>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -177,8 +161,8 @@ TEST_F(SecurityTest, MaximumConfigurationValidation) {
 // Test 10: Multiple errors (buffer too small takes priority)
 TEST_F(SecurityTest, MultipleErrors) {
     using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                               vrtigo::Trailer::included, 256>;
+        vrtigo::typed::SignalDataPacketBuilder<256, vrtigo::UtcRealTimestamp, vrtigo::NoClassId,
+                                               vrtigo::WithTrailer>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -211,9 +195,7 @@ TEST_F(SecurityTest, ErrorStringConversion) {
 
 // Test 12: Type 0 (signal_data_no_id) packet parses successfully
 TEST_F(SecurityTest, Type0PacketValidation) {
-    using PacketType =
-        vrtigo::typed::SignalDataPacketBuilderNoId<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                                   vrtigo::Trailer::none, 256>;
+    using PacketType = vrtigo::typed::SignalDataPacketBuilderNoId<256, vrtigo::UtcRealTimestamp>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -229,9 +211,7 @@ TEST_F(SecurityTest, Type0PacketValidation) {
 
 // Test 13: Type 1 (signal_data) packet parses successfully
 TEST_F(SecurityTest, Type1PacketValidation) {
-    using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                               vrtigo::Trailer::none, 256>;
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<256, vrtigo::UtcRealTimestamp>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -250,10 +230,8 @@ TEST_F(SecurityTest, Type1PacketValidation) {
 // Test 14: Parsing untrusted network data pattern
 TEST_F(SecurityTest, UntrustedNetworkDataPattern) {
     using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                               vrtigo::Trailer::none,
-                                               505 // Fits in 2048 byte buffer
-                                               >;
+        vrtigo::typed::SignalDataPacketBuilder<505, vrtigo::UtcRealTimestamp>; // Fits in 2048 byte
+                                                                               // buffer
 
     // Simulate receiving packet from network
     alignas(4) std::array<uint8_t, 2048> network_buffer{};
@@ -282,9 +260,7 @@ TEST_F(SecurityTest, UntrustedNetworkDataPattern) {
 
 // Test 15: Defense against size field manipulation
 TEST_F(SecurityTest, SizeFieldManipulationDefense) {
-    using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                               vrtigo::Trailer::none, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -300,9 +276,7 @@ TEST_F(SecurityTest, SizeFieldManipulationDefense) {
 
 // Test 16: ParseError provides useful information
 TEST_F(SecurityTest, ParseErrorInformation) {
-    using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                               vrtigo::Trailer::none, 128>;
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<128>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -322,9 +296,7 @@ TEST_F(SecurityTest, ParseErrorInformation) {
 
 // Test 17: Extension data packet types parse successfully
 TEST_F(SecurityTest, ExtensionDataPacketValidation) {
-    using PacketType =
-        vrtigo::typed::ExtensionDataPacketBuilder<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                                  vrtigo::Trailer::none, 64>;
+    using PacketType = vrtigo::typed::ExtensionDataPacketBuilder<64>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -342,8 +314,7 @@ TEST_F(SecurityTest, TimestampVariations) {
     // Test TSI only
     {
         using PacketType = vrtigo::typed::SignalDataPacketBuilder<
-            vrtigo::NoClassId, vrtigo::Timestamp<vrtigo::TsiType::utc, vrtigo::TsfType::none>,
-            vrtigo::Trailer::none, 32>;
+            32, vrtigo::Timestamp<vrtigo::TsiType::utc, vrtigo::TsfType::none>>;
 
         alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
         PacketType packet(buffer);
@@ -361,8 +332,7 @@ TEST_F(SecurityTest, TimestampVariations) {
     // Test TSF only
     {
         using PacketType = vrtigo::typed::SignalDataPacketBuilder<
-            vrtigo::NoClassId, vrtigo::Timestamp<vrtigo::TsiType::none, vrtigo::TsfType::real_time>,
-            vrtigo::Trailer::none, 32>;
+            32, vrtigo::Timestamp<vrtigo::TsiType::none, vrtigo::TsfType::real_time>>;
 
         alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
         PacketType packet(buffer);
@@ -379,9 +349,7 @@ TEST_F(SecurityTest, TimestampVariations) {
 
     // Test no timestamp
     {
-        using PacketType =
-            vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId, vrtigo::NoTimestamp,
-                                                   vrtigo::Trailer::none, 32>;
+        using PacketType = vrtigo::typed::SignalDataPacketBuilder<32>;
 
         alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
         PacketType packet(buffer);

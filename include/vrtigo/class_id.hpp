@@ -9,8 +9,8 @@
 namespace vrtigo {
 
 // Marker types for ClassId presence/absence
-struct NoClassId {}; // Indicates packet has no ClassId field
-struct ClassId {};   // Indicates packet has ClassId field (2 words)
+struct NoClassId {};   // Indicates packet has no ClassId field
+struct WithClassId {}; // Indicates packet has ClassId field (2 words)
 
 // Runtime ClassId value type - trivially copyable
 class ClassIdValue {
@@ -71,9 +71,9 @@ struct ClassIdTraits<NoClassId> {
     static constexpr bool has_class_id = false;
 };
 
-// ClassId specialization
+// WithClassId specialization
 template <>
-struct ClassIdTraits<ClassId> {
+struct ClassIdTraits<WithClassId> {
     static constexpr size_t size_words = 2; // 64-bit class ID (2 words)
     static constexpr bool has_class_id = true;
 };

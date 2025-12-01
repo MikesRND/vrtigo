@@ -262,8 +262,7 @@ TEST_F(TimestampTest, MaxSafeTimestampDifference) {
 
 // Integration with SignalPacket tests
 TEST_F(TimestampTest, PacketIntegration) {
-    using PacketType = typed::SignalDataPacketBuilder<vrtigo::NoClassId, UtcRealTimestamp,
-                                                      vrtigo::Trailer::none, 256>;
+    using PacketType = typed::SignalDataPacketBuilder<256, UtcRealTimestamp>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
     PacketType packet(buffer);
@@ -279,8 +278,7 @@ TEST_F(TimestampTest, PacketIntegration) {
 }
 
 TEST_F(TimestampTest, BuilderIntegration) {
-    using PacketType = typed::SignalDataPacketBuilder<vrtigo::NoClassId, UtcRealTimestamp,
-                                                      vrtigo::Trailer::none, 256>;
+    using PacketType = typed::SignalDataPacketBuilder<256, UtcRealTimestamp>;
 
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
@@ -318,8 +316,8 @@ TEST_F(TimestampTest, NonUTCTimestampsNotImplemented) {
 TEST_F(TimestampTest, GPSTimestampPacketStructure) {
     // GPS timestamps can be used to configure packet structure
     // even though the timestamp type itself is not fully implemented
-    using GPSPacket = typed::SignalDataPacketBuilder<
-        vrtigo::NoClassId, Timestamp<TsiType::gps, TsfType::real_time>, vrtigo::Trailer::none, 256>;
+    using GPSPacket =
+        typed::SignalDataPacketBuilder<256, Timestamp<TsiType::gps, TsfType::real_time>>;
 
     // Verify the packet has timestamp support
     static_assert(GPSPacket::has_timestamp());

@@ -26,7 +26,7 @@ Trailer views are obtained through packet's `trailer()` method. Both compile-tim
 
 | Packet Type | Non-const Method | Const Method |
 |-------------|------------------|--------------|
-| `DataPacketBuilder<..., Trailer::included>` | `trailer()` → `MutableTrailerView` | `trailer() const` → `TrailerView` |
+| `DataPacketBuilder<..., WithTrailer>` | `trailer()` → `MutableTrailerView` | `trailer() const` → `TrailerView` |
 | `dynamic::DataPacketView` | — | `trailer()` → `optional<TrailerView>` |
 
 Runtime packets wrap the view in `std::optional` to handle cases where the trailer is absent or the packet is invalid.
@@ -189,7 +189,7 @@ All setter methods return `TrailerBuilder&` for chaining:
 
 ```cpp
 // Compile-time packet with trailer
-using PacketType = SignalDataPacketBuilder<NoClassId, UtcRealTimestamp, Trailer::included, 128>;
+using PacketType = SignalDataPacketBuilder<128, UtcRealTimestamp, NoClassId, WithTrailer>;
 alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 PacketType packet(buffer);
 
@@ -272,7 +272,7 @@ packet.trailer().clear();                      // All bits = 0
 
 ```cpp
 // Build packet with comprehensive status
-using PacketType = SignalDataPacketBuilder<NoClassId, UtcRealTimestamp, Trailer::included, 128>;
+using PacketType = SignalDataPacketBuilder<128, UtcRealTimestamp, NoClassId, WithTrailer>;
 alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{};
 
 // Compose trailer configuration

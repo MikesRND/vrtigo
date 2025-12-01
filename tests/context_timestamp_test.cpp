@@ -65,7 +65,7 @@ TEST_F(ContextPacketTest, UnifiedTimestampAccess) {
 
 TEST_F(ContextPacketTest, TimestampWithClassId) {
     using TestContext =
-        typed::ContextPacketBuilder<UtcRealTimestamp, ClassId>; // Has class ID (8 bytes)
+        typed::ContextPacketBuilder<UtcRealTimestamp, WithClassId>; // Has class ID (8 bytes)
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
     TestContext packet(pkt_buffer);
