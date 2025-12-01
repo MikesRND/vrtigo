@@ -38,7 +38,8 @@ TEST(QuickstartSnippet, ReadVRTFile) {
     }
 
     // [SNIPPET]
-    // Read VRT packets from a file
+    using namespace vrtigo::dynamic; // File reader returns dynamic packet views
+    using namespace vrtigo::field;
 
     // Open VRT file - that's it!
     vrtigo::VRTFileReader<> reader(sine_wave_file.c_str());
@@ -55,7 +56,7 @@ TEST(QuickstartSnippet, ReadVRTFile) {
             data_packets++;
 
             // Access type-safe data packet view
-            const auto& data = std::get<vrtigo::dynamic::DataPacketView>(pkt);
+            const auto& data = std::get<DataPacketView>(pkt);
 
             // Get payload - zero-copy span into file buffer!
             auto payload = data.payload();
@@ -65,7 +66,7 @@ TEST(QuickstartSnippet, ReadVRTFile) {
             context_packets++;
 
             // Access context packet view
-            const auto& ctx = std::get<vrtigo::dynamic::ContextPacketView>(pkt);
+            const auto& ctx = std::get<ContextPacketView>(pkt);
             if (auto sr = ctx[sample_rate]) {
                 std::cout << "Context packet sample rate: " << sr.value() << " Hz\n";
             }
@@ -100,8 +101,9 @@ TEST(QuickstartSnippet, ReadVRTFileManual) {
     }
 
     // [SNIPPET]
-    // Manual packet iteration with full control
+    using namespace vrtigo::dynamic; // File reader returns dynamic packet views
 
+    // Manual packet iteration with full control
     vrtigo::VRTFileReader<> reader(sine_wave_file.c_str());
     ASSERT_TRUE(reader.is_open());
 
@@ -119,7 +121,7 @@ TEST(QuickstartSnippet, ReadVRTFileManual) {
 
             // Process based on type
             if (vrtigo::is_data_packet(pkt->value())) {
-                const auto& data = std::get<vrtigo::dynamic::DataPacketView>(pkt->value());
+                const auto& data = std::get<DataPacketView>(pkt->value());
                 auto payload = data.payload();
                 // Process payload...
                 (void)payload;

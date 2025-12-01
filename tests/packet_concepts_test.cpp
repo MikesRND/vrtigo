@@ -11,8 +11,7 @@ using namespace vrtigo::field;
 
 TEST(PacketConceptsTest, AllPacketsSatisfyPacketMetadataLike) {
     // Compile-time packet builders
-    using DataPkt = typed::DataPacketBuilder<PacketType::signal_data, NoClassId, NoTimestamp,
-                                             Trailer::none, 64>;
+    using DataPkt = typed::DataPacketBuilder<PacketType::signal_data, 64>;
     using CtxPkt = typed::ContextPacketBuilder<NoTimestamp, NoClassId, bandwidth>;
 
     static_assert(PacketMetadataLike<DataPkt>);
@@ -28,8 +27,8 @@ TEST(PacketConceptsTest, AllPacketsSatisfyPacketMetadataLike) {
 // ============================================================================
 
 TEST(PacketConceptsTest, DataPacketBuilderSatisfiesCompileTimePacketLike) {
-    using PktType = typed::DataPacketBuilder<PacketType::signal_data, NoClassId, UtcRealTimestamp,
-                                             Trailer::included, 64>;
+    using PktType = typed::DataPacketBuilder<PacketType::signal_data, 64, UtcRealTimestamp,
+                                             NoClassId, WithTrailer>;
 
     static_assert(PacketMetadataLike<PktType>);
     static_assert(CompileTimePacketLike<PktType>);
@@ -81,8 +80,7 @@ TEST(PacketConceptsTest, DynamicContextPacketSatisfiesDynamicPacketViewLike) {
 // ============================================================================
 
 TEST(PacketConceptsTest, CTAndDynamicMutuallyExclusive) {
-    using DataPkt = typed::DataPacketBuilder<PacketType::signal_data, NoClassId, NoTimestamp,
-                                             Trailer::none, 64>;
+    using DataPkt = typed::DataPacketBuilder<PacketType::signal_data, 64>;
     using CtxPkt = typed::ContextPacketBuilder<NoTimestamp, NoClassId, bandwidth>;
 
     // CT packet builders are NOT Dynamic
@@ -95,8 +93,7 @@ TEST(PacketConceptsTest, CTAndDynamicMutuallyExclusive) {
 }
 
 TEST(PacketConceptsTest, DataAndContextMutuallyExclusive) {
-    using DataPkt = typed::DataPacketBuilder<PacketType::signal_data, NoClassId, NoTimestamp,
-                                             Trailer::none, 64>;
+    using DataPkt = typed::DataPacketBuilder<PacketType::signal_data, 64>;
     using CtxPkt = typed::ContextPacketBuilder<NoTimestamp, NoClassId, bandwidth>;
 
     // Data is not Context
@@ -120,28 +117,26 @@ TEST(PacketConceptsTest, DataAndContextMutuallyExclusive) {
 // ============================================================================
 
 TEST(PacketConceptsTest, HelperConceptsForBuilder) {
-    using WithStreamId = typed::DataPacketBuilder<PacketType::signal_data, NoClassId, NoTimestamp,
-                                                  Trailer::none, 64>;
-    using NoStreamId = typed::DataPacketBuilder<PacketType::signal_data_no_id, NoClassId,
-                                                NoTimestamp, Trailer::none, 64>;
-    using WithTrailer = typed::DataPacketBuilder<PacketType::signal_data, NoClassId, NoTimestamp,
-                                                 Trailer::included, 64>;
+    using WithStreamIdPkt = typed::DataPacketBuilder<PacketType::signal_data, 64>;
+    using NoStreamIdPkt = typed::DataPacketBuilder<PacketType::signal_data_no_id, 64>;
+    using WithTrailerPkt =
+        typed::DataPacketBuilder<PacketType::signal_data, 64, NoTimestamp, NoClassId, WithTrailer>;
 
     // Stream ID
-    static_assert(HasStreamId<WithStreamId>);
-    static_assert(!HasStreamId<NoStreamId>);
+    static_assert(HasStreamId<WithStreamIdPkt>);
+    static_assert(!HasStreamId<NoStreamIdPkt>);
 
     // Trailer
-    static_assert(HasMutableTrailer<WithTrailer>);
-    static_assert(!HasMutableTrailer<NoStreamId>);
+    static_assert(HasMutableTrailer<WithTrailerPkt>);
+    static_assert(!HasMutableTrailer<NoStreamIdPkt>);
 
     // Payload
-    static_assert(HasPayload<WithStreamId>);
-    static_assert(HasPayload<NoStreamId>);
+    static_assert(HasPayload<WithStreamIdPkt>);
+    static_assert(HasPayload<NoStreamIdPkt>);
 
     // Packet count
-    static_assert(HasPacketCount<WithStreamId>);
-    static_assert(HasPacketCount<NoStreamId>);
+    static_assert(HasPacketCount<WithStreamIdPkt>);
+    static_assert(HasPacketCount<NoStreamIdPkt>);
 }
 
 // ============================================================================
@@ -164,8 +159,7 @@ TEST(PacketConceptsTest, NonPacketTypesRejected) {
 // ============================================================================
 
 TEST(PacketConceptsTest, LegacyAliasesWork) {
-    using DataPkt = typed::DataPacketBuilder<PacketType::signal_data, NoClassId, NoTimestamp,
-                                             Trailer::none, 64>;
+    using DataPkt = typed::DataPacketBuilder<PacketType::signal_data, 64>;
 
     // PacketLike is alias for PacketMetadataLike
     static_assert(PacketLike<DataPkt>);
@@ -182,8 +176,7 @@ TEST(PacketConceptsTest, LegacyAliasesWork) {
 
 TEST(PacketConceptsTest, RuntimeBehaviorConsistency) {
     // Create data packet
-    using SignalType = typed::DataPacketBuilder<PacketType::signal_data, NoClassId, NoTimestamp,
-                                                Trailer::none, 32>;
+    using SignalType = typed::DataPacketBuilder<PacketType::signal_data, 32>;
     alignas(4) std::array<uint8_t, SignalType::size_bytes()> signal_buffer;
     SignalType signal_pkt(signal_buffer);
 

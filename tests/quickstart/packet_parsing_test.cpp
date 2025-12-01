@@ -19,9 +19,7 @@
 // In real code, this would come from a network socket or file
 static auto create_test_data_packet() {
     using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId, vrtigo::UtcRealTimestamp,
-                                               vrtigo::Trailer::none,
-                                               2>; // 8 bytes payload
+        vrtigo::typed::SignalDataPacketBuilder<2, vrtigo::UtcRealTimestamp>; // 8 bytes payload
 
     alignas(4) static std::array<uint8_t, PacketType::size_bytes()> buffer{};
     std::array<uint8_t, 8> payload{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
@@ -75,14 +73,10 @@ TEST(PacketParsing, ParseUnknownPacket) {
     // - On failure: contains ParseError with error details
     auto result = vrtigo::parse_packet(received_bytes);
 
-    // Check if parsing succeeded
     if (!result.ok()) {
-        // Get error details from the ParseError
         std::cerr << "Parse failed: " << result.error().message() << "\n";
         return;
     }
-
-    // Get the packet variant
     const auto& packet = result.value();
 
     // Determine packet type and process accordingly
@@ -94,10 +88,7 @@ TEST(PacketParsing, ParseUnknownPacket) {
 
     // Helper functions work on the variant directly
     std::cout << "Packet type: " << static_cast<int>(vrtigo::packet_type(packet)) << "\n";
-
-    if (auto sid = vrtigo::stream_id(packet)) {
-        std::cout << "Stream ID: 0x" << std::hex << *sid << std::dec << "\n";
-    }
+    std::cout << "Stream ID: 0x" << std::hex << *vrtigo::stream_id(packet) << std::dec << "\n";
     // [/SNIPPET]
 
     ASSERT_TRUE(result.ok());
@@ -127,39 +118,26 @@ TEST(PacketParsing, AccessDataPacket) {
     ASSERT_TRUE(vrtigo::is_data_packet(packet));
 
     // [SNIPPET]
+    using namespace vrtigo::dynamic; // Parsing returns dynamic packet views
+
     // Extract the data packet view from the variant
-    const auto& data = std::get<vrtigo::dynamic::DataPacketView>(packet);
+    const auto& data = std::get<DataPacketView>(packet);
 
     // Access packet metadata
     std::cout << "Size: " << data.size_bytes() << " bytes\n";
-    std::cout << "Packet count: " << static_cast<int>(data.packet_count()) << "\n";
+    std::cout << "Packet count: " << +data.packet_count() << "\n";
 
-    // Access optional fields
-    if (auto stream_id = data.stream_id()) {
-        std::cout << "Stream ID: 0x" << std::hex << *stream_id << std::dec << "\n";
-    }
-
-    // Access timestamp if present
-    if (data.has_timestamp()) {
-        if (auto ts = data.timestamp()) {
-            std::cout << "TSI: " << ts->tsi() << ", TSF: " << ts->tsf() << "\n";
-        }
-    }
+    // Optional fields return std::optional - dereference when you know they exist
+    std::cout << "Stream ID: 0x" << std::hex << *data.stream_id() << std::dec << "\n";
+    std::cout << "TSI: " << data.timestamp()->tsi() << ", TSF: " << data.timestamp()->tsf() << "\n";
 
     // Access payload - zero-copy span into the buffer
-    std::span<const uint8_t> payload = data.payload();
-    std::cout << "Payload: " << payload.size() << " bytes\n";
-
-    // Process payload data
-    for (size_t i = 0; i < std::min(payload.size(), size_t{4}); ++i) {
-        std::cout << "  [" << i << "] = 0x" << std::hex << static_cast<int>(payload[i]) << std::dec
-                  << "\n";
-    }
+    std::cout << "Payload: " << data.payload().size() << " bytes\n";
     // [/SNIPPET]
 
     EXPECT_EQ(data.size_bytes(), 28);
-    EXPECT_EQ(payload.size(), 8);
-    EXPECT_EQ(payload[0], 0x01);
+    EXPECT_EQ(data.payload().size(), 8);
+    EXPECT_EQ(data.payload()[0], 0x01);
 }
 
 // [TEXT]
@@ -185,36 +163,27 @@ TEST(PacketParsing, AccessContextPacket) {
     ASSERT_TRUE(vrtigo::is_context_packet(packet));
 
     // [SNIPPET]
-    // Extract the context packet view from the variant
-    const auto& ctx = std::get<vrtigo::dynamic::ContextPacketView>(packet);
+    using namespace vrtigo::dynamic; // Parsing returns dynamic packet views
     using namespace vrtigo::field;
 
-    // Access stream ID (always present in context packets)
-    if (auto sid = ctx.stream_id()) {
-        std::cout << "Stream ID: 0x" << std::hex << *sid << std::dec << "\n";
-    }
+    // Extract the context packet view from the variant
+    const auto& ctx = std::get<ContextPacketView>(packet);
 
-    // Access CIF fields using operator[] with field tags
-    // The proxy is falsy if the field isn't present
-    if (auto sr = ctx[sample_rate]) {
-        // .value() returns interpreted units (Hz)
-        std::cout << "Sample rate: " << sr.value() / 1e6 << " MHz\n";
+    // Stream ID is always present in context packets
+    std::cout << "Stream ID: 0x" << std::hex << *ctx.stream_id() << std::dec << "\n";
 
-        // .encoded() returns the on-wire format (Q52.12)
-        std::cout << "  (encoded: 0x" << std::hex << sr.encoded() << std::dec << ")\n";
-    }
+    // Access CIF fields directly with operator[] - chain .value() for interpreted units
+    std::cout << "Sample rate: " << ctx[sample_rate].value() / 1e6 << " MHz\n";
+    std::cout << "Bandwidth: " << ctx[bandwidth].value() / 1e6 << " MHz\n";
+    std::cout << "Reference level: " << ctx[reference_level].value() << " dBm\n";
 
-    if (auto bw = ctx[bandwidth]) {
-        std::cout << "Bandwidth: " << bw.value() / 1e6 << " MHz\n";
-    }
+    // Use .encoded() for the raw on-wire format
+    std::cout << "  (sample_rate encoded: 0x" << std::hex << ctx[sample_rate].encoded() << std::dec
+              << ")\n";
 
-    if (auto ref = ctx[reference_level]) {
-        std::cout << "Reference level: " << ref.value() << " dBm\n";
-    }
-
-    // Check for fields that aren't present
+    // Check for fields that might not be present
     if (!ctx[gain]) {
-        std::cout << "Gain field not present in this packet\n";
+        std::cout << "Gain field not present\n";
     }
     // [/SNIPPET]
 

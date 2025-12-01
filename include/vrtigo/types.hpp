@@ -1,5 +1,7 @@
 #pragma once
 
+#include <concepts>
+
 #include <cstddef>
 #include <cstdint>
 
@@ -17,11 +19,36 @@ enum class PacketType : uint8_t {
     extension_command = 7     // Extension command packet (VITA 49.2)
 };
 
-// Trailer field indicator
-enum class Trailer : uint8_t {
-    none = 0,    // No trailer field
-    included = 1 // Trailer field present
+// Marker types for Trailer presence/absence
+struct NoTrailer {};   ///< Indicates packet has no Trailer field
+struct WithTrailer {}; ///< Indicates packet has Trailer field (1 word)
+
+// Trait system for Trailer presence
+template <typename T>
+struct TrailerTraits;
+
+template <>
+struct TrailerTraits<NoTrailer> {
+    static constexpr size_t size_words = 0;
+    static constexpr bool has_trailer = false;
 };
+
+template <>
+struct TrailerTraits<WithTrailer> {
+    static constexpr size_t size_words = 1;
+    static constexpr bool has_trailer = true;
+};
+
+// Concept for valid Trailer presence types
+template <typename T>
+concept ValidTrailerType = requires {
+    { TrailerTraits<T>::size_words } -> std::convertible_to<size_t>;
+    { TrailerTraits<T>::has_trailer } -> std::convertible_to<bool>;
+};
+
+// Concept for types that have a trailer
+template <typename T>
+concept HasTrailerType = ValidTrailerType<T> && TrailerTraits<T>::has_trailer;
 
 // Integer timestamp types (TSI field)
 enum class TsiType : uint8_t {

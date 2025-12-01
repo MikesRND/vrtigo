@@ -14,8 +14,8 @@ using namespace vrtigo::utils::netio;
 // Import specific types from vrtigo namespace to avoid ambiguity
 using vrtigo::NoClassId;
 using vrtigo::NoTimestamp;
+using vrtigo::NoTrailer;
 using vrtigo::PacketVariant;
-using vrtigo::Trailer;
 using vrtigo::UtcRealTimestamp;
 using vrtigo::typed::SignalDataPacketBuilder;
 
@@ -57,8 +57,7 @@ TEST_F(UDPWriterTest, WriteCompileTimePacket) {
     UDPVRTWriter writer("127.0.0.1", test_port);
 
     // Create and send packet
-    using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<NoClassId, NoTimestamp, Trailer::none, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<64>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     PacketType packet(buffer);
@@ -85,8 +84,7 @@ TEST_F(UDPWriterTest, WriteMultiplePackets) {
 
     UDPVRTWriter writer("127.0.0.1", test_port);
 
-    using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<NoClassId, NoTimestamp, Trailer::none, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<64>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     // Send 10 packets
@@ -121,8 +119,7 @@ TEST_F(UDPWriterTest, RoundTripDataPacket) {
     UDPVRTWriter writer("127.0.0.1", test_port);
 
     // Create packet with stream ID and timestamp
-    using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<NoClassId, UtcRealTimestamp, Trailer::none, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<64, UtcRealTimestamp>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     const uint32_t test_stream_id = 0xABCDEF01;
@@ -193,8 +190,7 @@ TEST_F(UDPWriterTest, EnforceMTU) {
     writer.set_mtu(100);
 
     // Create packet larger than MTU
-    using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<NoClassId, NoTimestamp, Trailer::none, 256>;
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<256>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     std::array<uint8_t, 1024> large_payload{};
@@ -218,8 +214,7 @@ TEST_F(UDPWriterTest, MTUAllowsValidPacket) {
     writer.set_mtu(1500);
 
     // Create packet within MTU
-    using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<NoClassId, NoTimestamp, Trailer::none, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<64>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     std::array<uint8_t, 256> payload{};
@@ -252,8 +247,7 @@ TEST_F(UDPWriterTest, UnboundModeMultipleDestinations) {
     UDPVRTWriter writer(0);
 
     // Create packet
-    using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<NoClassId, NoTimestamp, Trailer::none, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<64>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     PacketType packet(buffer);
@@ -305,8 +299,7 @@ TEST_F(UDPWriterTest, FlushIsNoOp) {
     EXPECT_TRUE(writer.flush());
 
     // Create and send packet
-    using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<NoClassId, NoTimestamp, Trailer::none, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<64>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     PacketType packet(buffer);
@@ -330,8 +323,7 @@ TEST_F(UDPWriterTest, MoveConstructor) {
     UDPVRTWriter writer1("127.0.0.1", test_port);
 
     // Send packet with writer1
-    using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<NoClassId, NoTimestamp, Trailer::none, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<64>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     PacketType packet(buffer);
@@ -354,8 +346,7 @@ TEST_F(UDPWriterTest, MoveAssignment) {
     UDPVRTWriter writer1("127.0.0.1", test_port);
     UDPVRTWriter writer2("127.0.0.1", test_port_2);
 
-    using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<NoClassId, NoTimestamp, Trailer::none, 64>;
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<64>;
     alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
 
     PacketType packet(buffer);

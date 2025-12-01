@@ -17,19 +17,19 @@
 
 namespace vrtigo::typed {
 
-template <PacketType Type, typename ClassIdType = NoClassId, typename TimestampType = NoTimestamp,
-          Trailer HasTrailer = Trailer::none, size_t PayloadWords = 0>
+template <PacketType Type, size_t PayloadWords, typename TimestampType = NoTimestamp,
+          typename ClassIdType = NoClassId, typename TrailerType = NoTrailer>
     requires(Type == PacketType::signal_data_no_id || Type == PacketType::signal_data ||
              Type == PacketType::extension_data_no_id || Type == PacketType::extension_data) &&
             vrtigo::ValidPayloadWords<PayloadWords> && vrtigo::ValidTimestampType<TimestampType> &&
-            vrtigo::ValidClassIdType<ClassIdType>
+            vrtigo::ValidClassIdType<ClassIdType> && vrtigo::ValidTrailerType<TrailerType>
 class DataPacketBuilder
     : public detail::PacketBase<
-          DataPacketBuilder<Type, ClassIdType, TimestampType, HasTrailer, PayloadWords>,
+          DataPacketBuilder<Type, PayloadWords, TimestampType, ClassIdType, TrailerType>,
           vrtigo::Prologue<Type, ClassIdType, TimestampType, false>> {
 private:
     using Base = detail::PacketBase<
-        DataPacketBuilder<Type, ClassIdType, TimestampType, HasTrailer, PayloadWords>,
+        DataPacketBuilder<Type, PayloadWords, TimestampType, ClassIdType, TrailerType>,
         vrtigo::Prologue<Type, ClassIdType, TimestampType, false>>;
 
     friend Base;
@@ -45,7 +45,7 @@ public:
     // ========================================================================
 
     /// Check if packet has trailer
-    static constexpr bool has_trailer() noexcept { return HasTrailer == Trailer::included; }
+    static constexpr bool has_trailer() noexcept { return TrailerTraits<TrailerType>::has_trailer; }
 
     /// Get packet type
     static constexpr PacketType type() noexcept { return Type; }
@@ -66,7 +66,7 @@ public:
 
     // Compile-time check: ensure total packet size fits in 16-bit size field
     static_assert(prologue_type::size_words() + PayloadWords +
-                          ((HasTrailer == Trailer::included) ? 1 : 0) <=
+                          TrailerTraits<TrailerType>::size_words <=
                       max_packet_words,
                   "Packet size exceeds maximum (65535 words). "
                   "Reduce payload size or remove optional fields.");
@@ -107,13 +107,13 @@ public:
     // Trailer view access
 
     vrtigo::MutableTrailerView trailer() noexcept
-        requires(HasTrailer == Trailer::included)
+        requires HasTrailerType<TrailerType>
     {
         return vrtigo::MutableTrailerView(this->buffer_ + trailer_offset * vrt_word_size);
     }
 
     vrtigo::TrailerView trailer() const noexcept
-        requires(HasTrailer == Trailer::included)
+        requires HasTrailerType<TrailerType>
     {
         return vrtigo::TrailerView(this->buffer_ + trailer_offset * vrt_word_size);
     }
@@ -153,28 +153,27 @@ private:
 };
 
 // User-facing type aliases for convenient usage
+// Template parameter order: PayloadWords (required), TimestampType, ClassIdType, TrailerType
 
-// Specific aliases that line up with PacketType enum names
+template <size_t PayloadWords, typename TimestampType = NoTimestamp,
+          typename ClassIdType = NoClassId, typename TrailerType = NoTrailer>
+using SignalDataPacketBuilder = DataPacketBuilder<PacketType::signal_data, PayloadWords,
+                                                  TimestampType, ClassIdType, TrailerType>;
 
-template <typename ClassIdType = NoClassId, typename TimestampType = NoTimestamp,
-          Trailer HasTrailer = Trailer::none, size_t PayloadWords = 0>
-using SignalDataPacketBuilder = DataPacketBuilder<PacketType::signal_data, ClassIdType,
-                                                  TimestampType, HasTrailer, PayloadWords>;
+template <size_t PayloadWords, typename TimestampType = NoTimestamp,
+          typename ClassIdType = NoClassId, typename TrailerType = NoTrailer>
+using SignalDataPacketBuilderNoId = DataPacketBuilder<PacketType::signal_data_no_id, PayloadWords,
+                                                      TimestampType, ClassIdType, TrailerType>;
 
-template <typename ClassIdType = NoClassId, typename TimestampType = NoTimestamp,
-          Trailer HasTrailer = Trailer::none, size_t PayloadWords = 0>
-using SignalDataPacketBuilderNoId = DataPacketBuilder<PacketType::signal_data_no_id, ClassIdType,
-                                                      TimestampType, HasTrailer, PayloadWords>;
+template <size_t PayloadWords, typename TimestampType = NoTimestamp,
+          typename ClassIdType = NoClassId, typename TrailerType = NoTrailer>
+using ExtensionDataPacketBuilder = DataPacketBuilder<PacketType::extension_data, PayloadWords,
+                                                     TimestampType, ClassIdType, TrailerType>;
 
-template <typename ClassIdType = NoClassId, typename TimestampType = NoTimestamp,
-          Trailer HasTrailer = Trailer::none, size_t PayloadWords = 0>
-using ExtensionDataPacketBuilder = DataPacketBuilder<PacketType::extension_data, ClassIdType,
-                                                     TimestampType, HasTrailer, PayloadWords>;
-
-template <typename ClassIdType = NoClassId, typename TimestampType = NoTimestamp,
-          Trailer HasTrailer = Trailer::none, size_t PayloadWords = 0>
+template <size_t PayloadWords, typename TimestampType = NoTimestamp,
+          typename ClassIdType = NoClassId, typename TrailerType = NoTrailer>
 using ExtensionDataPacketBuilderNoId =
-    DataPacketBuilder<PacketType::extension_data_no_id, ClassIdType, TimestampType, HasTrailer,
-                      PayloadWords>;
+    DataPacketBuilder<PacketType::extension_data_no_id, PayloadWords, TimestampType, ClassIdType,
+                      TrailerType>;
 
 } // namespace vrtigo::typed

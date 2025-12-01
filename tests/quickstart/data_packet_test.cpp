@@ -29,10 +29,8 @@ TEST(QuickstartSnippet, CreateDataPacket) {
 
     // Define packet builder type with UTC timestamp
     using PacketType =
-        vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId,        // No class ID
-                                               vrtigo::UtcRealTimestamp, // Include UTC timestamp
-                                               vrtigo::Trailer::none,    // No trailer
-                                               2 // Max payload words (8 bytes)
+        vrtigo::typed::SignalDataPacketBuilder<2,                       // Payload words (8 bytes)
+                                               vrtigo::UtcRealTimestamp // Include UTC timestamp
                                                >;
 
     // Allocate aligned buffer for the packet

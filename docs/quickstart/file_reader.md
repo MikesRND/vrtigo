@@ -13,7 +13,8 @@ This example demonstrates reading a VRT file with the high-level reader:
 - Zero-copy access to packet data
 
 ```cpp
-    // Read VRT packets from a file
+    using namespace vrtigo::dynamic; // File reader returns dynamic packet views
+    using namespace vrtigo::field;
 
     // Open VRT file - that's it!
     vrtigo::VRTFileReader<> reader(sine_wave_file.c_str());
@@ -30,7 +31,7 @@ This example demonstrates reading a VRT file with the high-level reader:
             data_packets++;
 
             // Access type-safe data packet view
-            const auto& data = std::get<vrtigo::dynamic::DataPacketView>(pkt);
+            const auto& data = std::get<DataPacketView>(pkt);
 
             // Get payload - zero-copy span into file buffer!
             auto payload = data.payload();
@@ -40,7 +41,7 @@ This example demonstrates reading a VRT file with the high-level reader:
             context_packets++;
 
             // Access context packet view
-            const auto& ctx = std::get<vrtigo::dynamic::ContextPacketView>(pkt);
+            const auto& ctx = std::get<ContextPacketView>(pkt);
             if (auto sr = ctx[sample_rate]) {
                 std::cout << "Context packet sample rate: " << sr.value() << " Hz\n";
             }
@@ -57,8 +58,9 @@ Use this when you need to handle invalid packets or implement
 custom processing logic.
 
 ```cpp
-    // Manual packet iteration with full control
+    using namespace vrtigo::dynamic; // File reader returns dynamic packet views
 
+    // Manual packet iteration with full control
     vrtigo::VRTFileReader<> reader(sine_wave_file.c_str());
     ASSERT_TRUE(reader.is_open());
 
@@ -76,7 +78,7 @@ custom processing logic.
 
             // Process based on type
             if (vrtigo::is_data_packet(pkt->value())) {
-                const auto& data = std::get<vrtigo::dynamic::DataPacketView>(pkt->value());
+                const auto& data = std::get<DataPacketView>(pkt->value());
                 auto payload = data.payload();
                 // Process payload...
                 (void)payload;

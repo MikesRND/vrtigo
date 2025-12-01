@@ -27,7 +27,7 @@ TEST_F(ContextPacketTest, BasicCompileTimePacket) {
 }
 
 TEST_F(ContextPacketTest, PacketWithClassId) {
-    using TestContext = typed::ContextPacketBuilder<NoTimestamp, ClassId, bandwidth>;
+    using TestContext = typed::ContextPacketBuilder<NoTimestamp, WithClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
     TestContext packet(pkt_buffer);
