@@ -34,24 +34,26 @@ for system errors so they can integrate cleanly with host I/O abstractions.
 - Type-erased parsing with automatic validation
 - All field access returns `std::optional` for safety
 - Read-only (const) - cannot modify received packets
-- Types: `dynamic::DataPacket`, `dynamic::ContextPacket`
+- Types: `dynamic::DataPacketView`, `dynamic::ContextPacketView`
 
 ### Compile-Time Path (`vrtigo::typed`)
 - Use when packet structure known at compile time (transmit side)
-- Template parameters encode structure: `typed::DataPacket<Type, ClassId, Timestamp>`
+- Template parameters encode structure: `typed::DataPacketBuilder<Type, ClassId, Timestamp>`
 - Zero runtime overhead - all offsets computed at compile time
 - Strong type safety - compilation fails if accessing unsupported field
-- Types: `typed::DataPacket`, `typed::ContextPacket`
+- Types: `typed::DataPacketBuilder`, `typed::ContextPacketBuilder`
 
 ## Type Hierarchy (C++20 Concepts)
 
 - `PacketMetadataLike` - minimal interface all packets support
-- `CompileTimePacketLike` - packets with static structure
-  - `typed::DataPacket` - data packets with fixed layout
-  - `typed::ContextPacket` - context packets with CIF-determined layout
-- `RuntimePacketLike` - runtime packet parsers
-  - `dynamic::DataPacket` - data packet parser
-  - `dynamic::ContextPacket` - context packet parser
+- `DataPacketBuilderLike` - data packet builders with static structure
+  - `typed::DataPacketBuilder` - data packets with fixed layout
+  - `typed::SignalDataPacketBuilder` - signal data packets
+- `ContextPacketBuilderLike` - context packet builders with static structure
+  - `typed::ContextPacketBuilder` - context packets with CIF-determined layout
+- `DynamicPacketViewLike` - dynamic packet parsers
+  - `dynamic::DataPacketView` - data packet parser
+  - `dynamic::ContextPacketView` - context packet parser
 
 ### Concept Usage
 - Enable/disable methods based on packet capabilities
@@ -81,11 +83,11 @@ for system errors so they can integrate cleanly with host I/O abstractions.
 
 ## Builder Pattern
 
-- Operates directly on user buffer (no temporary)
-- Methods return `*this` for chaining
-- Terminal `build()` returns packet view over same buffer
+- Builder types operate directly on user buffer (no temporary)
+- Constructors initialize packet structure
+- Setters use `set_` prefix: `packet.set_stream_id(0x1234)`
+- No fluent API - use sequential setter calls
 - Concept-constrained methods - only available if packet supports feature
-- Named after fields: `builder.stream_id(0x1234).timestamp(ts)`
 
 ## Error Handling
 
@@ -155,7 +157,7 @@ for system errors so they can integrate cleanly with host I/O abstractions.
 
 ## Design Invariants
 
-- Buffer passed to constructor/builder must outlive packet object
+- Buffer passed to constructor must outlive packet object
 - Packets are shallow - copying packet doesn't copy buffer
 - Const packets cannot modify buffer (enforced at type level)
 - All public APIs are `noexcept` (except where noted)

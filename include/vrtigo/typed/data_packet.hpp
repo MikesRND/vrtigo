@@ -23,13 +23,14 @@ template <PacketType Type, typename ClassIdType = NoClassId, typename TimestampT
              Type == PacketType::extension_data_no_id || Type == PacketType::extension_data) &&
             vrtigo::ValidPayloadWords<PayloadWords> && vrtigo::ValidTimestampType<TimestampType> &&
             vrtigo::ValidClassIdType<ClassIdType>
-class DataPacket : public detail::PacketBase<
-                       DataPacket<Type, ClassIdType, TimestampType, HasTrailer, PayloadWords>,
-                       vrtigo::Prologue<Type, ClassIdType, TimestampType, false>> {
+class DataPacketBuilder
+    : public detail::PacketBase<
+          DataPacketBuilder<Type, ClassIdType, TimestampType, HasTrailer, PayloadWords>,
+          vrtigo::Prologue<Type, ClassIdType, TimestampType, false>> {
 private:
-    using Base =
-        detail::PacketBase<DataPacket<Type, ClassIdType, TimestampType, HasTrailer, PayloadWords>,
-                           vrtigo::Prologue<Type, ClassIdType, TimestampType, false>>;
+    using Base = detail::PacketBase<
+        DataPacketBuilder<Type, ClassIdType, TimestampType, HasTrailer, PayloadWords>,
+        vrtigo::Prologue<Type, ClassIdType, TimestampType, false>>;
 
     friend Base;
 
@@ -85,7 +86,7 @@ public:
     //   if (packet.validate(buffer_size) == ValidationError::none) {
     //       auto id = packet.stream_id();  // Safe after validation
     //   }
-    explicit DataPacket(std::span<uint8_t, size_bytes()> buffer, bool init = true) noexcept
+    explicit DataPacketBuilder(std::span<uint8_t, size_bytes()> buffer, bool init = true) noexcept
         : Base(buffer.data()) {
         if (init) {
             init_header();
@@ -157,22 +158,23 @@ private:
 
 template <typename ClassIdType = NoClassId, typename TimestampType = NoTimestamp,
           Trailer HasTrailer = Trailer::none, size_t PayloadWords = 0>
-using SignalDataPacket =
-    DataPacket<PacketType::signal_data, ClassIdType, TimestampType, HasTrailer, PayloadWords>;
+using SignalDataPacketBuilder = DataPacketBuilder<PacketType::signal_data, ClassIdType,
+                                                  TimestampType, HasTrailer, PayloadWords>;
 
 template <typename ClassIdType = NoClassId, typename TimestampType = NoTimestamp,
           Trailer HasTrailer = Trailer::none, size_t PayloadWords = 0>
-using SignalDataPacketNoId =
-    DataPacket<PacketType::signal_data_no_id, ClassIdType, TimestampType, HasTrailer, PayloadWords>;
+using SignalDataPacketBuilderNoId = DataPacketBuilder<PacketType::signal_data_no_id, ClassIdType,
+                                                      TimestampType, HasTrailer, PayloadWords>;
 
 template <typename ClassIdType = NoClassId, typename TimestampType = NoTimestamp,
           Trailer HasTrailer = Trailer::none, size_t PayloadWords = 0>
-using ExtensionDataPacket =
-    DataPacket<PacketType::extension_data, ClassIdType, TimestampType, HasTrailer, PayloadWords>;
+using ExtensionDataPacketBuilder = DataPacketBuilder<PacketType::extension_data, ClassIdType,
+                                                     TimestampType, HasTrailer, PayloadWords>;
 
 template <typename ClassIdType = NoClassId, typename TimestampType = NoTimestamp,
           Trailer HasTrailer = Trailer::none, size_t PayloadWords = 0>
-using ExtensionDataPacketNoId = DataPacket<PacketType::extension_data_no_id, ClassIdType,
-                                           TimestampType, HasTrailer, PayloadWords>;
+using ExtensionDataPacketBuilderNoId =
+    DataPacketBuilder<PacketType::extension_data_no_id, ClassIdType, TimestampType, HasTrailer,
+                      PayloadWords>;
 
 } // namespace vrtigo::typed

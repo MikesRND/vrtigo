@@ -396,7 +396,7 @@ public:
 /**
  * RuntimeBitFieldAccessor - Dynamic extent with validation-as-data
  *
- * Follows dynamic::DataPacket semantics:
+ * Follows dynamic::DataPacketView semantics:
  *   - Validation state computed at construction and stored
  *   - Operations return std::optional or are no-ops on invalid state
  *   - No undefined behavior from API misuse
@@ -476,7 +476,7 @@ public:
 /**
  * RuntimeConstBitFieldAccessor - Dynamic extent read-only with validation-as-data
  *
- * Follows dynamic::DataPacket semantics (read-only variant):
+ * Follows dynamic::DataPacketView semantics (read-only variant):
  *   - Validation state computed at construction and stored
  *   - Operations return std::optional on invalid state
  *   - No undefined behavior from API misuse

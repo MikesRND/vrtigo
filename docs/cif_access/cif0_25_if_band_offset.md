@@ -11,7 +11,7 @@ to the center of the band. Band Center = IF Reference Frequency + IF Band Offset
 Uses 64-bit two's complement Q44.20 fixed-point format.
 
 ```cpp
-    using IFOffsetContext = typed::ContextPacket<NoTimestamp, NoClassId, if_band_offset>;
+    using IFOffsetContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, if_band_offset>;
 
     alignas(4) std::array<uint8_t, IFOffsetContext::size_bytes()> buffer{};
     IFOffsetContext packet(buffer);

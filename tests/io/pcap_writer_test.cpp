@@ -12,7 +12,8 @@
 using namespace vrtigo::utils::pcapio;
 using namespace vrtigo::utils::pcapio::test;
 using vrtigo::PacketType;
-using vrtigo::dynamic::DataPacket;
+using vrtigo::dynamic::DataPacketView;
+using DataPacket = vrtigo::dynamic::DataPacketView;
 
 // =============================================================================
 // Basic Functionality Tests

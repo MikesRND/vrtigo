@@ -94,7 +94,7 @@ if (packet[field::phase_offset]) {
 
 ## FieldProxy API Reference
 
-Both compile-time (`ContextPacket<>`) and runtime (`RuntimeContextPacket`) context packets use `operator[]` to access CIF-encoded fields. This returns a `FieldProxy` object providing the three-tier access pattern described above.
+Both compile-time (`ContextPacketBuilder<>`) and dynamic (`dynamic::ContextPacketView`) context packets use `operator[]` to access CIF-encoded fields. This returns a `FieldProxy` object providing the three-tier access pattern described above.
 
 ### FieldProxy Methods
 

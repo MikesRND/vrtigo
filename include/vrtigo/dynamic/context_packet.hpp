@@ -14,7 +14,7 @@
 namespace vrtigo::dynamic {
 
 // Forward declare for FieldProxy
-class ContextPacket;
+class ContextPacketView;
 
 /**
  * Runtime parser for context packets
@@ -30,7 +30,7 @@ class ContextPacket;
  * - Makes unsafe parsing patterns impossible
  *
  * Usage:
- *   auto result = dynamic::ContextPacket::parse(rx_buffer);  // rx_buffer is std::span<const
+ *   auto result = dynamic::ContextPacketView::parse(rx_buffer);  // rx_buffer is std::span<const
  * uint8_t> if (result.ok()) { const auto& view = result.value(); if (auto id = view.stream_id()) {
  *           std::cout << "Stream ID: " << *id << "\n";
  *       }
@@ -42,7 +42,7 @@ class ContextPacket;
  *       std::cerr << "Parse error: " << result.error().message() << "\n";
  *   }
  */
-class ContextPacket : public detail::PacketBase {
+class ContextPacketView : public detail::PacketViewBase {
 private:
     struct ContextFields {
         // CIF words
@@ -242,8 +242,8 @@ private:
     }
 
     // Private constructor - use parse() to construct
-    explicit ContextPacket(std::span<const uint8_t> buffer) noexcept
-        : PacketBase(buffer),
+    explicit ContextPacketView(std::span<const uint8_t> buffer) noexcept
+        : PacketViewBase(buffer),
           context_fields_{} {
         error_ = validate_context_packet();
     }
@@ -252,15 +252,15 @@ public:
     /**
      * @brief Parse a context packet from raw bytes
      *
-     * This is the only way to construct a dynamic::ContextPacket. Returns
+     * This is the only way to construct a dynamic::ContextPacketView. Returns
      * a ParseResult that either contains the valid packet or error information.
      *
      * @param buffer Raw packet bytes
-     * @return ParseResult<ContextPacket> containing either the packet or error
+     * @return ParseResult<ContextPacketView> containing either the packet or error
      */
-    [[nodiscard]] static ParseResult<ContextPacket>
+    [[nodiscard]] static ParseResult<ContextPacketView>
     parse(std::span<const uint8_t> buffer) noexcept {
-        ContextPacket packet(buffer);
+        ContextPacketView packet(buffer);
         if (packet.error_ == ValidationError::none) {
             return packet;
         }
@@ -295,7 +295,7 @@ public:
     // Field access via subscript operator
     template <uint8_t CifWord, uint8_t Bit>
     auto operator[](field::field_tag_t<CifWord, Bit> tag) const noexcept
-        -> FieldProxy<field::field_tag_t<CifWord, Bit>, const ContextPacket> {
+        -> FieldProxy<field::field_tag_t<CifWord, Bit>, const ContextPacketView> {
         return vrtigo::detail::make_field_proxy(*this, tag);
     }
 };

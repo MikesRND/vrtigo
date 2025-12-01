@@ -2,21 +2,21 @@
 
 /**
  * @file typed.hpp
- * @brief Compile-time typed packets (high-performance, static structure)
+ * @brief Compile-time typed packet builders (high-performance, static structure)
  *
- * This header aggregates the compile-time packet types for creating packets
+ * This header aggregates the compile-time packet builder types for creating packets
  * when the packet structure is known at compile time.
  *
  * Types provided:
- * - typed::DataPacket - Compile-time data packet template
- * - typed::ContextPacket - Compile-time context packet template (field-based)
- * - typed::ContextPacketBase - Low-level context packet template (CIF bitmask-based)
+ * - typed::DataPacketBuilder - Compile-time data packet builder template
+ * - typed::ContextPacketBuilder - Compile-time context packet builder template (field-based)
+ * - typed::ContextPacketBuilderBase - Low-level context packet builder template (CIF bitmask-based)
  *
  * Convenience aliases:
- * - typed::SignalDataPacket
- * - typed::SignalDataPacketNoId
- * - typed::ExtensionDataPacket
- * - typed::ExtensionDataPacketNoId
+ * - typed::SignalDataPacketBuilder
+ * - typed::SignalDataPacketBuilderNoId
+ * - typed::ExtensionDataPacketBuilder
+ * - typed::ExtensionDataPacketBuilderNoId
  *
  * Use these types when:
  * - Creating packets for transmission

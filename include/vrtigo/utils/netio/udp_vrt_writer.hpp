@@ -41,9 +41,9 @@ namespace vrtigo::utils::netio {
  *
  * Supported Packet Types:
  * - PacketVariant (runtime packets)
- * - dynamic::DataPacket (runtime data packets)
- * - dynamic::ContextPacket (runtime context packets)
- * - Any compile-time packet (from PacketBuilder)
+ * - dynamic::DataPacketView (runtime data packets)
+ * - dynamic::ContextPacketView (runtime context packets)
+ * - Any compile-time packet (from DataPacketBuilder or ContextPacketBuilder)
  *
  * Parse Error Handling:
  * - ParseResult errors are rejected (never sent)
@@ -70,11 +70,13 @@ namespace vrtigo::utils::netio {
  * // Bound mode - single destination
  * UDPVRTWriter writer("192.168.1.100", 12345);
  *
- * // Create packet
- * using PacketType = vrtigo::SignalDataPacket<vrtigo::NoClassId, vrtigo::NoTimestamp,
- * vrtigo::Trailer::none, 64>; alignas(4) std::array<uint8_t, PacketType::size_bytes> buffer{}; auto
- * packet = vrtigo::PacketBuilder<PacketType>(buffer.data()) .stream_id(0x1234) .packet_count(1)
- *     .build();
+ * // Create packet using typed::SignalDataPacketBuilder
+ * using PacketType = vrtigo::typed::SignalDataPacketBuilder<vrtigo::NoClassId, vrtigo::NoTimestamp,
+ *                                                           vrtigo::Trailer::none, 64>;
+ * alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+ * PacketType packet(buffer);
+ * packet.set_stream_id(0x1234);
+ * packet.set_packet_count(1);
  *
  * writer.write_packet(packet);
  *
@@ -93,8 +95,8 @@ namespace vrtigo::utils::netio {
  *
  * // Convert to variant for per-destination API
  * auto bytes = packet.as_bytes();
- * vrtigo::dynamic::DataPacket packet_view{bytes.data(), bytes.size()};
- * vrtigo::PacketVariant variant = packet_view;
+ * auto result = vrtigo::dynamic::DataPacketView::parse(bytes);
+ * vrtigo::PacketVariant variant = result.value();
  *
  * multi_writer.write_packet(variant, dest1);
  * multi_writer.write_packet(variant, dest2);
@@ -239,16 +241,16 @@ public:
      */
     bool write_packet(const vrtigo::PacketVariant& packet) noexcept {
         // Write the packet using visitor pattern
-        // PacketVariant now only contains valid packets (dynamic::DataPacket or
-        // dynamic::ContextPacket)
+        // PacketVariant now only contains valid packets (dynamic::DataPacketView or
+        // dynamic::ContextPacketView)
         return std::visit(
             [this](auto&& pkt) -> bool {
                 using T = std::decay_t<decltype(pkt)>;
 
-                if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacket>) {
+                if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacketView>) {
                     return this->write_packet_impl(pkt.as_bytes());
-                } else if constexpr (std::is_same_v<T, vrtigo::dynamic::ContextPacket>) {
-                    // dynamic::ContextPacket uses context_buffer() instead of as_bytes()
+                } else if constexpr (std::is_same_v<T, vrtigo::dynamic::ContextPacketView>) {
+                    // dynamic::ContextPacketView uses context_buffer() instead of as_bytes()
                     std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.size_bytes()};
                     return this->write_packet_impl(bytes);
                 } else {
@@ -264,7 +266,7 @@ public:
      * @param packet The data packet to write
      * @return true on success, false on error
      */
-    bool write_packet(const vrtigo::dynamic::DataPacket& packet) noexcept {
+    bool write_packet(const vrtigo::dynamic::DataPacketView& packet) noexcept {
         return write_packet_impl(packet.as_bytes());
     }
 
@@ -274,8 +276,8 @@ public:
      * @param packet The context packet to write
      * @return true on success, false on error
      */
-    bool write_packet(const vrtigo::dynamic::ContextPacket& packet) noexcept {
-        // dynamic::ContextPacket uses context_buffer() instead of as_bytes()
+    bool write_packet(const vrtigo::dynamic::ContextPacketView& packet) noexcept {
+        // dynamic::ContextPacketView uses context_buffer() instead of as_bytes()
         std::span<const uint8_t> bytes{packet.context_buffer(), packet.size_bytes()};
         return write_packet_impl(bytes);
     }
@@ -307,16 +309,16 @@ public:
     bool write_packet(const vrtigo::PacketVariant& packet,
                       const struct sockaddr_in& dest) noexcept {
         // Write the packet using visitor pattern
-        // PacketVariant now only contains valid packets (dynamic::DataPacket or
-        // dynamic::ContextPacket)
+        // PacketVariant now only contains valid packets (dynamic::DataPacketView or
+        // dynamic::ContextPacketView)
         return std::visit(
             [this, &dest](auto&& pkt) -> bool {
                 using T = std::decay_t<decltype(pkt)>;
 
-                if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacket>) {
+                if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacketView>) {
                     return this->write_packet_to(pkt.as_bytes(), dest);
-                } else if constexpr (std::is_same_v<T, vrtigo::dynamic::ContextPacket>) {
-                    // dynamic::ContextPacket uses context_buffer() instead of as_bytes()
+                } else if constexpr (std::is_same_v<T, vrtigo::dynamic::ContextPacketView>) {
+                    // dynamic::ContextPacketView uses context_buffer() instead of as_bytes()
                     std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.size_bytes()};
                     return this->write_packet_to(bytes, dest);
                 } else {

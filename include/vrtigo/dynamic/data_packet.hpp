@@ -15,13 +15,13 @@ namespace vrtigo::dynamic {
  * Runtime parser for data packets (signal and extension data)
  *
  * Provides safe, type-erased parsing of data packets with automatic
- * validation. Unlike typed::DataPacket<...>, this class doesn't require compile-time
+ * validation. Unlike typed::DataPacketBuilder<...>, this class doesn't require compile-time
  * knowledge of the packet structure and automatically validates on construction.
  *
- * Design Pattern: Runtime Parser vs Compile-Time Template
- * - typed::DataPacket<...>: Compile-time template for building/modifying packets with known
+ * Design Pattern: Runtime Parser vs Compile-Time Builder
+ * - typed::DataPacketBuilder<...>: Compile-time template for building/modifying packets with known
  * structure
- * - dynamic::DataPacket: Runtime parser for reading received packets with unknown structure
+ * - dynamic::DataPacketView: Runtime parser for reading received packets with unknown structure
  * This separation ensures type safety while allowing flexible packet parsing.
  *
  * Safety:
@@ -35,10 +35,8 @@ namespace vrtigo::dynamic {
  * - Use TimestampValue::as<TSI, TSF>() to narrow to typed Timestamp when needed
  *
  * Usage:
- *   auto result = dynamic::DataPacket::parse(rx_buffer);  // rx_buffer is std::span<const uint8_t>
- *   if (result.ok()) {
- *       const auto& view = result.value();
- *       if (auto ts = view.timestamp()) {
+ *   auto result = dynamic::DataPacketView::parse(rx_buffer);  // rx_buffer is std::span<const
+ * uint8_t> if (result.ok()) { const auto& view = result.value(); if (auto ts = view.timestamp()) {
  *           std::cout << "TSI: " << ts->tsi() << "\n";
  *           if (auto typed = ts->as<TsiType::utc, TsfType::real_time>()) {
  *               auto chrono = typed->to_chrono();
@@ -48,7 +46,7 @@ namespace vrtigo::dynamic {
  *       std::cerr << "Parse error: " << result.error().message() << "\n";
  *   }
  */
-class DataPacket : public detail::PacketBase {
+class DataPacketView : public detail::PacketViewBase {
 private:
     struct DataFields {
         size_t payload_size_bytes = 0;
@@ -56,8 +54,8 @@ private:
     } data_fields_;
 
     // Private constructor - use parse() to construct
-    explicit DataPacket(std::span<const uint8_t> buffer) noexcept
-        : PacketBase(buffer),
+    explicit DataPacketView(std::span<const uint8_t> buffer) noexcept
+        : PacketViewBase(buffer),
           data_fields_{} {
         error_ = validate_data_packet();
     }
@@ -80,17 +78,18 @@ private:
         // 3. Calculate payload and trailer offsets
         size_t offset_words = prologue_.payload_offset / vrt_word_size;
         size_t trailer_words = prologue_.header.trailer_included ? 1 : 0;
+
+        // 4. Sanity check BEFORE subtraction to prevent underflow
+        if (prologue_.header.size_words < offset_words + trailer_words) {
+            return ValidationError::size_field_mismatch;
+        }
+
         size_t payload_words = prologue_.header.size_words - offset_words - trailer_words;
         data_fields_.payload_size_bytes = payload_words * vrt_word_size;
 
         // Trailer offset (if present)
         if (prologue_.header.trailer_included) {
             data_fields_.trailer_offset = (prologue_.header.size_words - 1) * vrt_word_size;
-        }
-
-        // 4. Sanity check: payload size should be non-negative
-        if (prologue_.header.size_words < offset_words + trailer_words) {
-            return ValidationError::size_field_mismatch;
         }
 
         return ValidationError::none;
@@ -100,14 +99,15 @@ public:
     /**
      * @brief Parse a data packet from raw bytes
      *
-     * This is the only way to construct a dynamic::DataPacket. Returns
+     * This is the only way to construct a dynamic::DataPacketView. Returns
      * a ParseResult that either contains the valid packet or error information.
      *
      * @param buffer Raw packet bytes
-     * @return ParseResult<DataPacket> containing either the packet or error
+     * @return ParseResult<DataPacketView> containing either the packet or error
      */
-    [[nodiscard]] static ParseResult<DataPacket> parse(std::span<const uint8_t> buffer) noexcept {
-        DataPacket packet(buffer);
+    [[nodiscard]] static ParseResult<DataPacketView>
+    parse(std::span<const uint8_t> buffer) noexcept {
+        DataPacketView packet(buffer);
         if (packet.error_ == ValidationError::none) {
             return packet;
         }

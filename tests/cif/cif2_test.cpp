@@ -4,9 +4,9 @@ TEST_F(ContextPacketTest, CIF2Fields) {
     // Create packet with CIF2 controller UUID using field-based API
     // Note: Context packets always have Stream ID per VITA 49.2 spec
     using namespace vrtigo::field;
-    using TestContext = typed::ContextPacket<NoTimestamp,      // No timestamp
-                                             NoClassId,        // No class ID
-                                             controller_uuid>; // CIF2 field
+    using TestContext = typed::ContextPacketBuilder<NoTimestamp,      // No timestamp
+                                                    NoClassId,        // No class ID
+                                                    controller_uuid>; // CIF2 field
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -44,7 +44,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF2) {
     cif::write_u32_safe(buffer.data(), 28, expected_uuid[3]);
 
     // Parse and validate
-    auto result = dynamic::ContextPacket::parse(buffer);
+    auto result = dynamic::ContextPacketView::parse(buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
 
@@ -68,8 +68,8 @@ TEST_F(ContextPacketTest, RuntimeParseCIF2) {
 TEST_F(ContextPacketTest, CompileTimeCIF2RuntimeParse) {
     // Create packet with CIF2 field at compile time using field-based API
     using namespace vrtigo::field;
-    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId,
-                                             controller_uuid>; // CIF2 field
+    using TestContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId,
+                                                    controller_uuid>; // CIF2 field
 
     // Compile-time assertion: verify CIF2 enable bit is auto-set
     static_assert((TestContext::cif0_value & 0x04) != 0,
@@ -82,7 +82,7 @@ TEST_F(ContextPacketTest, CompileTimeCIF2RuntimeParse) {
     tx_packet.set_stream_id(0xAABBCCDD);
 
     // Parse with runtime view
-    auto result = dynamic::ContextPacket::parse(buffer);
+    auto result = dynamic::ContextPacketView::parse(buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& view = result.value();
     EXPECT_EQ(view.stream_id().value(), 0xAABBCCDD);

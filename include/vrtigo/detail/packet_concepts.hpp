@@ -69,12 +69,12 @@ concept CompileTimePacketLike = PacketMetadataLike<T> && requires(T& mut) {
 };
 
 /**
- * Data packets (compile-time) - has payload.
+ * Data packet builders (compile-time) - has payload.
  *
- * Examples: DataPacket<...>
+ * Examples: DataPacketBuilder<...>
  */
 template <typename T>
-concept DataPacketLike =
+concept DataPacketBuilderLike =
     CompileTimePacketLike<T> && requires(T& mut, const T& pkt, const uint8_t* d, size_t s) {
         // Note: convertible_to because returns span<T, N> (fixed extent)
         { pkt.payload() } -> std::convertible_to<std::span<const uint8_t>>;
@@ -83,32 +83,32 @@ concept DataPacketLike =
     };
 
 /**
- * Context packets (compile-time) - has CIF fields.
+ * Context packet builders (compile-time) - has CIF fields.
  *
- * Examples: ContextPacket<...>, ContextPacketBase<...>
+ * Examples: ContextPacketBuilder<...>, ContextPacketBuilderBase<...>
  */
 template <typename T>
-concept ContextPacketLike = CompileTimePacketLike<T> && requires(const T& pkt) {
+concept ContextPacketBuilderLike = CompileTimePacketLike<T> && requires(const T& pkt) {
     { pkt.change_indicator() } -> std::same_as<bool>;
 };
 
 // ============================================================================
-// Runtime Packet Concepts (read-only, parsed)
+// Dynamic Packet Concepts (read-only, parsed)
 // ============================================================================
 
 /**
- * Runtime packets - read-only, guaranteed valid.
+ * Dynamic packets - read-only, guaranteed valid.
  *
  * These are packets where the structure is determined at runtime by parsing
- * the header and CIF fields (dynamic::DataPacket, dynamic::ContextPacket).
+ * the header and CIF fields (dynamic::DataPacketView, dynamic::ContextPacketView).
  *
  * Key characteristics:
  * - Constructed only via static parse() method returning ParseResult<T>
- * - If you have a RuntimePacket, it's guaranteed to be valid
+ * - If you have a DynamicPacketView, it's guaranteed to be valid
  * - Read-only access (cannot modify packet contents)
  */
 template <typename T>
-concept RuntimePacketLike =
+concept DynamicPacketViewLike =
     PacketMetadataLike<T> && requires(const T& pkt, std::span<const uint8_t> buf) {
         // Static parse method - distinguishes RT from CT
         { T::parse(buf) } -> std::same_as<ParseResult<T>>;
@@ -126,28 +126,28 @@ concept RuntimePacketLike =
     };
 
 /**
- * Runtime data packets - has payload.
+ * Dynamic data packets - has payload.
  *
- * Examples: dynamic::DataPacket
+ * Examples: dynamic::DataPacketView
  */
 template <typename T>
-concept RuntimeDataPacketLike = RuntimePacketLike<T> && requires(const T& pkt) {
+concept DynamicDataPacketViewLike = DynamicPacketViewLike<T> && requires(const T& pkt) {
     { pkt.payload() } -> std::same_as<std::span<const uint8_t>>;
     { pkt.payload_size_bytes() } -> std::same_as<size_t>;
 };
 
 /**
- * Runtime context packets - has CIF field access.
+ * Dynamic context packets - has CIF field access.
  *
- * Examples: dynamic::ContextPacket
+ * Examples: dynamic::ContextPacketView
  */
 template <typename T>
-concept RuntimeContextPacketLike = RuntimePacketLike<T> && requires(const T& pkt) {
+concept DynamicContextPacketViewLike = DynamicPacketViewLike<T> && requires(const T& pkt) {
     { pkt.change_indicator() } -> std::same_as<bool>;
 };
 
 // ============================================================================
-// Helper Concepts for PacketBuilder
+// Helper Concepts for Builders
 // ============================================================================
 
 /**

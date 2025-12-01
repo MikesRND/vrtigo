@@ -93,7 +93,7 @@ class TrailerBuilder {
 
 | Data Location | Buffer Format | Use `IsBigEndian=` | Example |
 |---------------|---------------|-------------------|---------|
-| VRT packet buffer | Network order | `true` (default) | `RuntimeDataPacket`, `TrailerView` |
+| VRT packet buffer | Network order | `true` (default) | `dynamic::DataPacketView`, `TrailerView` |
 | Wire/file data | Network order | `true` (default) | Any I/O from VITA 49.2 sources |
 | uint32_t member | Host order | `false` | `TrailerBuilder::value_` |
 | CPU registers | Host order | `false` | Local computation values |

@@ -4,7 +4,8 @@ using namespace vrtigo::field;
 
 TEST_F(ContextPacketTest, TimestampInitialization) {
     // Note: Context packets always have Stream ID per VITA 49.2 spec
-    using TestContext = typed::ContextPacket<UtcRealTimestamp, NoClassId>; // No context fields
+    using TestContext =
+        typed::ContextPacketBuilder<UtcRealTimestamp, NoClassId>; // No context fields
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
     TestContext packet(pkt_buffer);
@@ -16,7 +17,7 @@ TEST_F(ContextPacketTest, TimestampInitialization) {
 }
 
 TEST_F(ContextPacketTest, TimestampIntegerAccess) {
-    using TestContext = typed::ContextPacket<UtcRealTimestamp, NoClassId>;
+    using TestContext = typed::ContextPacketBuilder<UtcRealTimestamp, NoClassId>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
     TestContext packet(pkt_buffer);
@@ -30,7 +31,7 @@ TEST_F(ContextPacketTest, TimestampIntegerAccess) {
 }
 
 TEST_F(ContextPacketTest, TimestampFractionalAccess) {
-    using TestContext = typed::ContextPacket<UtcRealTimestamp, NoClassId>;
+    using TestContext = typed::ContextPacketBuilder<UtcRealTimestamp, NoClassId>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
     TestContext packet(pkt_buffer);
@@ -45,7 +46,7 @@ TEST_F(ContextPacketTest, TimestampFractionalAccess) {
 }
 
 TEST_F(ContextPacketTest, UnifiedTimestampAccess) {
-    using TestContext = typed::ContextPacket<UtcRealTimestamp, NoClassId>;
+    using TestContext = typed::ContextPacketBuilder<UtcRealTimestamp, NoClassId>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
     TestContext packet(pkt_buffer);
@@ -63,7 +64,8 @@ TEST_F(ContextPacketTest, UnifiedTimestampAccess) {
 }
 
 TEST_F(ContextPacketTest, TimestampWithClassId) {
-    using TestContext = typed::ContextPacket<UtcRealTimestamp, ClassId>; // Has class ID (8 bytes)
+    using TestContext =
+        typed::ContextPacketBuilder<UtcRealTimestamp, ClassId>; // Has class ID (8 bytes)
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
     TestContext packet(pkt_buffer);
@@ -93,7 +95,8 @@ TEST_F(ContextPacketTest, TimestampWithClassId) {
 }
 
 TEST_F(ContextPacketTest, TimestampWithContextFields) {
-    using TestContext = typed::ContextPacket<UtcRealTimestamp, NoClassId, bandwidth, sample_rate>;
+    using TestContext =
+        typed::ContextPacketBuilder<UtcRealTimestamp, NoClassId, bandwidth, sample_rate>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> pkt_buffer{};
     TestContext packet(pkt_buffer);

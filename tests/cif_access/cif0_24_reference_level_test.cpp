@@ -25,7 +25,7 @@ TEST_F(ContextPacketTest, CIF0_24_BasicAccess) {
     // [/DESCRIPTION]
 
     // [SNIPPET]
-    using RefLevelContext = typed::ContextPacket<NoTimestamp, NoClassId, reference_level>;
+    using RefLevelContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, reference_level>;
 
     alignas(4) std::array<uint8_t, RefLevelContext::size_bytes()> buffer{};
     RefLevelContext packet(buffer);
@@ -44,7 +44,7 @@ TEST_F(ContextPacketTest, CIF0_24_BasicAccess) {
 // Additional tests (not included in documentation)
 
 TEST_F(ContextPacketTest, CIF0_24_CommonLevels) {
-    using RefLevelContext = typed::ContextPacket<NoTimestamp, NoClassId, reference_level>;
+    using RefLevelContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, reference_level>;
     alignas(4) std::array<uint8_t, RefLevelContext::size_bytes()> buffer{};
     RefLevelContext packet(buffer);
 
@@ -66,7 +66,7 @@ TEST_F(ContextPacketTest, CIF0_24_CommonLevels) {
 }
 
 TEST_F(ContextPacketTest, CIF0_24_SpecExamples) {
-    using RefLevelContext = typed::ContextPacket<NoTimestamp, NoClassId, reference_level>;
+    using RefLevelContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, reference_level>;
     alignas(4) std::array<uint8_t, RefLevelContext::size_bytes()> buffer{};
     RefLevelContext packet(buffer);
 
@@ -99,7 +99,7 @@ TEST_F(ContextPacketTest, CIF0_24_SpecExamples) {
 }
 
 TEST_F(ContextPacketTest, CIF0_24_Saturation) {
-    using RefLevelContext = typed::ContextPacket<NoTimestamp, NoClassId, reference_level>;
+    using RefLevelContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, reference_level>;
     alignas(4) std::array<uint8_t, RefLevelContext::size_bytes()> buffer{};
     RefLevelContext packet(buffer);
 
@@ -120,14 +120,14 @@ TEST_F(ContextPacketTest, CIF0_24_Saturation) {
 
 TEST_F(ContextPacketTest, CIF0_24_RuntimeAccess) {
     // Create a compile-time packet
-    using RefLevelContext = typed::ContextPacket<NoTimestamp, NoClassId, reference_level>;
+    using RefLevelContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, reference_level>;
     alignas(4) std::array<uint8_t, RefLevelContext::size_bytes()> buffer{};
     RefLevelContext packet(buffer);
 
     packet[reference_level].set_value(-20.0);
 
     // Parse with runtime packet
-    auto result = dynamic::ContextPacket::parse(buffer);
+    auto result = dynamic::ContextPacketView::parse(buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& runtime_packet = result.value();
 
@@ -137,7 +137,7 @@ TEST_F(ContextPacketTest, CIF0_24_RuntimeAccess) {
 }
 
 TEST_F(ContextPacketTest, CIF0_24_ReservedBits) {
-    using RefLevelContext = typed::ContextPacket<NoTimestamp, NoClassId, reference_level>;
+    using RefLevelContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, reference_level>;
     alignas(4) std::array<uint8_t, RefLevelContext::size_bytes()> buffer{};
     RefLevelContext packet(buffer);
 

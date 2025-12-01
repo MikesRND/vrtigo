@@ -26,7 +26,7 @@ TEST_F(ContextPacketTest, CIF0_31_BasicAccess) {
     // [/DESCRIPTION]
 
     // [SNIPPET]
-    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using TestContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
@@ -45,7 +45,7 @@ TEST_F(ContextPacketTest, CIF0_31_BasicAccess) {
 // Additional tests (not included in documentation)
 
 TEST_F(ContextPacketTest, CIF0_31_ToggleIndicator) {
-    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using TestContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, bandwidth>;
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
 
@@ -63,13 +63,13 @@ TEST_F(ContextPacketTest, CIF0_31_ToggleIndicator) {
 
 TEST_F(ContextPacketTest, CIF0_31_RuntimeAccess) {
     // Create a compile-time packet with change indicator set
-    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using TestContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, bandwidth>;
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
     packet.set_change_indicator(true);
 
     // Parse with runtime packet
-    auto result = dynamic::ContextPacket::parse(buffer);
+    auto result = dynamic::ContextPacketView::parse(buffer);
     ASSERT_TRUE(result.ok()) << result.error().message();
     const auto& runtime_packet = result.value();
 

@@ -10,7 +10,7 @@ The Bandwidth field is a 64-bit Q52.12 fixed-point value representing
 the signal bandwidth in Hz.
 
 ```cpp
-    using BandwidthContext = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using BandwidthContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, bandwidth>;
 
     alignas(4) std::array<uint8_t, BandwidthContext::size_bytes()> buffer{};
     BandwidthContext packet(buffer);

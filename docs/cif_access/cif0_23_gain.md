@@ -15,7 +15,7 @@ Each subfield provides ±256 dB range with 1/128 dB resolution (0.0078125 dB).
 Single-stage equipment uses Stage 1 only with Stage 2 set to zero.
 
 ```cpp
-    using GainContext = typed::ContextPacket<NoTimestamp, NoClassId, gain>;
+    using GainContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, gain>;
 
     alignas(4) std::array<uint8_t, GainContext::size_bytes()> buffer{};
     GainContext packet(buffer);

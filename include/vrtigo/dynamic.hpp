@@ -8,8 +8,8 @@
  * when the packet structure is not known at compile time.
  *
  * Types provided:
- * - dynamic::DataPacket - Runtime parser for signal/extension data packets
- * - dynamic::ContextPacket - Runtime parser for context packets
+ * - dynamic::DataPacketView - Runtime parser for signal/extension data packets
+ * - dynamic::ContextPacketView - Runtime parser for context packets
  *
  * Use these types when:
  * - Receiving packets from external sources

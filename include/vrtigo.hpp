@@ -12,12 +12,12 @@
 // - Optional trailer
 // - Compile-time size calculation
 // - Zero-copy operations on user buffers
-// - Builder pattern for fluent construction
+// - Direct setter API for packet construction
 //
 // Context Packet Features:
 // - Context packets (types 4-5)
-// - Runtime parsing with dynamic::ContextPacket
-// - Compile-time creation with typed::ContextPacket template
+// - Runtime parsing with dynamic::ContextPacketView
+// - Compile-time creation with typed::ContextPacketBuilder template
 // - CIF0, CIF1, CIF2, CIF3 field support (70+ fields)
 // - Variable-length field handling (GPS ASCII, Context Association Lists)
 // - Full Class ID support with 24-bit OUI and 32-bit PCC
@@ -48,6 +48,3 @@
 
 // Compile-time packets (for building/transmitting)
 #include "vrtigo/typed.hpp"
-
-// Packet builder
-#include "vrtigo/detail/builder.hpp"

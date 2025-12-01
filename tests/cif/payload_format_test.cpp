@@ -7,7 +7,7 @@ using namespace vrtigo;
 TEST_F(ContextPacketTest, PayloadFormatBasicAccess) {
     // Test basic three-tier access pattern
     using namespace vrtigo::field;
-    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
+    using TestContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, data_payload_format>;
 
     TestContext packet(buffer);
 
@@ -31,7 +31,7 @@ TEST_F(ContextPacketTest, PayloadFormatBasicAccess) {
 TEST_F(ContextPacketTest, PayloadFormatBitfieldAccess) {
     // Test individual bitfield access
     using namespace vrtigo::field;
-    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
+    using TestContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, data_payload_format>;
 
     TestContext packet(buffer);
     auto format = packet[field::data_payload_format].value();
@@ -66,7 +66,7 @@ TEST_F(ContextPacketTest, PayloadFormatBitfieldAccess) {
 TEST_F(ContextPacketTest, PayloadFormatMultipleFields) {
     // Test get_multiple
     using namespace vrtigo::field;
-    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
+    using TestContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, data_payload_format>;
 
     TestContext packet(buffer);
     auto format = packet[field::data_payload_format].value();
@@ -88,7 +88,7 @@ TEST_F(ContextPacketTest, PayloadFormatMultipleFields) {
 TEST_F(ContextPacketTest, PayloadFormatEndianness) {
     // Test that fields are properly byte-swapped
     using namespace vrtigo::field;
-    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
+    using TestContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, data_payload_format>;
 
     TestContext packet(buffer);
     auto format = packet[field::data_payload_format].value();
@@ -116,7 +116,7 @@ TEST_F(ContextPacketTest, PayloadFormatEndianness) {
 TEST_F(ContextPacketTest, PayloadFormatClear) {
     // Test clear method
     using namespace vrtigo::field;
-    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
+    using TestContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, data_payload_format>;
 
     TestContext packet(buffer);
     auto format = packet[field::data_payload_format].value();
@@ -138,7 +138,7 @@ TEST_F(ContextPacketTest, PayloadFormatClear) {
 TEST_F(ContextPacketTest, PayloadFormatEnumValues) {
     // Test using enum values with automatic enum return
     using namespace vrtigo::field;
-    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
+    using TestContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, data_payload_format>;
 
     TestContext packet(buffer);
     auto format = packet[field::data_payload_format].value();
@@ -156,7 +156,7 @@ TEST_F(ContextPacketTest, PayloadFormatEnumValues) {
 TEST_F(ContextPacketTest, PayloadFormatAllFields) {
     // Comprehensive test of all fields
     using namespace vrtigo::field;
-    using TestContext = typed::ContextPacket<NoTimestamp, NoClassId, data_payload_format>;
+    using TestContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, data_payload_format>;
 
     TestContext packet(buffer);
     auto format = packet[field::data_payload_format].value();

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <vrtigo.hpp>
+#include <vrtigo/detail/packet_concepts.hpp>
 
 using namespace vrtigo;
 using namespace vrtigo::field;
@@ -9,122 +10,122 @@ using namespace vrtigo::field;
 // ============================================================================
 
 TEST(PacketConceptsTest, AllPacketsSatisfyPacketMetadataLike) {
-    // Compile-time packets
-    using DataPkt =
-        typed::DataPacket<PacketType::signal_data, NoClassId, NoTimestamp, Trailer::none, 64>;
-    using CtxPkt = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    // Compile-time packet builders
+    using DataPkt = typed::DataPacketBuilder<PacketType::signal_data, NoClassId, NoTimestamp,
+                                             Trailer::none, 64>;
+    using CtxPkt = typed::ContextPacketBuilder<NoTimestamp, NoClassId, bandwidth>;
 
     static_assert(PacketMetadataLike<DataPkt>);
     static_assert(PacketMetadataLike<CtxPkt>);
 
     // Runtime packets
-    static_assert(PacketMetadataLike<dynamic::DataPacket>);
-    static_assert(PacketMetadataLike<dynamic::ContextPacket>);
+    static_assert(PacketMetadataLike<dynamic::DataPacketView>);
+    static_assert(PacketMetadataLike<dynamic::ContextPacketView>);
 }
 
 // ============================================================================
 // CompileTimePacketLike - static structure, mutable
 // ============================================================================
 
-TEST(PacketConceptsTest, DataPacketSatisfiesCompileTimePacketLike) {
-    using PktType = typed::DataPacket<PacketType::signal_data, NoClassId, UtcRealTimestamp,
-                                      Trailer::included, 64>;
+TEST(PacketConceptsTest, DataPacketBuilderSatisfiesCompileTimePacketLike) {
+    using PktType = typed::DataPacketBuilder<PacketType::signal_data, NoClassId, UtcRealTimestamp,
+                                             Trailer::included, 64>;
 
     static_assert(PacketMetadataLike<PktType>);
     static_assert(CompileTimePacketLike<PktType>);
-    static_assert(DataPacketLike<PktType>);
+    static_assert(DataPacketBuilderLike<PktType>);
 
-    // Should NOT satisfy context or runtime concepts
-    static_assert(!ContextPacketLike<PktType>);
-    static_assert(!RuntimePacketLike<PktType>);
+    // Should NOT satisfy context or dynamic concepts
+    static_assert(!ContextPacketBuilderLike<PktType>);
+    static_assert(!DynamicPacketViewLike<PktType>);
 }
 
-TEST(PacketConceptsTest, ContextPacketSatisfiesCompileTimePacketLike) {
-    using PktType = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth, sample_rate>;
+TEST(PacketConceptsTest, ContextPacketBuilderSatisfiesCompileTimePacketLike) {
+    using PktType = typed::ContextPacketBuilder<NoTimestamp, NoClassId, bandwidth, sample_rate>;
 
     static_assert(PacketMetadataLike<PktType>);
     static_assert(CompileTimePacketLike<PktType>);
-    static_assert(ContextPacketLike<PktType>);
+    static_assert(ContextPacketBuilderLike<PktType>);
 
-    // Should NOT satisfy data or runtime concepts
-    static_assert(!DataPacketLike<PktType>);
-    static_assert(!RuntimePacketLike<PktType>);
+    // Should NOT satisfy data or dynamic concepts
+    static_assert(!DataPacketBuilderLike<PktType>);
+    static_assert(!DynamicPacketViewLike<PktType>);
 }
 
 // ============================================================================
-// RuntimePacketLike - parsed, read-only
+// DynamicPacketViewLike - parsed, read-only
 // ============================================================================
 
-TEST(PacketConceptsTest, RtDataPacketSatisfiesRuntimePacketLike) {
-    static_assert(PacketMetadataLike<dynamic::DataPacket>);
-    static_assert(RuntimePacketLike<dynamic::DataPacket>);
-    static_assert(RuntimeDataPacketLike<dynamic::DataPacket>);
+TEST(PacketConceptsTest, DynamicDataPacketSatisfiesDynamicPacketViewLike) {
+    static_assert(PacketMetadataLike<dynamic::DataPacketView>);
+    static_assert(DynamicPacketViewLike<dynamic::DataPacketView>);
+    static_assert(DynamicDataPacketViewLike<dynamic::DataPacketView>);
 
     // Should NOT satisfy context or compile-time concepts
-    static_assert(!RuntimeContextPacketLike<dynamic::DataPacket>);
-    static_assert(!CompileTimePacketLike<dynamic::DataPacket>);
+    static_assert(!DynamicContextPacketViewLike<dynamic::DataPacketView>);
+    static_assert(!CompileTimePacketLike<dynamic::DataPacketView>);
 }
 
-TEST(PacketConceptsTest, RtContextPacketSatisfiesRuntimePacketLike) {
-    static_assert(PacketMetadataLike<dynamic::ContextPacket>);
-    static_assert(RuntimePacketLike<dynamic::ContextPacket>);
-    static_assert(RuntimeContextPacketLike<dynamic::ContextPacket>);
+TEST(PacketConceptsTest, DynamicContextPacketSatisfiesDynamicPacketViewLike) {
+    static_assert(PacketMetadataLike<dynamic::ContextPacketView>);
+    static_assert(DynamicPacketViewLike<dynamic::ContextPacketView>);
+    static_assert(DynamicContextPacketViewLike<dynamic::ContextPacketView>);
 
     // Should NOT satisfy data or compile-time concepts
-    static_assert(!RuntimeDataPacketLike<dynamic::ContextPacket>);
-    static_assert(!CompileTimePacketLike<dynamic::ContextPacket>);
+    static_assert(!DynamicDataPacketViewLike<dynamic::ContextPacketView>);
+    static_assert(!CompileTimePacketLike<dynamic::ContextPacketView>);
 }
 
 // ============================================================================
 // Mutual exclusivity tests
 // ============================================================================
 
-TEST(PacketConceptsTest, CTAndRTMutuallyExclusive) {
-    using DataPkt =
-        typed::DataPacket<PacketType::signal_data, NoClassId, NoTimestamp, Trailer::none, 64>;
-    using CtxPkt = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+TEST(PacketConceptsTest, CTAndDynamicMutuallyExclusive) {
+    using DataPkt = typed::DataPacketBuilder<PacketType::signal_data, NoClassId, NoTimestamp,
+                                             Trailer::none, 64>;
+    using CtxPkt = typed::ContextPacketBuilder<NoTimestamp, NoClassId, bandwidth>;
 
-    // CT packets are NOT RT
-    static_assert(!RuntimePacketLike<DataPkt>);
-    static_assert(!RuntimePacketLike<CtxPkt>);
+    // CT packet builders are NOT Dynamic
+    static_assert(!DynamicPacketViewLike<DataPkt>);
+    static_assert(!DynamicPacketViewLike<CtxPkt>);
 
-    // RT packets are NOT CT
-    static_assert(!CompileTimePacketLike<dynamic::DataPacket>);
-    static_assert(!CompileTimePacketLike<dynamic::ContextPacket>);
+    // Dynamic packets are NOT CT
+    static_assert(!CompileTimePacketLike<dynamic::DataPacketView>);
+    static_assert(!CompileTimePacketLike<dynamic::ContextPacketView>);
 }
 
 TEST(PacketConceptsTest, DataAndContextMutuallyExclusive) {
-    using DataPkt =
-        typed::DataPacket<PacketType::signal_data, NoClassId, NoTimestamp, Trailer::none, 64>;
-    using CtxPkt = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using DataPkt = typed::DataPacketBuilder<PacketType::signal_data, NoClassId, NoTimestamp,
+                                             Trailer::none, 64>;
+    using CtxPkt = typed::ContextPacketBuilder<NoTimestamp, NoClassId, bandwidth>;
 
     // Data is not Context
-    static_assert(DataPacketLike<DataPkt>);
-    static_assert(!ContextPacketLike<DataPkt>);
+    static_assert(DataPacketBuilderLike<DataPkt>);
+    static_assert(!ContextPacketBuilderLike<DataPkt>);
 
     // Context is not Data
-    static_assert(ContextPacketLike<CtxPkt>);
-    static_assert(!DataPacketLike<CtxPkt>);
+    static_assert(ContextPacketBuilderLike<CtxPkt>);
+    static_assert(!DataPacketBuilderLike<CtxPkt>);
 
-    // Same for runtime
-    static_assert(RuntimeDataPacketLike<dynamic::DataPacket>);
-    static_assert(!RuntimeContextPacketLike<dynamic::DataPacket>);
+    // Same for dynamic
+    static_assert(DynamicDataPacketViewLike<dynamic::DataPacketView>);
+    static_assert(!DynamicContextPacketViewLike<dynamic::DataPacketView>);
 
-    static_assert(RuntimeContextPacketLike<dynamic::ContextPacket>);
-    static_assert(!RuntimeDataPacketLike<dynamic::ContextPacket>);
+    static_assert(DynamicContextPacketViewLike<dynamic::ContextPacketView>);
+    static_assert(!DynamicDataPacketViewLike<dynamic::ContextPacketView>);
 }
 
 // ============================================================================
-// Helper concepts for PacketBuilder
+// Helper concepts for DataPacketBuilder
 // ============================================================================
 
 TEST(PacketConceptsTest, HelperConceptsForBuilder) {
-    using WithStreamId =
-        typed::DataPacket<PacketType::signal_data, NoClassId, NoTimestamp, Trailer::none, 64>;
-    using NoStreamId =
-        typed::DataPacket<PacketType::signal_data_no_id, NoClassId, NoTimestamp, Trailer::none, 64>;
-    using WithTrailer =
-        typed::DataPacket<PacketType::signal_data, NoClassId, NoTimestamp, Trailer::included, 64>;
+    using WithStreamId = typed::DataPacketBuilder<PacketType::signal_data, NoClassId, NoTimestamp,
+                                                  Trailer::none, 64>;
+    using NoStreamId = typed::DataPacketBuilder<PacketType::signal_data_no_id, NoClassId,
+                                                NoTimestamp, Trailer::none, 64>;
+    using WithTrailer = typed::DataPacketBuilder<PacketType::signal_data, NoClassId, NoTimestamp,
+                                                 Trailer::included, 64>;
 
     // Stream ID
     static_assert(HasStreamId<WithStreamId>);
@@ -153,9 +154,9 @@ TEST(PacketConceptsTest, NonPacketTypesRejected) {
     static_assert(!PacketMetadataLike<std::vector<uint8_t>>);
 
     static_assert(!CompileTimePacketLike<int>);
-    static_assert(!RuntimePacketLike<std::string>);
-    static_assert(!DataPacketLike<std::vector<uint8_t>>);
-    static_assert(!ContextPacketLike<void*>);
+    static_assert(!DynamicPacketViewLike<std::string>);
+    static_assert(!DataPacketBuilderLike<std::vector<uint8_t>>);
+    static_assert(!ContextPacketBuilderLike<void*>);
 }
 
 // ============================================================================
@@ -163,16 +164,16 @@ TEST(PacketConceptsTest, NonPacketTypesRejected) {
 // ============================================================================
 
 TEST(PacketConceptsTest, LegacyAliasesWork) {
-    using DataPkt =
-        typed::DataPacket<PacketType::signal_data, NoClassId, NoTimestamp, Trailer::none, 64>;
+    using DataPkt = typed::DataPacketBuilder<PacketType::signal_data, NoClassId, NoTimestamp,
+                                             Trailer::none, 64>;
 
     // PacketLike is alias for PacketMetadataLike
     static_assert(PacketLike<DataPkt>);
-    static_assert(PacketLike<dynamic::DataPacket>);
+    static_assert(PacketLike<dynamic::DataPacketView>);
 
     // AnyPacket is alias for PacketMetadataLike
     static_assert(AnyPacket<DataPkt>);
-    static_assert(AnyPacket<dynamic::ContextPacket>);
+    static_assert(AnyPacket<dynamic::ContextPacketView>);
 }
 
 // ============================================================================
@@ -181,8 +182,8 @@ TEST(PacketConceptsTest, LegacyAliasesWork) {
 
 TEST(PacketConceptsTest, RuntimeBehaviorConsistency) {
     // Create data packet
-    using SignalType =
-        typed::DataPacket<PacketType::signal_data, NoClassId, NoTimestamp, Trailer::none, 32>;
+    using SignalType = typed::DataPacketBuilder<PacketType::signal_data, NoClassId, NoTimestamp,
+                                                Trailer::none, 32>;
     alignas(4) std::array<uint8_t, SignalType::size_bytes()> signal_buffer;
     SignalType signal_pkt(signal_buffer);
 
@@ -193,7 +194,7 @@ TEST(PacketConceptsTest, RuntimeBehaviorConsistency) {
     });
 
     // Parse as runtime packet
-    auto data_result = dynamic::DataPacket::parse(signal_buffer);
+    auto data_result = dynamic::DataPacketView::parse(signal_buffer);
     ASSERT_TRUE(data_result.ok()) << data_result.error().message();
     const auto& view = data_result.value();
     EXPECT_NO_THROW({
@@ -203,7 +204,7 @@ TEST(PacketConceptsTest, RuntimeBehaviorConsistency) {
     });
 
     // Create context packet
-    using ContextType = typed::ContextPacket<NoTimestamp, NoClassId, bandwidth>;
+    using ContextType = typed::ContextPacketBuilder<NoTimestamp, NoClassId, bandwidth>;
     alignas(4) std::array<uint8_t, ContextType::size_bytes()> context_buffer;
     ContextType context_pkt(context_buffer);
 
@@ -213,7 +214,7 @@ TEST(PacketConceptsTest, RuntimeBehaviorConsistency) {
     });
 
     // Parse as runtime context packet
-    auto ctx_result = dynamic::ContextPacket::parse(context_buffer);
+    auto ctx_result = dynamic::ContextPacketView::parse(context_buffer);
     ASSERT_TRUE(ctx_result.ok()) << ctx_result.error().message();
     const auto& ctx_view = ctx_result.value();
     EXPECT_FALSE(ctx_view.change_indicator());

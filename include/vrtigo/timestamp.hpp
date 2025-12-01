@@ -19,11 +19,8 @@ template <TsiType TSI, TsfType TSF>
 class Timestamp;
 
 // Forward declaration for TimestampValue friend
-namespace detail {
-class RuntimePacketBase;
-}
 namespace dynamic::detail {
-class PacketBase;
+class PacketViewBase;
 }
 
 /**
@@ -62,8 +59,7 @@ private:
     // Construction only via Timestamp conversion or runtime packet classes
     template <TsiType, TsfType>
     friend class Timestamp;
-    friend class detail::RuntimePacketBase;   // Base class for runtime packets (legacy)
-    friend class dynamic::detail::PacketBase; // Base class for rt namespace packets
+    friend class dynamic::detail::PacketViewBase; // Base class for dynamic packet views
 
     constexpr TimestampValue(uint32_t tsi, uint64_t tsf, TsiType tsi_kind,
                              TsfType tsf_kind) noexcept

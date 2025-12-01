@@ -100,8 +100,8 @@ TEST(EnhancedReaderTest, DetectDataPackets) {
         if (is_data_packet(*pkt)) {
             data_packet_count++;
 
-            // Verify we can access dynamic::DataPacket methods
-            auto& data_pkt = std::get<vrtigo::dynamic::DataPacket>(pkt->value());
+            // Verify we can access dynamic::DataPacketView methods
+            auto& data_pkt = std::get<vrtigo::dynamic::DataPacketView>(pkt->value());
 
             // Should have a payload
             auto payload = data_pkt.payload();
@@ -122,8 +122,8 @@ TEST(EnhancedReaderTest, DetectContextPackets) {
         if (is_context_packet(*pkt)) {
             context_packet_count++;
 
-            // Verify we can access dynamic::ContextPacket methods
-            auto& ctx_pkt = std::get<vrtigo::dynamic::ContextPacket>(pkt->value());
+            // Verify we can access dynamic::ContextPacketView methods
+            auto& ctx_pkt = std::get<vrtigo::dynamic::ContextPacketView>(pkt->value());
             (void)ctx_pkt; // Access verified
         }
     }
@@ -156,9 +156,9 @@ TEST(EnhancedReaderTest, ForEachDataPacket) {
 
     size_t data_count = 0;
 
-    size_t processed = reader.for_each_data_packet([&](const vrtigo::dynamic::DataPacket& pkt) {
+    size_t processed = reader.for_each_data_packet([&](const vrtigo::dynamic::DataPacketView& pkt) {
         data_count++;
-        // dynamic::DataPacket from iterator is always valid (parse errors are skipped)
+        // dynamic::DataPacketView from iterator is always valid (parse errors are skipped)
         (void)pkt;
         return true;
     });
@@ -173,9 +173,9 @@ TEST(EnhancedReaderTest, ForEachContextPacket) {
     size_t context_count = 0;
 
     size_t processed =
-        reader.for_each_context_packet([&](const vrtigo::dynamic::ContextPacket& pkt) {
+        reader.for_each_context_packet([&](const vrtigo::dynamic::ContextPacketView& pkt) {
             context_count++;
-            // dynamic::ContextPacket from iterator is always valid (parse errors are skipped)
+            // dynamic::ContextPacketView from iterator is always valid (parse errors are skipped)
             (void)pkt;
             return true;
         });
@@ -249,9 +249,9 @@ TEST(EnhancedReaderTest, VisitPacketVariant) {
         [&](auto&& p) {
             using T = std::decay_t<decltype(p)>;
 
-            if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacket>) {
+            if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacketView>) {
                 visited = true;
-            } else if constexpr (std::is_same_v<T, vrtigo::dynamic::ContextPacket>) {
+            } else if constexpr (std::is_same_v<T, vrtigo::dynamic::ContextPacketView>) {
                 visited = true;
             }
         },
