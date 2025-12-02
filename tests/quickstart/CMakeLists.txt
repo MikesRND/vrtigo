@@ -11,3 +11,6 @@ vrtigo_add_gtest(quickstart_file_reader file_reader_test.cpp TEST_DATA_DIR "${CM
 
 # Packet Parsing snippet test
 vrtigo_add_gtest(quickstart_packet_parsing packet_parsing_test.cpp)
+
+# Sample Clock snippet test
+vrtigo_add_gtest(quickstart_sample_clock sample_clock_test.cpp)

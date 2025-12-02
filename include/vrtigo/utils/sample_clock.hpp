@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vrtigo/timestamp.hpp"
+#include "vrtigo/utils/start_time.hpp"
 
 #include <concepts>
 #include <stdexcept>
@@ -82,6 +83,26 @@ public:
           start_seconds_(start.tsi()),
           start_fractional_(start.tsf()) {}
 
+    /**
+     * @brief Construct a sample clock with deferred start time resolution
+     * @param sample_period_seconds Sample period in seconds (rounded to nearest picosecond)
+     * @param start_spec StartTime specification (resolved at construction)
+     * @throws std::invalid_argument if period is non-finite, zero, negative, or rounds to zero
+     * @throws std::overflow_error if period overflows uint64_t picoseconds
+     *
+     * @note Constrained to UTC and "other" TSI types to prevent silent GPS epoch mismatch.
+     *       StartTime::now() captures UTC wall-clock time; using it with TsiType::gps would
+     *       produce timestamps with incorrect epoch semantics (~18 second offset).
+     *
+     * Example:
+     * @code
+     *   SampleClock<TsiType::utc> clock(1e-6, StartTime::at_next_second()); // PPS aligned
+     * @endcode
+     */
+    explicit SampleClock(double sample_period_seconds, StartTime start_spec)
+        requires(TSI == TsiType::utc || TSI == TsiType::other)
+        : SampleClock(sample_period_seconds, make_time_point_from_start(start_spec)) {}
+
     /// Get current time without advancing
     time_point now() const { return make_time_point(total_picos_); }
 
@@ -145,6 +166,11 @@ public:
     uint64_t elapsed_samples() const noexcept { return total_picos_ / sample_period_picos_; }
 
 private:
+    static time_point make_time_point_from_start(StartTime start_spec) noexcept {
+        auto resolved = start_spec.resolve();
+        return time_point(resolved.tsi(), resolved.tsf());
+    }
+
     static uint64_t normalize_period(double seconds) {
         if (!std::isfinite(seconds)) {
             throw std::invalid_argument("sample period must be finite");

@@ -19,6 +19,8 @@
 #endif
 // Synthetic sample clock helper (throws on invalid input)
 #include "vrtigo/utils/sample_clock.hpp"
+// Deferred start time specification for SampleClock
+#include "vrtigo/utils/start_time.hpp"
 
 #include "vrtigo.hpp"
 
@@ -26,6 +28,8 @@ namespace vrtigo {
 // Import utilities into main namespace for convenience
 template <TsiType TSI = TsiType::other, TsfType TSF = TsfType::real_time>
 using SampleClock = utils::SampleClock<TSI, TSF>;
+
+using StartTime = utils::StartTime;
 
 template <uint16_t MaxPacketWords = 65535>
 using VRTFileReader = utils::fileio::VRTFileReader<MaxPacketWords>;
