@@ -30,9 +30,9 @@ TEST_F(SecurityTest, ValidPacketParsesSuccessfully) {
 
     // Parse with dynamic::DataPacketView
     auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
-    EXPECT_TRUE(result.ok());
+    EXPECT_TRUE(result.has_value());
 
-    if (result.ok()) {
+    if (result.has_value()) {
         const auto& view = result.value();
         EXPECT_EQ(view.type(), vrtigo::PacketType::signal_data);
         EXPECT_EQ(view.size_bytes(), PacketType::size_bytes());
@@ -46,7 +46,7 @@ TEST_F(SecurityTest, BufferTooSmallForHeader) {
     std::array<uint8_t, 3> tiny_buffer{};
 
     auto result = vrtigo::dynamic::DataPacketView::parse(tiny_buffer);
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
     EXPECT_EQ(result.error().code, vrtigo::ValidationError::buffer_too_small);
 }
 
@@ -60,7 +60,7 @@ TEST_F(SecurityTest, BufferTooSmallForDeclaredSize) {
     // Parse with truncated buffer
     std::span<const uint8_t> truncated(buffer.data(), buffer.size() - 4);
     auto result = vrtigo::dynamic::DataPacketView::parse(truncated);
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
     EXPECT_EQ(result.error().code, vrtigo::ValidationError::buffer_too_small);
 }
 
@@ -75,7 +75,7 @@ TEST_F(SecurityTest, ContextPacketTypeMismatch) {
     corrupt_header_field(buffer.data(), 0xF0000000, 0x40000000);
 
     auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
     EXPECT_EQ(result.error().code, vrtigo::ValidationError::packet_type_mismatch);
 }
 
@@ -90,7 +90,7 @@ TEST_F(SecurityTest, ExtensionContextPacketTypeMismatch) {
     corrupt_header_field(buffer.data(), 0xF0000000, 0x50000000);
 
     auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
     EXPECT_EQ(result.error().code, vrtigo::ValidationError::packet_type_mismatch);
 }
 
@@ -105,7 +105,7 @@ TEST_F(SecurityTest, SizeFieldTooLarge) {
     corrupt_header_field(buffer.data(), 0x0000FFFF, 65535);
 
     auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
     EXPECT_EQ(result.error().code, vrtigo::ValidationError::buffer_too_small);
 }
 
@@ -120,7 +120,7 @@ TEST_F(SecurityTest, SizeFieldZero) {
     corrupt_header_field(buffer.data(), 0x0000FFFF, 0);
 
     auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
     // Zero size should trigger size_field_mismatch (minimum is 1 word for header)
     EXPECT_EQ(result.error().code, vrtigo::ValidationError::size_field_mismatch);
 }
@@ -133,10 +133,10 @@ TEST_F(SecurityTest, MinimalPacketValidation) {
     PacketType packet(buffer);
 
     auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
-    EXPECT_TRUE(result.ok());
+    EXPECT_TRUE(result.has_value());
     EXPECT_EQ(PacketType::size_bytes(), 4); // Just header
 
-    if (result.ok()) {
+    if (result.has_value()) {
         EXPECT_EQ(result.value().payload_size_bytes(), 0);
     }
 }
@@ -151,9 +151,9 @@ TEST_F(SecurityTest, MaximumConfigurationValidation) {
     PacketType packet(buffer);
 
     auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
-    EXPECT_TRUE(result.ok());
+    EXPECT_TRUE(result.has_value());
 
-    if (result.ok()) {
+    if (result.has_value()) {
         EXPECT_EQ(result.value().payload_size_bytes(), 1024 * 4); // In bytes
     }
 }
@@ -173,12 +173,12 @@ TEST_F(SecurityTest, MultipleErrors) {
     // Buffer size error takes priority (parse with tiny buffer)
     std::span<const uint8_t> tiny_span(buffer.data(), 2);
     auto result = vrtigo::dynamic::DataPacketView::parse(tiny_span);
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
     EXPECT_EQ(result.error().code, vrtigo::ValidationError::buffer_too_small);
 
     // With sufficient buffer, type mismatch should be reported
     auto result2 = vrtigo::dynamic::DataPacketView::parse(buffer);
-    EXPECT_FALSE(result2.ok());
+    EXPECT_FALSE(result2.has_value());
     EXPECT_EQ(result2.error().code, vrtigo::ValidationError::packet_type_mismatch);
 }
 
@@ -201,9 +201,9 @@ TEST_F(SecurityTest, Type0PacketValidation) {
     PacketType packet(buffer);
 
     auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
-    EXPECT_TRUE(result.ok());
+    EXPECT_TRUE(result.has_value());
 
-    if (result.ok()) {
+    if (result.has_value()) {
         EXPECT_EQ(result.value().type(), vrtigo::PacketType::signal_data_no_id);
         EXPECT_FALSE(result.value().has_stream_id());
     }
@@ -218,9 +218,9 @@ TEST_F(SecurityTest, Type1PacketValidation) {
     packet.set_stream_id(0x12345678);
 
     auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
-    EXPECT_TRUE(result.ok());
+    EXPECT_TRUE(result.has_value());
 
-    if (result.ok()) {
+    if (result.has_value()) {
         EXPECT_EQ(result.value().type(), vrtigo::PacketType::signal_data);
         EXPECT_TRUE(result.value().has_stream_id());
         EXPECT_EQ(result.value().stream_id().value(), 0x12345678);
@@ -246,9 +246,9 @@ TEST_F(SecurityTest, UntrustedNetworkDataPattern) {
 
     // Parse as untrusted data using dynamic::DataPacketView
     auto result = vrtigo::dynamic::DataPacketView::parse(network_buffer);
-    EXPECT_TRUE(result.ok());
+    EXPECT_TRUE(result.has_value());
 
-    if (result.ok()) {
+    if (result.has_value()) {
         const auto& view = result.value();
         EXPECT_EQ(view.stream_id().value(), 0x12345678);
         auto read_ts = view.timestamp();
@@ -269,7 +269,7 @@ TEST_F(SecurityTest, SizeFieldManipulationDefense) {
     corrupt_header_field(buffer.data(), 0x0000FFFF, 65535);
 
     auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
     // Should detect that declared size exceeds buffer
     EXPECT_EQ(result.error().code, vrtigo::ValidationError::buffer_too_small);
 }
@@ -285,7 +285,7 @@ TEST_F(SecurityTest, ParseErrorInformation) {
     corrupt_header_field(buffer.data(), 0xF0000000, 0x40000000);
 
     auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
 
     const auto& error = result.error();
     EXPECT_EQ(error.code, vrtigo::ValidationError::packet_type_mismatch);
@@ -302,9 +302,9 @@ TEST_F(SecurityTest, ExtensionDataPacketValidation) {
     PacketType packet(buffer);
 
     auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
-    EXPECT_TRUE(result.ok());
+    EXPECT_TRUE(result.has_value());
 
-    if (result.ok()) {
+    if (result.has_value()) {
         EXPECT_EQ(result.value().type(), vrtigo::PacketType::extension_data);
     }
 }
@@ -320,8 +320,8 @@ TEST_F(SecurityTest, TimestampVariations) {
         PacketType packet(buffer);
 
         auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
-        EXPECT_TRUE(result.ok());
-        if (result.ok()) {
+        EXPECT_TRUE(result.has_value());
+        if (result.has_value()) {
             auto ts = result.value().timestamp();
             ASSERT_TRUE(ts.has_value());
             EXPECT_EQ(ts->tsi_kind(), vrtigo::TsiType::utc);
@@ -338,8 +338,8 @@ TEST_F(SecurityTest, TimestampVariations) {
         PacketType packet(buffer);
 
         auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
-        EXPECT_TRUE(result.ok());
-        if (result.ok()) {
+        EXPECT_TRUE(result.has_value());
+        if (result.has_value()) {
             auto ts = result.value().timestamp();
             ASSERT_TRUE(ts.has_value());
             EXPECT_EQ(ts->tsi_kind(), vrtigo::TsiType::none);
@@ -355,8 +355,8 @@ TEST_F(SecurityTest, TimestampVariations) {
         PacketType packet(buffer);
 
         auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
-        EXPECT_TRUE(result.ok());
-        if (result.ok()) {
+        EXPECT_TRUE(result.has_value());
+        if (result.has_value()) {
             EXPECT_FALSE(result.value().timestamp().has_value());
         }
     }

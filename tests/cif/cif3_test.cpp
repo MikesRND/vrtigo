@@ -48,7 +48,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF3) {
 
     // Parse and validate
     auto result = dynamic::ContextPacketView::parse(buffer);
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
 
     // Verify CIF3 is present
@@ -82,7 +82,7 @@ TEST_F(ContextPacketTest, CompileTimeCIF3) {
 
     // Parse as runtime packet to verify structure
     auto result = dynamic::ContextPacketView::parse(buffer);
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
     EXPECT_EQ(view.cif3(), expected_cif3);
     EXPECT_EQ(view[network_id].encoded(), 0x11111111);

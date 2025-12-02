@@ -101,7 +101,7 @@ inline bool is_context_packet(const PacketVariant& pkt) noexcept {
  * @return true if parsing succeeded, false otherwise
  */
 inline bool is_valid(const ParseResult<PacketVariant>& result) noexcept {
-    return result.ok();
+    return result.has_value();
 }
 
 /**
@@ -114,8 +114,8 @@ inline bool is_valid(const ParseResult<PacketVariant>& result) noexcept {
  * @return The packet type (actual or attempted)
  */
 inline PacketType packet_type(const ParseResult<PacketVariant>& result) noexcept {
-    if (result.ok()) {
-        return packet_type(result.value());
+    if (result.has_value()) {
+        return packet_type(*result);
     }
     return result.error().attempted_type;
 }
@@ -126,8 +126,8 @@ inline PacketType packet_type(const ParseResult<PacketVariant>& result) noexcept
  * @return The stream ID if parsing succeeded and packet has one, std::nullopt otherwise
  */
 inline std::optional<uint32_t> stream_id(const ParseResult<PacketVariant>& result) noexcept {
-    if (result.ok()) {
-        return stream_id(result.value());
+    if (result.has_value()) {
+        return stream_id(*result);
     }
     return std::nullopt;
 }
@@ -138,7 +138,7 @@ inline std::optional<uint32_t> stream_id(const ParseResult<PacketVariant>& resul
  * @return true if parsing succeeded and holds a dynamic::DataPacketView, false otherwise
  */
 inline bool is_data_packet(const ParseResult<PacketVariant>& result) noexcept {
-    return result.ok() && is_data_packet(result.value());
+    return result.has_value() && is_data_packet(*result);
 }
 
 /**
@@ -147,7 +147,7 @@ inline bool is_data_packet(const ParseResult<PacketVariant>& result) noexcept {
  * @return true if parsing succeeded and holds a dynamic::ContextPacketView, false otherwise
  */
 inline bool is_context_packet(const ParseResult<PacketVariant>& result) noexcept {
-    return result.ok() && is_context_packet(result.value());
+    return result.has_value() && is_context_packet(*result);
 }
 
 } // namespace vrtigo

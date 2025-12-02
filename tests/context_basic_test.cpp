@@ -79,7 +79,7 @@ TEST_F(ContextPacketTest, RuntimeParserBasic) {
 
     // Parse with dynamic::ContextPacketView
     auto result = dynamic::ContextPacketView::parse(std::span<const uint8_t>(buffer.data(), 7 * 4));
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
 
     // Check parsed values
@@ -119,7 +119,7 @@ TEST_F(ContextPacketTest, SizeFieldValidation) {
     // Provide buffer large enough for header's claim, so we get past buffer_too_small check
     auto result =
         dynamic::ContextPacketView::parse(std::span<const uint8_t>(buffer.data(), 10 * 4));
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
     EXPECT_EQ(result.error().code, ValidationError::size_field_mismatch);
 }
 
@@ -131,7 +131,7 @@ TEST_F(ContextPacketTest, BufferTooSmall) {
     // Provide buffer smaller than declared size
     auto result = dynamic::ContextPacketView::parse(
         std::span<const uint8_t>(buffer.data(), 3 * 4)); // Only 3 words provided
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
     EXPECT_EQ(result.error().code, ValidationError::buffer_too_small);
 }
 
@@ -140,7 +140,7 @@ TEST_F(ContextPacketTest, InvalidPacketType) {
     cif::write_u32_safe(buffer.data(), 0, header);
 
     auto result = dynamic::ContextPacketView::parse(std::span<const uint8_t>(buffer.data(), 3 * 4));
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
     EXPECT_EQ(result.error().code, ValidationError::packet_type_mismatch);
 }
 
@@ -200,7 +200,7 @@ TEST_F(ContextPacketTest, PacketCountParsing) {
 
     // Parse with dynamic::ContextPacketView
     auto result = dynamic::ContextPacketView::parse(std::span<const uint8_t>(buffer.data(), 5 * 4));
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
 
     // Verify packet_count was correctly parsed
@@ -216,7 +216,7 @@ TEST_F(ContextPacketTest, PacketCountParsing) {
         // Re-parse
         auto result2 =
             dynamic::ContextPacketView::parse(std::span<const uint8_t>(buffer.data(), 5 * 4));
-        ASSERT_TRUE(result2.ok()) << result2.error().message();
+        ASSERT_TRUE(result2.has_value()) << result2.error().message();
         EXPECT_EQ(result2.value().packet_count(), count);
     }
 }

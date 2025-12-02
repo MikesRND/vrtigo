@@ -14,7 +14,7 @@ TEST_F(ContextPacketTest, RejectUnsupportedFields) {
     cif::write_u32_safe(buffer.data(), 8, bad_cif0);
 
     auto result = dynamic::ContextPacketView::parse(std::span<const uint8_t>(buffer.data(), 3 * 4));
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
     EXPECT_EQ(result.error().code, ValidationError::unsupported_field);
 }
 
@@ -32,7 +32,7 @@ TEST_F(ContextPacketTest, RejectReservedBits) {
     cif::write_u32_safe(buffer.data(), 8, bad_cif0);
 
     auto result = dynamic::ContextPacketView::parse(std::span<const uint8_t>(buffer.data(), 3 * 4));
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
     EXPECT_EQ(result.error().code, ValidationError::unsupported_field);
 }
 
@@ -54,7 +54,7 @@ TEST_F(ContextPacketTest, RejectReservedCIF1Bits) {
     cif::write_u32_safe(buffer.data(), 12, bad_cif1);
 
     auto result = dynamic::ContextPacketView::parse(std::span<const uint8_t>(buffer.data(), 4 * 4));
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
     EXPECT_EQ(result.error().code, ValidationError::unsupported_field);
 }
 
@@ -76,6 +76,6 @@ TEST_F(ContextPacketTest, RejectReservedCIF2Bits) {
     cif::write_u32_safe(buffer.data(), 12, bad_cif2);
 
     auto result = dynamic::ContextPacketView::parse(std::span<const uint8_t>(buffer.data(), 4 * 4));
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
     EXPECT_EQ(result.error().code, ValidationError::unsupported_field);
 }

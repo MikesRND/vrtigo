@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <vrtigo/utils/detail/reader_error.hpp>
 #include <vrtigo/utils/netio/udp_vrt_reader.hpp>
 
 #include "test_utils.hpp"
@@ -149,12 +150,12 @@ TEST_F(UDPReaderTest, ReceiveSinglePacket) {
     // ThreadGuard auto-joins in destructor
 
     // Verify we got a packet
-    ASSERT_TRUE(pkt.has_value()) << "Should receive a packet";
-    ASSERT_TRUE(pkt->ok()) << "Parse should succeed: " << pkt->error().message();
+    ASSERT_TRUE(pkt.has_value()) << "Should receive a packet: "
+                                 << vrtigo::utils::error_message(pkt.error());
     ASSERT_TRUE(is_data_packet(*pkt)) << "Should be a data packet";
 
     // Verify packet contents
-    const auto& view = std::get<dynamic::DataPacketView>(pkt->value());
+    const auto& view = std::get<dynamic::DataPacketView>(*pkt);
     EXPECT_EQ(view.type(), PacketType::signal_data);
     EXPECT_TRUE(view.has_stream_id());
 
@@ -199,13 +200,14 @@ TEST_F(UDPReaderTest, ReceiveMultiplePackets) {
 
     for (size_t i = 0; i < NUM_PACKETS; ++i) {
         auto pkt = reader.read_next_packet();
-        if (!pkt)
-            break;
-        if (!pkt->ok())
-            continue;
+        if (!pkt.has_value()) {
+            if (vrtigo::utils::is_eof(pkt.error()))
+                break;
+            continue; // skip errors
+        }
 
         if (is_data_packet(*pkt)) {
-            const auto& view = std::get<dynamic::DataPacketView>(pkt->value());
+            const auto& view = std::get<dynamic::DataPacketView>(*pkt);
             auto sid = view.stream_id();
             EXPECT_TRUE(sid.has_value());
 
@@ -342,10 +344,10 @@ TEST_F(UDPReaderTest, TruncatedDatagram) {
         EXPECT_EQ(status.bytes_received, 8); // Only 2 words received
     }
 
-    // Should get parse error or nullopt
-    if (pkt.has_value()) {
-        if (!pkt->ok()) {
-            const auto& error = pkt->error();
+    // Should get parse error or eof
+    if (!pkt.has_value()) {
+        if (vrtigo::utils::is_parse_error(pkt.error())) {
+            const auto& error = std::get<vrtigo::ParseError>(pkt.error());
             EXPECT_EQ(error.code, ValidationError::buffer_too_small);
         }
     }
@@ -371,11 +373,11 @@ TEST_F(UDPReaderTest, LargePayload) {
 
     // ThreadGuard auto-joins in destructor
 
-    ASSERT_TRUE(pkt.has_value()) << "Should receive large packet";
-    ASSERT_TRUE(pkt->ok()) << pkt->error().message();
+    ASSERT_TRUE(pkt.has_value()) << "Should receive large packet: "
+                                 << vrtigo::utils::error_message(pkt.error());
     ASSERT_TRUE(is_data_packet(*pkt));
 
-    const auto& view = std::get<dynamic::DataPacketView>(pkt->value());
+    const auto& view = std::get<dynamic::DataPacketView>(*pkt);
 
     auto payload = view.payload();
     EXPECT_EQ(payload.size(), PAYLOAD_WORDS * 4); // 100 words = 400 bytes
@@ -417,8 +419,8 @@ TEST_F(UDPReaderTest, InvalidHeaderSize) {
     // ThreadGuard auto-joins in destructor
 
     // Should get parse error due to size mismatch
-    if (pkt.has_value() && !pkt->ok()) {
-        const auto& error = pkt->error();
+    if (!pkt.has_value() && vrtigo::utils::is_parse_error(pkt.error())) {
+        const auto& error = std::get<vrtigo::ParseError>(pkt.error());
         EXPECT_NE(error.code, ValidationError::none);
     }
 }
@@ -444,6 +446,6 @@ TEST_F(UDPReaderTest, TimeoutIsNonTerminal) {
     }));
 
     auto pkt2 = reader.read_next_packet();
-    ASSERT_TRUE(pkt2.has_value()) << "Should receive packet after timeout";
-    EXPECT_TRUE(pkt2->ok()) << "Packet should be valid: " << pkt2->error().message();
+    ASSERT_TRUE(pkt2.has_value()) << "Should receive packet after timeout: "
+                                  << vrtigo::utils::error_message(pkt2.error());
 }

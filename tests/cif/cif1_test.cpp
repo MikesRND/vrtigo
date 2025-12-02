@@ -65,7 +65,7 @@ TEST_F(ContextPacketTest, RuntimeParseCIF1) {
 
     // Parse and validate
     auto result = dynamic::ContextPacketView::parse(buffer);
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
 
     // Verify CIF0 and CIF1 are read correctly
@@ -95,7 +95,7 @@ TEST_F(ContextPacketTest, CompileTimeCIF1RuntimeParse) {
 
     // Parse with runtime view
     auto result = dynamic::ContextPacketView::parse(buffer);
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
     EXPECT_EQ(view.stream_id().value(), 0xAABBCCDD);
     // CIF0 should have CIF1 enable bit set

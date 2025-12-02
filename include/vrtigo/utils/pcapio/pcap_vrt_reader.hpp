@@ -4,7 +4,6 @@
 #pragma once
 
 #include <array>
-#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -16,8 +15,10 @@
 #include "../../detail/endian.hpp"
 #include "../../detail/packet_parser.hpp"
 #include "../../detail/packet_variant.hpp"
+#include "../../expected.hpp"
 #include "../../types.hpp"
 #include "../detail/iteration_helpers.hpp"
+#include "../detail/reader_error.hpp"
 #include "pcap_common.hpp"
 
 namespace vrtigo::utils::pcapio {
@@ -171,28 +172,39 @@ public:
         return *this;
     }
 
+    /// Result type for read operations
+    using ReadResult = vrtigo::expected<vrtigo::PacketVariant, utils::ReaderError>;
+
     /**
      * @brief Read next VRT packet from PCAP file
      *
      * Skips PCAP record header and link-layer header, then validates VRT packet.
      *
-     * @return ParseResult<PacketVariant> containing dynamic::DataPacketView or
-     * dynamic::ContextPacketView on success, or ParseError on failure. Returns std::nullopt on EOF.
+     * @return expected<PacketVariant, ReaderError>:
+     *         - Value: Valid packet (DataPacketView or ContextPacketView)
+     *         - unexpected(EndOfStream{}): End of file reached
+     *         - unexpected(IOError{...}): Read error
+     *         - unexpected(ParseError{...}): Parse/validation error
      *
      * @note Malformed packets (too small, read errors) are skipped and reading continues.
-     *       Only true EOF returns std::nullopt.
      */
-    std::optional<vrtigo::ParseResult<vrtigo::PacketVariant>> read_next_packet() noexcept {
+    ReadResult read_next_packet() noexcept {
         while (true) {
             // Check for EOF
             if (current_offset_ >= file_size_) {
-                return std::nullopt;
+                return vrtigo::unexpected(utils::ReaderError{utils::EndOfStream{}});
             }
 
             // Read PCAP packet record header
             PCAPRecordHeader record_header;
             if (std::fread(&record_header, sizeof(record_header), 1, file_) != 1) {
-                return std::nullopt; // EOF or read error
+                // EOF or read error
+                if (std::feof(file_)) {
+                    return vrtigo::unexpected(utils::ReaderError{utils::EndOfStream{}});
+                }
+                return vrtigo::unexpected(utils::ReaderError{utils::IOError{
+                    utils::IOError::Kind::read_error, errno, PacketType::signal_data_no_id,
+                    vrtigo::detail::DecodedHeader{}, std::span<const uint8_t>()}});
             }
 
             // Normalize record header fields to host endianness
@@ -234,7 +246,13 @@ public:
 
             // Read VRT packet
             if (std::fread(vrt_buffer_.data(), vrt_size, 1, file_) != 1) {
-                return std::nullopt; // Read error or EOF
+                // Read error or EOF
+                if (std::feof(file_)) {
+                    return vrtigo::unexpected(utils::ReaderError{utils::EndOfStream{}});
+                }
+                return vrtigo::unexpected(utils::ReaderError{utils::IOError{
+                    utils::IOError::Kind::read_error, errno, PacketType::signal_data_no_id,
+                    vrtigo::detail::DecodedHeader{}, std::span<const uint8_t>()}});
             }
 
             // Update position and counter
@@ -243,7 +261,13 @@ public:
 
             // Validate and return VRT packet
             auto bytes = std::span<const uint8_t>(vrt_buffer_.data(), vrt_size);
-            return vrtigo::parse_packet(bytes);
+            auto parse_result = vrtigo::parse_packet(bytes);
+            if (parse_result.has_value()) {
+                return *std::move(parse_result);
+            }
+
+            // Convert ParseError to ReaderError
+            return vrtigo::unexpected(utils::ReaderError{parse_result.error()});
         }
     }
 

@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstring>
 #include <gtest/gtest.h>
+#include <vrtigo/utils/detail/reader_error.hpp>
 #include <vrtigo/vrtigo_utils.hpp>
 
 #include "pcap_test_helpers.hpp"
@@ -45,7 +46,7 @@ TEST(PCAPWriterTest, WriteSinglePacket) {
 
         auto vrt_pkt = create_simple_data_packet(0x12345678, 10);
         auto pkt_result = parse_test_packet(vrt_pkt);
-        ASSERT_TRUE(pkt_result.ok());
+        ASSERT_TRUE(pkt_result.has_value());
 
         bool result = writer.write_packet(pkt_result.value());
         EXPECT_TRUE(result);
@@ -76,7 +77,7 @@ TEST(PCAPWriterTest, WriteMultiplePackets) {
         for (uint32_t i = 0; i < 5; i++) {
             auto vrt_pkt = create_simple_data_packet(0x1000 + i, 5);
             auto pkt_result = parse_test_packet(vrt_pkt);
-            ASSERT_TRUE(pkt_result.ok());
+            ASSERT_TRUE(pkt_result.has_value());
             EXPECT_TRUE(writer.write_packet(pkt_result.value()));
         }
 
@@ -99,7 +100,7 @@ TEST(PCAPWriterTest, RawLinkType) {
 
         auto vrt_pkt = create_simple_data_packet(0x99999999);
         auto pkt_result = parse_test_packet(vrt_pkt);
-        ASSERT_TRUE(pkt_result.ok());
+        ASSERT_TRUE(pkt_result.has_value());
 
         EXPECT_TRUE(writer.write_packet(pkt_result.value()));
         EXPECT_EQ(writer.link_header_size(), 0);
@@ -130,9 +131,9 @@ TEST(PCAPWriterTest, RoundTripSinglePacket) {
 
         auto vrt_pkt = create_simple_data_packet(expected_stream_id);
         auto pkt_result = parse_test_packet(vrt_pkt);
-        ASSERT_TRUE(pkt_result.ok());
+        ASSERT_TRUE(pkt_result.has_value());
 
-        EXPECT_TRUE(writer.write_packet(pkt_result.value()));
+        EXPECT_TRUE(writer.write_packet(*pkt_result));
     }
 
     // Read it back
@@ -141,9 +142,8 @@ TEST(PCAPWriterTest, RoundTripSinglePacket) {
 
         auto pkt_result = reader.read_next_packet();
         ASSERT_TRUE(pkt_result.has_value());
-        ASSERT_TRUE(pkt_result->ok());
 
-        auto* data_pkt = std::get_if<DataPacket>(&pkt_result->value());
+        auto* data_pkt = std::get_if<DataPacket>(&*pkt_result);
         ASSERT_NE(data_pkt, nullptr);
 
         auto sid = data_pkt->stream_id();
@@ -166,8 +166,8 @@ TEST(PCAPWriterTest, RoundTripMultiplePackets) {
         for (auto sid : expected_ids) {
             auto vrt_pkt = create_simple_data_packet(sid);
             auto pkt_result = parse_test_packet(vrt_pkt);
-            ASSERT_TRUE(pkt_result.ok());
-            EXPECT_TRUE(writer.write_packet(pkt_result.value()));
+            ASSERT_TRUE(pkt_result.has_value());
+            EXPECT_TRUE(writer.write_packet(*pkt_result));
         }
     }
 
@@ -176,10 +176,14 @@ TEST(PCAPWriterTest, RoundTripMultiplePackets) {
         PCAPVRTReader<> reader(path.c_str());
 
         std::vector<uint32_t> read_ids;
-        while (auto pkt_result = reader.read_next_packet()) {
-            if (!pkt_result->ok())
-                continue;
-            if (auto* data_pkt = std::get_if<DataPacket>(&pkt_result->value())) {
+        while (true) {
+            auto pkt_result = reader.read_next_packet();
+            if (!pkt_result.has_value()) {
+                if (vrtigo::utils::is_eof(pkt_result.error()))
+                    break;
+                continue; // skip errors
+            }
+            if (auto* data_pkt = std::get_if<DataPacket>(&*pkt_result)) {
                 auto sid = data_pkt->stream_id();
                 if (sid.has_value()) {
                     read_ids.push_back(*sid);
@@ -207,9 +211,9 @@ TEST(PCAPWriterTest, RoundTripRawLinkType) {
 
         auto vrt_pkt = create_simple_data_packet(expected_stream_id);
         auto pkt_result = parse_test_packet(vrt_pkt);
-        ASSERT_TRUE(pkt_result.ok());
+        ASSERT_TRUE(pkt_result.has_value());
 
-        EXPECT_TRUE(writer.write_packet(pkt_result.value()));
+        EXPECT_TRUE(writer.write_packet(*pkt_result));
     }
 
     // Read with no link header
@@ -218,9 +222,8 @@ TEST(PCAPWriterTest, RoundTripRawLinkType) {
 
         auto pkt_result = reader.read_next_packet();
         ASSERT_TRUE(pkt_result.has_value());
-        ASSERT_TRUE(pkt_result->ok());
 
-        auto* data_pkt = std::get_if<DataPacket>(&pkt_result->value());
+        auto* data_pkt = std::get_if<DataPacket>(&*pkt_result);
         ASSERT_NE(data_pkt, nullptr);
 
         EXPECT_EQ(data_pkt->stream_id().value(), expected_stream_id);
@@ -269,7 +272,7 @@ TEST(PCAPWriterTest, MaxLinkHeaderAccepted) {
         // Write a packet to verify it works
         auto vrt_pkt = create_simple_data_packet(0x12345678);
         auto pkt_result = parse_test_packet(vrt_pkt);
-        ASSERT_TRUE(pkt_result.ok());
+        ASSERT_TRUE(pkt_result.has_value());
         EXPECT_TRUE(writer.write_packet(pkt_result.value()));
     }
 
@@ -292,8 +295,8 @@ TEST(PCAPWriterTest, ConvertVRTFileToPCAP) {
         for (uint32_t i = 0; i < 3; i++) {
             auto vrt_pkt = create_simple_data_packet(0x2000 + i);
             auto pkt_result = parse_test_packet(vrt_pkt);
-            ASSERT_TRUE(pkt_result.ok());
-            vrt_writer.write_packet(pkt_result.value());
+            ASSERT_TRUE(pkt_result.has_value());
+            vrt_writer.write_packet(*pkt_result);
         }
     }
 
@@ -302,10 +305,14 @@ TEST(PCAPWriterTest, ConvertVRTFileToPCAP) {
         vrtigo::VRTFileReader<> reader(vrt_path.c_str());
         PCAPVRTWriter writer(pcap_path.c_str());
 
-        while (auto pkt_result = reader.read_next_packet()) {
-            if (pkt_result->ok()) {
-                writer.write_packet(pkt_result->value());
+        while (true) {
+            auto pkt_result = reader.read_next_packet();
+            if (!pkt_result.has_value()) {
+                if (vrtigo::utils::is_eof(pkt_result.error()))
+                    break;
+                continue; // skip errors
             }
+            writer.write_packet(*pkt_result);
         }
     }
 
@@ -315,9 +322,14 @@ TEST(PCAPWriterTest, ConvertVRTFileToPCAP) {
         EXPECT_EQ(reader.packets_read(), 0);
 
         size_t count = 0;
-        while (auto pkt_result = reader.read_next_packet()) {
-            if (pkt_result->ok())
-                count++;
+        while (true) {
+            auto pkt_result = reader.read_next_packet();
+            if (!pkt_result.has_value()) {
+                if (vrtigo::utils::is_eof(pkt_result.error()))
+                    break;
+                continue; // skip errors
+            }
+            count++;
         }
         EXPECT_EQ(count, 3);
     }

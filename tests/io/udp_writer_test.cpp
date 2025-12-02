@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#include <vrtigo/utils/detail/reader_error.hpp>
 #include <vrtigo/vrtigo_utils.hpp>
 
 using namespace vrtigo::utils::netio;
@@ -70,11 +71,10 @@ TEST_F(UDPWriterTest, WriteCompileTimePacket) {
 
     // Verify reader can receive it
     auto received = reader.read_next_packet();
-    ASSERT_TRUE(received.has_value());
-    ASSERT_TRUE(received->ok()) << received->error().message();
-    EXPECT_TRUE(vrtigo::is_data_packet(received->value()));
+    ASSERT_TRUE(received.has_value()) << vrtigo::utils::error_message(received.error());
+    EXPECT_TRUE(vrtigo::is_data_packet(*received));
 
-    auto data_pkt = std::get<vrtigo::dynamic::DataPacketView>(received->value());
+    auto data_pkt = std::get<vrtigo::dynamic::DataPacketView>(*received);
     EXPECT_EQ(data_pkt.stream_id(), 0x12345678);
 }
 
@@ -100,10 +100,9 @@ TEST_F(UDPWriterTest, WriteMultiplePackets) {
     // Receive and verify
     for (uint32_t i = 0; i < 10; i++) {
         auto received = reader.read_next_packet();
-        ASSERT_TRUE(received.has_value());
-        ASSERT_TRUE(received->ok()) << received->error().message();
+        ASSERT_TRUE(received.has_value()) << vrtigo::utils::error_message(received.error());
 
-        auto data_pkt = std::get<vrtigo::dynamic::DataPacketView>(received->value());
+        auto data_pkt = std::get<vrtigo::dynamic::DataPacketView>(*received);
         EXPECT_EQ(data_pkt.stream_id(), i);
     }
 }
@@ -134,10 +133,9 @@ TEST_F(UDPWriterTest, RoundTripDataPacket) {
 
     // Read back
     auto received = reader.read_next_packet();
-    ASSERT_TRUE(received.has_value());
-    ASSERT_TRUE(received->ok()) << received->error().message();
+    ASSERT_TRUE(received.has_value()) << vrtigo::utils::error_message(received.error());
 
-    auto data_pkt = std::get<vrtigo::dynamic::DataPacketView>(received->value());
+    auto data_pkt = std::get<vrtigo::dynamic::DataPacketView>(*received);
     EXPECT_EQ(data_pkt.stream_id(), test_stream_id);
 
     auto ts = data_pkt.timestamp();
@@ -168,11 +166,10 @@ TEST_F(UDPWriterTest, RoundTripContextPacket) {
 
     // Read back
     auto received = reader.read_next_packet();
-    ASSERT_TRUE(received.has_value());
-    ASSERT_TRUE(received->ok()) << received->error().message();
-    EXPECT_TRUE(vrtigo::is_context_packet(received->value()));
+    ASSERT_TRUE(received.has_value()) << vrtigo::utils::error_message(received.error());
+    EXPECT_TRUE(vrtigo::is_context_packet(*received));
 
-    auto ctx_pkt = std::get<vrtigo::dynamic::ContextPacketView>(received->value());
+    auto ctx_pkt = std::get<vrtigo::dynamic::ContextPacketView>(*received);
     EXPECT_EQ(ctx_pkt.stream_id(), test_stream_id);
 }
 
@@ -228,8 +225,7 @@ TEST_F(UDPWriterTest, MTUAllowsValidPacket) {
 
     // Verify received
     auto received = reader.read_next_packet();
-    ASSERT_TRUE(received.has_value());
-    ASSERT_TRUE(received->ok()) << received->error().message();
+    ASSERT_TRUE(received.has_value()) << vrtigo::utils::error_message(received.error());
 }
 
 // =============================================================================
@@ -257,7 +253,7 @@ TEST_F(UDPWriterTest, UnboundModeMultipleDestinations) {
     // Convert to PacketVariant for the per-destination API
     auto packet_bytes = packet.as_bytes();
     auto parse_result = vrtigo::dynamic::DataPacketView::parse(packet_bytes);
-    ASSERT_TRUE(parse_result.ok()) << parse_result.error().message();
+    ASSERT_TRUE(parse_result.has_value()) << parse_result.error().message();
     PacketVariant variant = parse_result.value();
 
     // Send to first destination
@@ -280,12 +276,10 @@ TEST_F(UDPWriterTest, UnboundModeMultipleDestinations) {
 
     // Verify both readers received
     auto recv1 = reader1.read_next_packet();
-    ASSERT_TRUE(recv1.has_value());
-    ASSERT_TRUE(recv1->ok()) << recv1->error().message();
+    ASSERT_TRUE(recv1.has_value()) << vrtigo::utils::error_message(recv1.error());
 
     auto recv2 = reader2.read_next_packet();
-    ASSERT_TRUE(recv2.has_value());
-    ASSERT_TRUE(recv2->ok()) << recv2->error().message();
+    ASSERT_TRUE(recv2.has_value()) << vrtigo::utils::error_message(recv2.error());
 }
 
 // =============================================================================

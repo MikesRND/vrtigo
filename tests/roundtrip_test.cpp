@@ -42,7 +42,7 @@ TEST_F(RoundTripTest, MinimalPacket) {
 
     // Verify packet can be parsed with runtime parser
     auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
-    ASSERT_TRUE(result.ok());
+    ASSERT_TRUE(result.has_value());
 
     // Use compile-time packet for field access
     PacketType received(buffer, false);
@@ -175,7 +175,7 @@ TEST_F(RoundTripTest, FullFeaturedPacket) {
 
     // Verify packet can be parsed with runtime parser
     auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
-    ASSERT_TRUE(result.ok());
+    ASSERT_TRUE(result.has_value());
 
     // Use compile-time packet for field access
     PacketType received(buffer, false);

@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstring>
 #include <gtest/gtest.h>
+#include <vrtigo/utils/detail/reader_error.hpp>
 #include <vrtigo/vrtigo_utils.hpp>
 
 #include "pcap_test_helpers.hpp"
@@ -47,12 +48,11 @@ TEST(PCAPReaderTest, ReadSinglePacket) {
     PCAPVRTReader<> reader(test_file.path().c_str());
     auto pkt_result = reader.read_next_packet();
 
-    ASSERT_TRUE(pkt_result.has_value());
-    ASSERT_TRUE(pkt_result->ok()) << pkt_result->error().message();
+    ASSERT_TRUE(pkt_result.has_value()) << vrtigo::utils::error_message(pkt_result.error());
     EXPECT_EQ(reader.packets_read(), 1);
 
     // Verify it's a data packet
-    auto* data_pkt = std::get_if<DataPacket>(&pkt_result->value());
+    auto* data_pkt = std::get_if<DataPacket>(&*pkt_result);
     ASSERT_NE(data_pkt, nullptr);
 
     // Verify stream ID
@@ -76,10 +76,14 @@ TEST(PCAPReaderTest, ReadMultiplePackets) {
     PCAPVRTReader<> reader(test_file.path().c_str());
 
     std::vector<uint32_t> stream_ids;
-    while (auto pkt_result = reader.read_next_packet()) {
-        if (!pkt_result->ok())
-            continue;
-        if (auto* data_pkt = std::get_if<DataPacket>(&pkt_result->value())) {
+    while (true) {
+        auto pkt_result = reader.read_next_packet();
+        if (!pkt_result.has_value()) {
+            if (vrtigo::utils::is_eof(pkt_result.error()))
+                break;
+            continue; // skip errors
+        }
+        if (auto* data_pkt = std::get_if<DataPacket>(&*pkt_result)) {
             auto sid = data_pkt->stream_id();
             if (sid.has_value()) {
                 stream_ids.push_back(*sid);
@@ -108,7 +112,6 @@ TEST(PCAPReaderTest, RewindAndReread) {
     PCAPVRTReader<> reader(test_file.path().c_str());
     auto first = reader.read_next_packet();
     ASSERT_TRUE(first.has_value());
-    ASSERT_TRUE(first->ok());
     EXPECT_EQ(reader.packets_read(), 1);
 
     // Rewind
@@ -118,11 +121,10 @@ TEST(PCAPReaderTest, RewindAndReread) {
     // Read again
     auto second = reader.read_next_packet();
     ASSERT_TRUE(second.has_value());
-    ASSERT_TRUE(second->ok());
 
     // Verify same packet
-    auto* first_data = std::get_if<DataPacket>(&first->value());
-    auto* second_data = std::get_if<DataPacket>(&second->value());
+    auto* first_data = std::get_if<DataPacket>(&*first);
+    auto* second_data = std::get_if<DataPacket>(&*second);
     ASSERT_NE(first_data, nullptr);
     ASSERT_NE(second_data, nullptr);
     EXPECT_EQ(first_data->stream_id().value(), second_data->stream_id().value());
@@ -140,9 +142,8 @@ TEST(PCAPReaderTest, RawLinkType) {
     auto pkt_result = reader.read_next_packet();
 
     ASSERT_TRUE(pkt_result.has_value());
-    ASSERT_TRUE(pkt_result->ok());
 
-    auto* data_pkt = std::get_if<DataPacket>(&pkt_result->value());
+    auto* data_pkt = std::get_if<DataPacket>(&*pkt_result);
     ASSERT_NE(data_pkt, nullptr);
     EXPECT_EQ(data_pkt->stream_id().value(), 0x99999999);
 }
@@ -159,9 +160,8 @@ TEST(PCAPReaderTest, ConfigurableLinkHeaderSize) {
     auto pkt_result = reader.read_next_packet();
 
     ASSERT_TRUE(pkt_result.has_value());
-    ASSERT_TRUE(pkt_result->ok());
 
-    auto* data_pkt = std::get_if<DataPacket>(&pkt_result->value());
+    auto* data_pkt = std::get_if<DataPacket>(&*pkt_result);
     ASSERT_NE(data_pkt, nullptr);
     EXPECT_EQ(data_pkt->stream_id().value(), 0x88888888);
 }
@@ -256,10 +256,14 @@ TEST(PCAPReaderTest, ReadsBigEndianPCAP) {
     PCAPVRTReader<> reader(test_file.path().c_str());
 
     size_t count = 0;
-    while (auto pkt_result = reader.read_next_packet()) {
-        if (!pkt_result->ok())
-            continue;
-        auto* data_pkt = std::get_if<DataPacket>(&pkt_result->value());
+    while (true) {
+        auto pkt_result = reader.read_next_packet();
+        if (!pkt_result.has_value()) {
+            if (vrtigo::utils::is_eof(pkt_result.error()))
+                break;
+            continue; // skip errors
+        }
+        auto* data_pkt = std::get_if<DataPacket>(&*pkt_result);
         ASSERT_NE(data_pkt, nullptr);
         auto sid = data_pkt->stream_id();
         ASSERT_TRUE(sid.has_value());
@@ -293,9 +297,8 @@ TEST(PCAPReaderTest, BigEndianPCAPMovePreservesEndianness) {
     // Should still correctly read big-endian file after move
     auto pkt_result = moved_reader.read_next_packet();
     ASSERT_TRUE(pkt_result.has_value());
-    ASSERT_TRUE(pkt_result->ok());
 
-    auto* data_pkt = std::get_if<DataPacket>(&pkt_result->value());
+    auto* data_pkt = std::get_if<DataPacket>(&*pkt_result);
     ASSERT_NE(data_pkt, nullptr);
     EXPECT_EQ(data_pkt->stream_id().value(), 0xDEADBEEF);
 }

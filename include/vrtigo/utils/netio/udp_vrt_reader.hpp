@@ -3,7 +3,6 @@
 #include <array>
 #include <chrono>
 #include <iostream>
-#include <optional>
 #include <span>
 #include <stdexcept>
 
@@ -23,8 +22,10 @@
 #include "../../detail/packet_parser.hpp"
 #include "../../detail/packet_variant.hpp"
 #include "../../dynamic.hpp"
+#include "../../expected.hpp"
 #include "../../types.hpp"
 #include "../detail/iteration_helpers.hpp"
+#include "../detail/reader_error.hpp"
 #include "udp_transport_status.hpp"
 
 namespace vrtigo::utils::netio {
@@ -185,80 +186,81 @@ public:
         return *this;
     }
 
+    /// Result type for read operations
+    using ReadResult = vrtigo::expected<vrtigo::PacketVariant, utils::ReaderError>;
+
     /**
      * @brief Read next packet as validated view
      *
      * Blocks waiting for the next UDP datagram, validates it, and returns a type-safe variant
      * containing the appropriate packet view.
      *
-     * @return ParseResult<PacketVariant> containing valid packet or error info,
-     *         or std::nullopt on socket closure, timeout, or fatal error
+     * @return expected<PacketVariant, ReaderError>:
+     *         - Value: Valid packet (DataPacketView or ContextPacketView)
+     *         - unexpected(EndOfStream{}): Socket closed
+     *         - unexpected(IOError{...}): Socket error, timeout, or datagram truncation
+     *         - unexpected(ParseError{...}): Parse/validation error
      *
      * @note In blocking mode, this will wait indefinitely for data unless a timeout is set.
-     * @note Datagram truncation (exceeding buffer size) returns ParseError with
-     *       ValidationError::buffer_too_small. Check transport_status().actual_size for
-     *       the required buffer size.
      * @note The returned view references the internal scratch buffer and is valid
      *       until the next read operation.
      */
-    std::optional<vrtigo::ParseResult<vrtigo::PacketVariant>> read_next_packet() noexcept {
+    ReadResult read_next_packet() noexcept {
         auto bytes = read_next_datagram();
 
         if (bytes.empty()) {
             // Check for terminal conditions (socket closed or fatal error)
             if (status_.is_terminal()) {
-                return std::nullopt;
+                if (status_.state == UDPTransportStatus::State::socket_closed) {
+                    return vrtigo::unexpected(utils::ReaderError{utils::EndOfStream{}});
+                }
+                // Socket error
+                return vrtigo::unexpected(utils::ReaderError{utils::IOError{
+                    utils::IOError::Kind::read_error, status_.errno_value, status_.packet_type,
+                    vrtigo::detail::DecodedHeader{}, std::span<const uint8_t>()}});
             }
 
-            // Non-terminal conditions: timeout, interrupted, truncation
-            // For timeout/interrupted, just return nullopt and let caller retry
+            // Non-terminal conditions: timeout, interrupted
             if (status_.state == UDPTransportStatus::State::timeout ||
                 status_.state == UDPTransportStatus::State::interrupted) {
-                return std::nullopt;
+                return vrtigo::unexpected(utils::ReaderError{utils::IOError{
+                    utils::IOError::Kind::read_error, status_.errno_value, status_.packet_type,
+                    vrtigo::detail::DecodedHeader{}, std::span<const uint8_t>()}});
             }
 
-            // Datagram truncated - return ParseError so iteration continues
+            // Datagram truncated - return IOError with diagnostic context
             if (status_.is_truncated()) {
-                if (status_.bytes_received >= 4) {
-                    // We have header - create proper ParseError
-                    auto decoded = vrtigo::detail::decode_header(status_.header);
-                    return vrtigo::ParseResult<vrtigo::PacketVariant>{vrtigo::ParseError{
-                        ValidationError::buffer_too_small, status_.packet_type, decoded,
-                        std::span<const uint8_t>() // No partial data
-                    }};
-                }
-                // Truncated with no header - return generic ParseError
-                // Use dummy header with packet size from actual_size
-                vrtigo::detail::DecodedHeader dummy{};
-                dummy.type = PacketType::signal_data_no_id;
-                dummy.size_words =
-                    static_cast<uint16_t>(std::min(status_.actual_size / 4, size_t(65535)));
-                dummy.has_class_id = false;
-                dummy.trailer_included = false;
-                return vrtigo::ParseResult<vrtigo::PacketVariant>{vrtigo::ParseError{
-                    ValidationError::buffer_too_small, PacketType::signal_data_no_id, dummy,
-                    std::span<const uint8_t>()}};
+                auto decoded = (status_.bytes_received >= 4)
+                                   ? vrtigo::detail::decode_header(status_.header)
+                                   : vrtigo::detail::DecodedHeader{};
+                return vrtigo::unexpected(utils::ReaderError{
+                    utils::IOError{utils::IOError::Kind::truncated_payload, 0, status_.packet_type,
+                                   decoded, std::span<const uint8_t>()}});
             }
 
             // Should never reach here
-            return std::nullopt;
+            return vrtigo::unexpected(utils::ReaderError{utils::EndOfStream{}});
         }
 
         // Validate minimum packet size
         if (bytes.size() < 4) {
-            // Malformed datagram - return ParseError so iteration continues
+            // Malformed datagram - return ParseError
             vrtigo::detail::DecodedHeader dummy{};
             dummy.type = PacketType::signal_data_no_id;
             dummy.size_words = static_cast<uint16_t>(bytes.size() / 4);
-            dummy.has_class_id = false;
-            dummy.trailer_included = false;
-            return vrtigo::ParseResult<vrtigo::PacketVariant>{
+            return vrtigo::unexpected(utils::ReaderError{
                 vrtigo::ParseError{ValidationError::buffer_too_small, PacketType::signal_data_no_id,
-                                   dummy, std::span<const uint8_t>(bytes.data(), bytes.size())}};
+                                   dummy, std::span<const uint8_t>(bytes.data(), bytes.size())}});
         }
 
         // Parse and validate the packet
-        return vrtigo::parse_packet(bytes);
+        auto parse_result = vrtigo::parse_packet(bytes);
+        if (parse_result.has_value()) {
+            return *std::move(parse_result);
+        }
+
+        // Convert ParseError to ReaderError
+        return vrtigo::unexpected(utils::ReaderError{parse_result.error()});
     }
 
     /**

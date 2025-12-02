@@ -36,10 +36,9 @@ namespace vrtigo::dynamic {
  *
  * Usage:
  *   auto result = dynamic::DataPacketView::parse(rx_buffer);  // rx_buffer is std::span<const
- * uint8_t> if (result.ok()) { const auto& view = result.value(); if (auto ts = view.timestamp()) {
- *           std::cout << "TSI: " << ts->tsi() << "\n";
- *           if (auto typed = ts->as<TsiType::utc, TsfType::real_time>()) {
- *               auto chrono = typed->to_chrono();
+ * uint8_t> if (result.has_value()) { const auto& view = result.value(); if (auto ts =
+ * view.timestamp()) { std::cout << "TSI: " << ts->tsi() << "\n"; if (auto typed =
+ * ts->as<TsiType::utc, TsfType::real_time>()) { auto chrono = typed->to_chrono();
  *           }
  *       }
  *   } else {
@@ -109,16 +108,20 @@ public:
     parse(std::span<const uint8_t> buffer) noexcept {
         DataPacketView packet(buffer);
         if (packet.error_ == ValidationError::none) {
+            // Suppress GCC false positive: optimizer thinks padding bytes in
+            // DataPacketView might be uninitialized when copied into expected<>
+#if defined(__GNUC__) && !defined(__clang__)
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
             return packet;
+#if defined(__GNUC__) && !defined(__clang__)
+    #pragma GCC diagnostic pop
+#endif
         }
 
-        // Build ParseError with available info
-        ParseError err{};
-        err.code = packet.error_;
-        err.attempted_type = packet.prologue_.header.type;
-        err.header = packet.prologue_.header;
-        err.raw_bytes = buffer;
-        return err;
+        return make_parse_error(packet.error_, packet.prologue_.header.type,
+                                packet.prologue_.header, buffer);
     }
 
     /**

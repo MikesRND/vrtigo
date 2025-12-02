@@ -73,7 +73,7 @@ TEST(PacketParsing, ParseUnknownPacket) {
     // - On failure: contains ParseError with error details
     auto result = vrtigo::parse_packet(received_bytes);
 
-    if (!result.ok()) {
+    if (!result.has_value()) {
         std::cerr << "Parse failed: " << result.error().message() << "\n";
         return;
     }
@@ -91,7 +91,7 @@ TEST(PacketParsing, ParseUnknownPacket) {
     std::cout << "Stream ID: 0x" << std::hex << *vrtigo::stream_id(packet) << std::dec << "\n";
     // [/SNIPPET]
 
-    ASSERT_TRUE(result.ok());
+    ASSERT_TRUE(result.has_value());
     EXPECT_TRUE(vrtigo::is_data_packet(result.value()));
     EXPECT_EQ(vrtigo::stream_id(result.value()), 0xABCD1234);
 }
@@ -113,7 +113,7 @@ TEST(PacketParsing, ParseUnknownPacket) {
 TEST(PacketParsing, AccessDataPacket) {
     auto buffer = create_test_data_packet();
     auto result = vrtigo::parse_packet(buffer);
-    ASSERT_TRUE(result.ok());
+    ASSERT_TRUE(result.has_value());
     const auto& packet = result.value();
     ASSERT_TRUE(vrtigo::is_data_packet(packet));
 
@@ -158,7 +158,7 @@ TEST(PacketParsing, AccessDataPacket) {
 TEST(PacketParsing, AccessContextPacket) {
     auto buffer = create_test_context_packet();
     auto result = vrtigo::parse_packet(buffer);
-    ASSERT_TRUE(result.ok());
+    ASSERT_TRUE(result.has_value());
     const auto& packet = result.value();
     ASSERT_TRUE(vrtigo::is_context_packet(packet));
 
@@ -212,7 +212,7 @@ TEST(PacketParsing, HandleInvalidPacket) {
 
     auto result = vrtigo::parse_packet(received_bytes);
 
-    if (!result.ok()) {
+    if (!result.has_value()) {
         const auto& error = result.error();
 
         // Get the validation error message
@@ -224,6 +224,6 @@ TEST(PacketParsing, HandleInvalidPacket) {
     }
     // [/SNIPPET]
 
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
     EXPECT_EQ(result.error().code, vrtigo::ValidationError::buffer_too_small);
 }
