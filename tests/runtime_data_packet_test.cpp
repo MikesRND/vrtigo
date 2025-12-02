@@ -15,7 +15,7 @@ TEST(RtDataPacketTest, BasicPacketNoStream) {
     // Parse with runtime view
     auto result = dynamic::DataPacketView::parse(buffer);
 
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
     EXPECT_EQ(view.type(), vrtigo::PacketType::signal_data_no_id);
     EXPECT_FALSE(view.has_stream_id());
@@ -37,7 +37,7 @@ TEST(RtDataPacketTest, PacketWithStreamID) {
     // Parse with runtime view
     auto result = dynamic::DataPacketView::parse(buffer);
 
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
     EXPECT_EQ(view.type(), vrtigo::PacketType::signal_data);
     EXPECT_TRUE(view.has_stream_id());
@@ -61,7 +61,7 @@ TEST(RtDataPacketTest, PacketWithTimestamps) {
     // Parse with runtime view
     auto result = dynamic::DataPacketView::parse(buffer);
 
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
     EXPECT_TRUE(view.has_timestamp());
 
@@ -89,7 +89,7 @@ TEST(RtDataPacketTest, PacketWithTrailer) {
     // Parse with runtime view
     auto result = dynamic::DataPacketView::parse(buffer);
 
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
     EXPECT_TRUE(view.has_trailer());
 
@@ -116,7 +116,7 @@ TEST(RtDataPacketTest, FullFeaturedPacket) {
     // Parse with runtime view
     auto result = dynamic::DataPacketView::parse(buffer);
 
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
     EXPECT_EQ(view.type(), vrtigo::PacketType::signal_data);
     EXPECT_TRUE(view.has_stream_id());
@@ -148,7 +148,7 @@ TEST(RtDataPacketTest, PayloadAccess) {
     // Parse with runtime view
     auto result = dynamic::DataPacketView::parse(buffer);
 
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
     EXPECT_EQ(view.payload_size_bytes(), 64);
     EXPECT_EQ(view.payload_size_words(), 16);
@@ -173,7 +173,7 @@ TEST(RtDataPacketTest, ValidationBufferTooSmall) {
     auto result = dynamic::DataPacketView::parse(
         std::span<const uint8_t>(buffer.data(), 10)); // Only 10 bytes
 
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
     EXPECT_EQ(result.error().code, ValidationError::buffer_too_small);
 }
 
@@ -189,7 +189,7 @@ TEST(RtDataPacketTest, ValidationWrongPacketType) {
     // Try to parse as signal packet
     auto result = dynamic::DataPacketView::parse(buffer);
 
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
     EXPECT_EQ(result.error().code, ValidationError::packet_type_mismatch);
 }
 
@@ -197,7 +197,7 @@ TEST(RtDataPacketTest, ValidationWrongPacketType) {
 TEST(RtDataPacketTest, ValidationEmptyBuffer) {
     auto result = dynamic::DataPacketView::parse(std::span<const uint8_t>{});
 
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.has_value());
     EXPECT_EQ(result.error().code, ValidationError::buffer_too_small);
 }
 
@@ -229,7 +229,7 @@ TEST(RtDataPacketTest, RoundTripBuildParse) {
     auto result = dynamic::DataPacketView::parse(buffer);
 
     // Verify all fields
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
     EXPECT_EQ(view.type(), vrtigo::PacketType::signal_data);
     EXPECT_TRUE(view.has_stream_id());
@@ -285,7 +285,7 @@ TEST(RtDataPacketTest, ValidationAcceptsClassIdBit) {
     // Parse packet - should be valid
     auto result = dynamic::DataPacketView::parse(buffer);
 
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
 
     // Verify class ID is accessible
@@ -318,7 +318,7 @@ TEST(RtDataPacketTest, Bit25IsIndependentOfPacketType) {
     std::memcpy(buffer.data(), &header_be, sizeof(header_be));
 
     auto result1 = dynamic::DataPacketView::parse(buffer);
-    ASSERT_TRUE(result1.ok()) << result1.error().message();
+    ASSERT_TRUE(result1.has_value()) << result1.error().message();
     EXPECT_FALSE(result1.value().has_stream_id()); // No stream ID (type 0)
 
     // Case 2: Type-1 packet (with stream ID) with bit 25 clear (Nd0=0, V49.0 compatible)
@@ -330,6 +330,6 @@ TEST(RtDataPacketTest, Bit25IsIndependentOfPacketType) {
     std::memcpy(buffer.data(), &header_be, sizeof(header_be));
 
     auto result2 = dynamic::DataPacketView::parse(buffer);
-    ASSERT_TRUE(result2.ok()) << result2.error().message();
+    ASSERT_TRUE(result2.has_value()) << result2.error().message();
     EXPECT_TRUE(result2.value().has_stream_id()); // Has stream ID (type 1)
 }

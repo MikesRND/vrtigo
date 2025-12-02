@@ -20,7 +20,7 @@ a valid packet variant or parse error information.
     // - On failure: contains ParseError with error details
     auto result = vrtigo::parse_packet(received_bytes);
 
-    if (!result.ok()) {
+    if (!result.has_value()) {
         std::cerr << "Parse failed: " << result.error().message() << "\n";
         return;
     }
@@ -109,7 +109,7 @@ When a packet fails validation, `parse_packet()` returns a
 
     auto result = vrtigo::parse_packet(received_bytes);
 
-    if (!result.ok()) {
+    if (!result.has_value()) {
         const auto& error = result.error();
 
         // Get the validation error message

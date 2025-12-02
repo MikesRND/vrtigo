@@ -36,9 +36,9 @@ namespace vrtigo::detail {
 parse_packet_impl(std::span<const uint8_t> bytes) noexcept {
     // 1. Validate minimum buffer size
     if (bytes.size() < 4) {
-        return ParseError{ValidationError::buffer_too_small,
-                          PacketType::signal_data_no_id, // Unknown yet
-                          DecodedHeader{}, bytes};
+        return make_parse_error(ValidationError::buffer_too_small,
+                                PacketType::signal_data_no_id, // Unknown yet
+                                DecodedHeader{}, bytes);
     }
 
     // 2. Decode header to determine packet type
@@ -51,46 +51,44 @@ parse_packet_impl(std::span<const uint8_t> bytes) noexcept {
     if (type_value <= 3) {
         // Signal Data (0-1) or Extension Data (2-3)
         auto result = dynamic::DataPacketView::parse(bytes);
-        if (result.ok()) {
-            // Suppress false positive: GCC's optimizer incorrectly thinks padding bytes
-            // in dynamic::DataPacketView::ParsedStructure might be uninitialized when copied
-            // into std::variant, despite structure_{} initialization in constructor.
+        if (result.has_value()) {
+            // Suppress GCC false positive about padding bytes in variant
 #if defined(__GNUC__) && !defined(__clang__)
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
-            return PacketVariant{std::move(result).value()};
+            return PacketVariant{*std::move(result)};
 #if defined(__GNUC__) && !defined(__clang__)
     #pragma GCC diagnostic pop
 #endif
-        } else {
-            return result.error();
         }
-    } else if (type_value == 4 || type_value == 5) {
+        return unexpected(result.error());
+    }
+
+    if (type_value == 4 || type_value == 5) {
         // Context (4) or Extension Context (5)
         auto result = dynamic::ContextPacketView::parse(bytes);
-        if (result.ok()) {
-            // Suppress false positive: GCC's optimizer incorrectly thinks padding bytes
-            // in dynamic::ContextPacketView::ParsedStructure might be uninitialized when copied
-            // into std::variant, despite structure_{} initialization in constructor.
+        if (result.has_value()) {
+            // Suppress GCC false positive about padding bytes in variant
 #if defined(__GNUC__) && !defined(__clang__)
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
-            return PacketVariant{std::move(result).value()};
+            return PacketVariant{*std::move(result)};
 #if defined(__GNUC__) && !defined(__clang__)
     #pragma GCC diagnostic pop
 #endif
-        } else {
-            return result.error();
         }
-    } else if (type_value == 6 || type_value == 7) {
-        // Command (6) or Extension Command (7) - not yet implemented
-        return ParseError{ValidationError::unsupported_field, header.type, header, bytes};
-    } else {
-        // Invalid/reserved packet type (8-15)
-        return ParseError{ValidationError::invalid_packet_type, header.type, header, bytes};
+        return unexpected(result.error());
     }
+
+    if (type_value == 6 || type_value == 7) {
+        // Command (6) or Extension Command (7) - not yet implemented
+        return make_parse_error(ValidationError::unsupported_field, header.type, header, bytes);
+    }
+
+    // Invalid/reserved packet type (8-15)
+    return make_parse_error(ValidationError::invalid_packet_type, header.type, header, bytes);
 }
 
 } // namespace vrtigo::detail

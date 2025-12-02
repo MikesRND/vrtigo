@@ -15,7 +15,7 @@ TEST_F(ContextPacketTest, RoundTrip) {
 
     // Parse same buffer with view
     auto result = dynamic::ContextPacketView::parse(pkt_buffer);
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
 
     EXPECT_EQ(view.stream_id().value(), 0xDEADBEEF);
@@ -44,7 +44,7 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2CompileTime) {
 
     // Parse with runtime view
     auto result = dynamic::ContextPacketView::parse(pkt_buffer);
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
 
     // Verify CIF0 has both enable bits set
@@ -98,7 +98,7 @@ TEST_F(ContextPacketTest, CombinedCIF1AndCIF2Runtime) {
     // Parse and validate
     auto result =
         dynamic::ContextPacketView::parse(std::span<const uint8_t>(buffer.data(), 13 * 4));
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
 
     // Verify structure
@@ -143,7 +143,7 @@ TEST_F(ContextPacketTest, MultiWordFieldWrite) {
 
     // Verify round-trip through runtime parser
     auto result = dynamic::ContextPacketView::parse(pkt_buffer);
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
 
     auto runtime_value = view[data_payload_format];

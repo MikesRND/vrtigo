@@ -230,7 +230,7 @@ bool frame_bit = packet.trailer().sample_frame_1();
 ```cpp
 // Dynamic packet parsing - uniform TrailerView access
 auto result = dynamic::DataPacketView::parse(rx_buffer);
-if (result.ok()) {
+if (result.has_value()) {
     const auto& view = result.value();
 
     // trailer() returns optional<TrailerView>

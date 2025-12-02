@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#include <vrtigo/utils/detail/reader_error.hpp>
 #include <vrtigo/utils/fileio/vrt_file_reader.hpp>
 #include <vrtigo/vrtigo_io.hpp>
 
@@ -48,7 +49,13 @@ TEST(EnhancedReaderTest, ReadAllPacketsWithValidation) {
     size_t packet_count = 0;
     size_t valid_count = 0;
 
-    while (auto pkt = reader.read_next_packet()) {
+    while (true) {
+        auto pkt = reader.read_next_packet();
+        if (!pkt.has_value()) {
+            if (vrtigo::utils::is_eof(pkt.error()))
+                break;
+            continue; // skip errors
+        }
         packet_count++;
 
         if (is_valid(*pkt)) {
@@ -96,12 +103,19 @@ TEST(EnhancedReaderTest, DetectDataPackets) {
 
     size_t data_packet_count = 0;
 
-    while (auto pkt = reader.read_next_packet()) {
+    while (true) {
+        auto pkt = reader.read_next_packet();
+        if (!pkt.has_value()) {
+            if (vrtigo::utils::is_eof(pkt.error()))
+                break;
+            continue; // skip errors
+        }
+
         if (is_data_packet(*pkt)) {
             data_packet_count++;
 
             // Verify we can access dynamic::DataPacketView methods
-            auto& data_pkt = std::get<vrtigo::dynamic::DataPacketView>(pkt->value());
+            auto& data_pkt = std::get<vrtigo::dynamic::DataPacketView>(*pkt);
 
             // Should have a payload
             auto payload = data_pkt.payload();
@@ -118,12 +132,19 @@ TEST(EnhancedReaderTest, DetectContextPackets) {
 
     size_t context_packet_count = 0;
 
-    while (auto pkt = reader.read_next_packet()) {
+    while (true) {
+        auto pkt = reader.read_next_packet();
+        if (!pkt.has_value()) {
+            if (vrtigo::utils::is_eof(pkt.error()))
+                break;
+            continue; // skip errors
+        }
+
         if (is_context_packet(*pkt)) {
             context_packet_count++;
 
             // Verify we can access dynamic::ContextPacketView methods
-            auto& ctx_pkt = std::get<vrtigo::dynamic::ContextPacketView>(pkt->value());
+            auto& ctx_pkt = std::get<vrtigo::dynamic::ContextPacketView>(*pkt);
             (void)ctx_pkt; // Access verified
         }
     }
@@ -204,7 +225,14 @@ TEST(EnhancedReaderTest, FilterByStreamId) {
     // Get stream ID from first packet that has one
     std::optional<uint32_t> target_stream_id;
 
-    while (auto pkt = reader.read_next_packet()) {
+    while (true) {
+        auto pkt = reader.read_next_packet();
+        if (!pkt.has_value()) {
+            if (vrtigo::utils::is_eof(pkt.error()))
+                break;
+            continue; // skip errors
+        }
+
         auto sid = stream_id(*pkt);
         if (sid) {
             target_stream_id = sid;
@@ -240,8 +268,8 @@ TEST(EnhancedReaderTest, VisitPacketVariant) {
     fileio::VRTFileReader<> reader(sample_data_file.c_str());
 
     auto pkt = reader.read_next_packet();
-    ASSERT_TRUE(pkt.has_value());
-    ASSERT_TRUE(pkt->ok()) << "Expected valid packet: " << pkt->error().message();
+    ASSERT_TRUE(pkt.has_value()) << "Expected valid packet: "
+                                 << vrtigo::utils::error_message(pkt.error());
 
     bool visited = false;
 
@@ -255,7 +283,7 @@ TEST(EnhancedReaderTest, VisitPacketVariant) {
                 visited = true;
             }
         },
-        pkt->value());
+        *pkt);
 
     EXPECT_TRUE(visited);
 }
@@ -268,13 +296,19 @@ TEST(EnhancedReaderTest, EOFHandling) {
     fileio::VRTFileReader<> reader(sample_data_file.c_str());
 
     // Read all packets
-    while (reader.read_next_packet()) {
-        // Keep reading
+    while (true) {
+        auto pkt = reader.read_next_packet();
+        if (!pkt.has_value()) {
+            if (vrtigo::utils::is_eof(pkt.error()))
+                break;
+            continue; // skip errors
+        }
     }
 
-    // Next read should return nullopt
+    // Next read should return EOF error
     auto pkt = reader.read_next_packet();
     EXPECT_FALSE(pkt.has_value());
+    EXPECT_TRUE(vrtigo::utils::is_eof(pkt.error()));
 }
 
 TEST(EnhancedReaderTest, ParseErrorHasErrorInfo) {
@@ -289,7 +323,7 @@ TEST(EnhancedReaderTest, ParseErrorHasErrorInfo) {
     EXPECT_FALSE(std::string(error.message()).empty());
 }
 
-TEST(EnhancedReaderTest, IOErrorReturnsParseError) {
+TEST(EnhancedReaderTest, IOErrorReturnsError) {
     // Create a temporary file with a truncated packet to trigger I/O error
     auto temp_path = std::filesystem::temp_directory_path() / "test_truncated.vrt";
 
@@ -298,8 +332,9 @@ TEST(EnhancedReaderTest, IOErrorReturnsParseError) {
         std::ofstream file(temp_path, std::ios::binary);
 
         // Create header: packet type 1 (SignalData), size = 10 words
-        uint32_t header = 0x18000000; // Type=1, C=1, T=0, TSI=0, TSF=0, size=0
-        header |= (10 << 16);         // Set packet size to 10 words
+        // VRT header: bits 31-28 = type, bits 15-0 = size in words
+        uint32_t header = 0x18000000; // Type=1, C=1, T=0, TSI=0, TSF=0
+        header |= 10;                 // Set packet size to 10 words (in bits 15-0)
 
         // Write in network byte order (big-endian)
         uint32_t header_be = detail::host_to_network32(header);
@@ -312,17 +347,14 @@ TEST(EnhancedReaderTest, IOErrorReturnsParseError) {
 
     auto pkt = reader.read_next_packet();
 
-    // Should return a ParseResult (not nullopt), but it should be an error
-    ASSERT_TRUE(pkt.has_value());
-    EXPECT_FALSE(pkt->ok());
+    // Should return error (not valid packet)
+    ASSERT_FALSE(pkt.has_value());
 
     // Verify we can access error information
-    const auto& error = pkt->error();
-
-    // Should have an error (not none)
-    EXPECT_NE(error.code, ValidationError::none);
-    EXPECT_NE(error.message(), nullptr);
-    EXPECT_FALSE(std::string(error.message()).empty());
+    EXPECT_TRUE(vrtigo::utils::is_io_error(pkt.error()) ||
+                vrtigo::utils::is_parse_error(pkt.error()));
+    EXPECT_NE(vrtigo::utils::error_message(pkt.error()), nullptr);
+    EXPECT_FALSE(std::string(vrtigo::utils::error_message(pkt.error())).empty());
 
     // Clean up
     std::filesystem::remove(temp_path);
@@ -336,8 +368,9 @@ TEST(EnhancedReaderTest, InvalidPacketTypeReturnsParseError) {
         std::ofstream file(temp_path, std::ios::binary);
 
         // Create header with invalid packet type (15, which is > 7)
-        uint32_t header = 0xF0000000; // Type=15 (invalid), size=4 words
-        header |= (4 << 16);
+        // VRT header: bits 31-28 = type, bits 15-0 = size in words
+        uint32_t header = 0xF0000000; // Type=15 (invalid)
+        header |= 4;                  // size=4 words (in bits 15-0)
 
         // Write in network byte order
         uint32_t header_be = detail::host_to_network32(header);
@@ -356,10 +389,10 @@ TEST(EnhancedReaderTest, InvalidPacketTypeReturnsParseError) {
     auto pkt = reader.read_next_packet();
 
     // Should return ParseError
-    ASSERT_TRUE(pkt.has_value());
-    EXPECT_FALSE(pkt->ok());
+    ASSERT_FALSE(pkt.has_value());
+    ASSERT_TRUE(vrtigo::utils::is_parse_error(pkt.error()));
 
-    const auto& error = pkt->error();
+    const auto& error = std::get<vrtigo::ParseError>(pkt.error());
     EXPECT_EQ(error.code, ValidationError::invalid_packet_type);
 
     // Clean up

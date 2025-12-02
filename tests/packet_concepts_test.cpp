@@ -188,7 +188,7 @@ TEST(PacketConceptsTest, RuntimeBehaviorConsistency) {
 
     // Parse as runtime packet
     auto data_result = dynamic::DataPacketView::parse(signal_buffer);
-    ASSERT_TRUE(data_result.ok()) << data_result.error().message();
+    ASSERT_TRUE(data_result.has_value()) << data_result.error().message();
     const auto& view = data_result.value();
     EXPECT_NO_THROW({
         auto id = view.stream_id();
@@ -208,7 +208,7 @@ TEST(PacketConceptsTest, RuntimeBehaviorConsistency) {
 
     // Parse as runtime context packet
     auto ctx_result = dynamic::ContextPacketView::parse(context_buffer);
-    ASSERT_TRUE(ctx_result.ok()) << ctx_result.error().message();
+    ASSERT_TRUE(ctx_result.has_value()) << ctx_result.error().message();
     const auto& ctx_view = ctx_result.value();
     EXPECT_FALSE(ctx_view.change_indicator());
 }

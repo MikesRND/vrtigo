@@ -64,6 +64,11 @@ install(DIRECTORY include/vrtigo
     FILES_MATCHING PATTERN "*.hpp"
 )
 
+install(DIRECTORY include/tl
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.hpp"
+)
+
 install(FILES include/vrtigo.hpp
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )

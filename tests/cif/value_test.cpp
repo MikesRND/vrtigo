@@ -317,7 +317,7 @@ TEST_F(InterpretedValueTest, RuntimeParserIntegration) {
 
     // Parse with runtime view
     auto result = dynamic::ContextPacketView::parse(buffer);
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
 
     // Verify values accessible from runtime parser

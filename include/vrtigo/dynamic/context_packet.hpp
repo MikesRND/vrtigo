@@ -31,8 +31,8 @@ class ContextPacketView;
  *
  * Usage:
  *   auto result = dynamic::ContextPacketView::parse(rx_buffer);  // rx_buffer is std::span<const
- * uint8_t> if (result.ok()) { const auto& view = result.value(); if (auto id = view.stream_id()) {
- *           std::cout << "Stream ID: " << *id << "\n";
+ * uint8_t> if (result.has_value()) { const auto& view = result.value(); if (auto id =
+ * view.stream_id()) { std::cout << "Stream ID: " << *id << "\n";
  *       }
  *       if (auto bw = view[field::bandwidth]) {
  *           std::cout << "Bandwidth: " << bw.value() << " Hz\n";
@@ -262,16 +262,20 @@ public:
     parse(std::span<const uint8_t> buffer) noexcept {
         ContextPacketView packet(buffer);
         if (packet.error_ == ValidationError::none) {
+            // Suppress GCC false positive: optimizer thinks padding bytes in
+            // ContextPacketView might be uninitialized when copied into expected<>
+#if defined(__GNUC__) && !defined(__clang__)
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
             return packet;
+#if defined(__GNUC__) && !defined(__clang__)
+    #pragma GCC diagnostic pop
+#endif
         }
 
-        // Build ParseError with available info
-        ParseError err{};
-        err.code = packet.error_;
-        err.attempted_type = packet.prologue_.header.type;
-        err.header = packet.prologue_.header;
-        err.raw_bytes = buffer;
-        return err;
+        return make_parse_error(packet.error_, packet.prologue_.header.type,
+                                packet.prologue_.header, buffer);
     }
 
     // CIF accessors

@@ -28,7 +28,7 @@ TEST(TestSuite, TestName) {
     // [/SNIPPET]
 
     // Additional test assertions (not extracted)
-    ASSERT_TRUE(result.ok());
+    ASSERT_TRUE(result.has_value());
 }
 ```
 

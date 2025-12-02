@@ -128,7 +128,7 @@ TEST_F(ContextPacketTest, CIF0_24_RuntimeAccess) {
 
     // Parse with runtime packet
     auto result = dynamic::ContextPacketView::parse(buffer);
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& runtime_packet = result.value();
 
     if (runtime_packet[reference_level]) {

@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#include <vrtigo/utils/detail/reader_error.hpp>
 #include <vrtigo/vrtigo_utils.hpp>
 
 // PacketVariant and related types are now in vrtigo namespace
@@ -149,11 +150,11 @@ TEST_F(FileWriterTest, RoundTripSinglePacket) {
     VRTFileReader<> reader(test_file.string());
     auto read_packet_var = reader.read_next_packet();
 
-    ASSERT_TRUE(read_packet_var.has_value());
-    ASSERT_TRUE(read_packet_var->ok()) << read_packet_var->error().message();
-    EXPECT_TRUE(is_data_packet(*read_packet_var));
+    ASSERT_TRUE(read_packet_var.has_value())
+        << vrtigo::utils::error_message(read_packet_var.error());
+    EXPECT_TRUE(vrtigo::is_data_packet(*read_packet_var));
 
-    auto read_packet = std::get<vrtigo::dynamic::DataPacketView>(read_packet_var->value());
+    auto read_packet = std::get<vrtigo::dynamic::DataPacketView>(*read_packet_var);
     EXPECT_EQ(read_packet.stream_id(), test_stream_id);
 
     auto ts = read_packet.timestamp();
@@ -185,11 +186,16 @@ TEST_F(FileWriterTest, RoundTripMultiplePackets) {
     VRTFileReader<> reader(test_file.string());
     size_t count = 0;
 
-    while (auto pkt_var = reader.read_next_packet()) {
-        ASSERT_TRUE(pkt_var->ok()) << pkt_var->error().message();
-        EXPECT_TRUE(is_data_packet(*pkt_var));
+    while (true) {
+        auto pkt_var = reader.read_next_packet();
+        if (!pkt_var.has_value()) {
+            if (vrtigo::utils::is_eof(pkt_var.error()))
+                break;
+            continue; // skip errors
+        }
+        EXPECT_TRUE(vrtigo::is_data_packet(*pkt_var));
 
-        auto pkt = std::get<vrtigo::dynamic::DataPacketView>(pkt_var->value());
+        auto pkt = std::get<vrtigo::dynamic::DataPacketView>(*pkt_var);
         EXPECT_EQ(pkt.stream_id(), count);
         count++;
     }
@@ -223,11 +229,11 @@ TEST_F(FileWriterTest, RoundTripContextPacket) {
     VRTFileReader<> reader(test_file.string());
     auto read_packet_var = reader.read_next_packet();
 
-    ASSERT_TRUE(read_packet_var.has_value());
-    ASSERT_TRUE(read_packet_var->ok()) << read_packet_var->error().message();
-    EXPECT_TRUE(vrtigo::is_context_packet(read_packet_var->value()));
+    ASSERT_TRUE(read_packet_var.has_value())
+        << vrtigo::utils::error_message(read_packet_var.error());
+    EXPECT_TRUE(vrtigo::is_context_packet(*read_packet_var));
 
-    auto read_packet = std::get<vrtigo::dynamic::ContextPacketView>(read_packet_var->value());
+    auto read_packet = std::get<vrtigo::dynamic::ContextPacketView>(*read_packet_var);
     EXPECT_EQ(read_packet.stream_id(), test_stream_id);
 }
 

@@ -252,7 +252,7 @@ TEST_F(FieldProxyTest, RuntimeParserIntegration) {
 
     // Parse with runtime view
     auto result = dynamic::ContextPacketView::parse(buffer);
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& view = result.value();
 
     // Verify field accessible from runtime parser

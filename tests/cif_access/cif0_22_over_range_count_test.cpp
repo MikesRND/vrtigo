@@ -92,7 +92,7 @@ TEST_F(ContextPacketTest, CIF0_22_RuntimeAccess) {
 
     // Parse with runtime packet
     auto result = dynamic::ContextPacketView::parse(buffer);
-    ASSERT_TRUE(result.ok()) << result.error().message();
+    ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& runtime_packet = result.value();
 
     // Runtime packet can read the Over-Range Count

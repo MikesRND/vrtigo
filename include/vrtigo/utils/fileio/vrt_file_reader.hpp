@@ -1,13 +1,14 @@
 #pragma once
 
-#include <optional>
 #include <span>
 #include <string>
 #include <utility>
 
 #include "../../detail/packet_parser.hpp"
 #include "../../detail/packet_variant.hpp"
+#include "../../expected.hpp"
 #include "../detail/iteration_helpers.hpp"
+#include "../detail/reader_error.hpp"
 #include "raw_vrt_file_reader.hpp"
 
 namespace vrtigo::utils::fileio {
@@ -20,17 +21,18 @@ namespace vrtigo::utils::fileio {
  * Provides:
  * - Automatic packet type detection from header
  * - Built-in validation using packet views
- * - Type-safe access via ParseResult<PacketVariant>
+ * - Type-safe access via expected<PacketVariant, ReaderError>
  * - Filtered iteration helpers (by type, stream ID, etc.)
- * - I/O error detection via ParseError
+ * - Distinct error types for EOF, I/O errors, and parse errors
  *
  * Unlike RawVRTFileReader which returns raw bytes, VRTFileReader returns
  * validated packet views ready for immediate field access.
  *
- * Return type: std::optional<ParseResult<PacketVariant>>
- * - std::nullopt = End of file
- * - ParseResult with error = I/O or parse error
- * - ParseResult with value = Valid packet
+ * Return type: expected<PacketVariant, ReaderError>
+ * - Value = Valid packet (DataPacketView or ContextPacketView)
+ * - unexpected(EndOfStream{}) = End of file
+ * - unexpected(IOError{...}) = I/O error with diagnostic context
+ * - unexpected(ParseError{...}) = Parse/validation error
  *
  * Supported packet types:
  * - Signal Data (0-1) -> dynamic::DataPacketView
@@ -49,26 +51,29 @@ namespace vrtigo::utils::fileio {
  * VRTFileReader<> reader("data.vrt");
  *
  * // Read and automatically validate each packet
- * while (auto result = reader.read_next_packet()) {
- *     if (*result) {
- *         std::visit([](auto&& p) {
- *             using T = std::decay_t<decltype(p)>;
- *             if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacketView>) {
- *                 auto payload = p.payload();
- *                 // Process data...
- *             }
- *             else if constexpr (std::is_same_v<T, vrtigo::dynamic::ContextPacketView>) {
- *                 if (auto bw = p[vrtigo::field::bandwidth]) {
- *                     std::cout << "BW: " << bw.value() << " Hz\n";
- *                 }
- *             }
- *         }, result->value());
- *     } else {
- *         std::cerr << "Error: " << result->error().message() << "\n";
+ * while (true) {
+ *     auto result = reader.read_next_packet();
+ *
+ *     if (!result.has_value()) {
+ *         if (vrtigo::utils::is_eof(result.error())) break;  // Normal EOF
+ *         if (vrtigo::utils::is_io_error(result.error())) {
+ *             std::cerr << "I/O error\n";
+ *             break;
+ *         }
+ *         // ParseError - skip bad packet
+ *         continue;
  *     }
+ *
+ *     std::visit([](auto&& p) {
+ *         using T = std::decay_t<decltype(p)>;
+ *         if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacketView>) {
+ *             auto payload = p.payload();
+ *             // Process data...
+ *         }
+ *     }, *result);
  * }
  *
- * // Or use filtered iteration
+ * // Or use filtered iteration helpers
  * reader.for_each_data_packet([](const vrtigo::dynamic::DataPacketView& pkt) {
  *     // Only valid data packets here
  *     return true; // continue
@@ -78,6 +83,9 @@ namespace vrtigo::utils::fileio {
 template <uint16_t MaxPacketWords = 65535>
 class VRTFileReader {
 public:
+    /// Result type for read operations
+    using ReadResult = vrtigo::expected<vrtigo::PacketVariant, utils::ReaderError>;
+
     /**
      * @brief Open a VRT file for reading with enhanced validation
      *
@@ -108,55 +116,71 @@ public:
      * Reads the next packet from the file, automatically detects its type,
      * validates it, and returns a type-safe variant containing the appropriate view.
      *
-     * @return ParseResult<PacketVariant> containing dynamic::DataPacketView or
-     * dynamic::ContextPacketView on success, or ParseError on failure. Returns std::nullopt on EOF.
-     *
-     * @note I/O errors (corrupt header, truncated payload, etc.) are returned as
-     *       ParseError with full error context. Only true EOF returns std::nullopt.
-     *       This ensures all file corruption is visible to the caller rather than
-     *       being silently treated as end-of-stream.
+     * @return expected<PacketVariant, ReaderError>:
+     *         - Value: Valid packet (DataPacketView or ContextPacketView)
+     *         - unexpected(EndOfStream{}): End of file reached
+     *         - unexpected(IOError{...}): I/O error with diagnostic context
+     *         - unexpected(ParseError{...}): Parse/validation error
      *
      * @note The returned view references the internal reader buffer and is valid
      *       until the next read operation.
      */
-    std::optional<vrtigo::ParseResult<vrtigo::PacketVariant>> read_next_packet() noexcept {
+    ReadResult read_next_packet() noexcept {
         auto bytes = reader_.read_next_span();
 
         // Check for EOF
         if (bytes.empty() && reader_.last_error().is_eof()) {
-            return std::nullopt;
+            return vrtigo::unexpected(utils::ReaderError{utils::EndOfStream{}});
         }
 
-        // Check for I/O error (not EOF) - convert to ParseError
+        // Check for error (not EOF)
         if (bytes.empty()) {
             const auto& err = reader_.last_error();
             auto decoded = vrtigo::detail::decode_header(err.header);
-            return vrtigo::ParseResult<vrtigo::PacketVariant>{vrtigo::ParseError{
-                err.error, err.type, decoded,
+
+            // Validation errors from header decoding → ParseError
+            if (err.error == ValidationError::invalid_packet_type ||
+                err.error == ValidationError::size_field_mismatch) {
+                return vrtigo::unexpected(utils::ReaderError{vrtigo::ParseError{
+                    err.error, err.type, decoded,
+                    std::span<const uint8_t>() // No data available
+                }});
+            }
+
+            // I/O errors → IOError with diagnostic context
+            return vrtigo::unexpected(utils::ReaderError{utils::IOError{
+                utils::IOError::Kind::read_error,
+                0, // errno not available from RawVRTFileReader
+                err.type, decoded,
                 std::span<const uint8_t>() // Empty span since read failed
-            }};
+            }});
         }
 
         // Parse and validate the packet
-        return vrtigo::parse_packet(bytes);
+        auto parse_result = vrtigo::parse_packet(bytes);
+        if (parse_result.has_value()) {
+            return *std::move(parse_result);
+        }
+
+        // Convert ParseError to ReaderError
+        return vrtigo::unexpected(utils::ReaderError{parse_result.error()});
     }
 
     /**
      * @brief Iterate over all packets with automatic validation
      *
      * Processes all packets in the file, automatically validating each one.
-     * The callback receives a PacketVariant for each packet.
+     * The callback receives a PacketVariant for each valid packet.
+     * Parse errors are skipped; EOF and I/O errors stop iteration.
      *
      * @tparam Callback Function type with signature: bool(const PacketVariant&)
-     * @param callback Function called for each packet. Return false to stop iteration.
-     * @return Number of packets processed
+     * @param callback Function called for each valid packet. Return false to stop iteration.
+     * @return Number of valid packets processed
      *
      * Example:
      * @code
      * reader.for_each_validated_packet([](const PacketVariant& pkt) {
-     *     if (is_valid(pkt)) {
-     *         // Process valid packet...
-     *     }
+     *     // Process valid packet...
      *     return true; // continue
      * });
      * @endcode

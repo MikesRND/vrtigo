@@ -112,16 +112,16 @@ TEST(QuickstartSnippet, ReadVRTFileManual) {
 
     // Read packets one at a time
     while (auto pkt = reader.read_next_packet()) {
-        if (pkt->ok()) {
+        if (pkt.has_value()) {
             valid_packets++;
 
             // Access packet type
-            auto type = vrtigo::packet_type(pkt->value());
+            auto type = vrtigo::packet_type(pkt.value());
             std::cout << "Type: " << static_cast<int>(type) << "\n";
 
             // Process based on type
-            if (vrtigo::is_data_packet(pkt->value())) {
-                const auto& data = std::get<DataPacketView>(pkt->value());
+            if (vrtigo::is_data_packet(pkt.value())) {
+                const auto& data = std::get<DataPacketView>(pkt.value());
                 auto payload = data.payload();
                 // Process payload...
                 (void)payload;
@@ -131,7 +131,7 @@ TEST(QuickstartSnippet, ReadVRTFileManual) {
             invalid_packets++;
 
             // Get error details from parse result
-            auto error = pkt->error();
+            auto error = pkt.error();
             // Handle error...
             (void)error;
         }
