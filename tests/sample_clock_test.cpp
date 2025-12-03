@@ -1,10 +1,14 @@
+#include <chrono>
 #include <limits>
+#include <thread>
 
 #include <cmath>
 #include <gtest/gtest.h>
 #include <vrtigo/vrtigo_utils.hpp>
 
 using namespace vrtigo;
+using utils::SampleClock;
+using utils::StartTime;
 
 TEST(SampleClockTest, TickAdvancesByPeriod) {
     SampleClock<> clock(0.001); // 1 ms
@@ -20,10 +24,10 @@ TEST(SampleClockTest, TickAdvancesByPeriod) {
 }
 
 TEST(SampleClockTest, HonorsStartEpoch) {
-    using OtherStamp = Timestamp<TsiType::other, TsfType::real_time>;
-    OtherStamp start(2u, 900'000'000'000ULL); // 2.9 seconds
+    using time_point = SampleClock<>::time_point;
+    time_point start(2u, 900'000'000'000ULL); // 2.9 seconds
 
-    SampleClock<> clock(0.2, start); // 200 ms
+    SampleClock<> clock(0.2, start); // 200 ms - uses time_point convenience ctor
 
     auto after_tick = clock.tick();
     EXPECT_EQ(after_tick.tsi(), 3u);
@@ -137,4 +141,37 @@ TEST(SampleClockTest, DeterministicTicking) {
 
     EXPECT_EQ(result1.tsi(), result2.tsi());
     EXPECT_EQ(result1.tsf(), result2.tsf());
+}
+
+// Reset re-resolution tests
+TEST(SampleClockTest, ResetReResolvesStartTimeNow) {
+    // StartTime::now() should capture fresh wall-clock on each reset()
+    SampleClock<TsiType::utc> clock(1e-6, StartTime::now());
+
+    auto first_start = clock.now();
+    clock.tick(1000);
+
+    // Small delay to ensure wall clock advances
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+    clock.reset(); // Should re-resolve StartTime::now()
+    auto second_start = clock.now();
+
+    // Second start should be later than first (fresh wall-clock capture)
+    EXPECT_GT(second_start.tsi() * 1'000'000'000'000ULL + second_start.tsf(),
+              first_start.tsi() * 1'000'000'000'000ULL + first_start.tsf());
+}
+
+TEST(SampleClockTest, ResetPreservesAbsoluteStart) {
+    // StartTime::absolute() should return same time on reset
+    using time_point = SampleClock<>::time_point;
+    time_point fixed_start(100u, 500'000'000'000ULL);
+
+    SampleClock<> clock(1e-3, fixed_start);
+    clock.tick(1000);
+    clock.reset();
+
+    auto after_reset = clock.now();
+    EXPECT_EQ(after_reset.tsi(), 100u);
+    EXPECT_EQ(after_reset.tsf(), 500'000'000'000ULL);
 }

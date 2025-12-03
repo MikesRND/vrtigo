@@ -10,12 +10,14 @@ All examples assume `using namespace vrtigo;` and `using namespace std::chrono_l
 
 SampleClock generates deterministic timestamps at a fixed sample rate.
 Create a clock with a sample period, then use `tick()` to advance time.
+By default, timestamps start at zero (epoch).
 
 ```cpp
     // Create clock at 1 MHz sample rate (1 microsecond period)
+    // Timestamps start at zero by default
     SampleClock<> clock(1e-6);
 
-    // Query current time without advancing
+    // Query current time without advancing (starts at 0)
     auto t0 = clock.now(); // 0.000000 seconds
 
     // Advance by one sample
@@ -23,6 +25,20 @@ Create a clock with a sample period, then use `tick()` to advance time.
 
     // Advance by multiple samples
     auto t2 = clock.tick(99); // 0.000100 seconds (100 samples total)
+```
+
+## Absolute Start Time
+
+Pass a timestamp directly to start the clock at a specific time.
+This is useful for replaying recorded data or testing with known timestamps.
+
+```cpp
+    // Start clock at a specific timestamp (e.g., from recorded data)
+    UtcRealTimestamp start(100u, 500'000'000'000ULL); // 100.5 seconds
+    SampleClock<> clock(1e-6, start);
+
+    auto t0 = clock.now();
+    // t0.tsi() == 100, t0.tsf() == 500ms in picoseconds
 ```
 
 ## Wall-Clock Start Time

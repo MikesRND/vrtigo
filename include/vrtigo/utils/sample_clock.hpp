@@ -3,7 +3,6 @@
 #include "vrtigo/timestamp.hpp"
 #include "vrtigo/utils/start_time.hpp"
 
-#include <concepts>
 #include <stdexcept>
 
 #include <cmath>
@@ -12,37 +11,16 @@
 namespace vrtigo::utils {
 
 /**
- * @brief Concept defining the common interface for all SampleClock specializations
- *
- * All SampleClock specializations must provide:
- * - time_point type alias
- * - now() to query current time without advancing
- * - tick() to advance by one sample
- * - tick(n) to advance by N samples
- * - reset() to reset to zero
- * - elapsed_samples() to query total samples elapsed
- */
-template <typename T>
-concept SampleClockLike = requires(T clock, uint64_t n) {
-    typename T::time_point;
-    { clock.now() } -> std::same_as<typename T::time_point>;
-    { clock.tick() } -> std::same_as<typename T::time_point>;
-    { clock.tick(n) } -> std::same_as<typename T::time_point>;
-    { clock.reset() } -> std::same_as<void>;
-    { clock.elapsed_samples() } -> std::same_as<uint64_t>;
-};
-
-/**
  * @brief Synthetic sample clock for generating timestamps at fixed sample intervals
  *
  * Template specializations exist for different TsfType values:
  * - TsfType::real_time: Generates picosecond-precision timestamps (implemented)
  * - TsfType::sample_count: Generates sample-numbered timestamps (not yet implemented)
  *
- * @tparam TSI Timestamp Integer type (default: TsiType::other)
+ * @tparam TSI Timestamp Integer type (default: TsiType::utc)
  * @tparam TSF Timestamp Fractional type (default: TsfType::real_time)
  */
-template <TsiType TSI = TsiType::other, TsfType TSF = TsfType::real_time>
+template <TsiType TSI = TsiType::utc, TsfType TSF = TsfType::real_time>
 class SampleClock;
 
 /**
@@ -59,8 +37,7 @@ class SampleClock;
  * @note Thread safety: const methods are safe for concurrent reads. Non-const methods require
  *       external synchronization.
  *
- * @note Default TSI is "other" to avoid implying UTC/GPS semantics. Callers can opt into utc
- *       TSI when needed for interop, but the clock remains synthetic and leap-second free.
+ * @note Default TSI is UTC for common interop. The clock remains synthetic and leap-second free.
  *
  * @tparam TSI Timestamp Integer type
  */
@@ -70,23 +47,9 @@ public:
     using time_point = Timestamp<TSI, TsfType::real_time>;
 
     /**
-     * @brief Construct a sample clock with specified period
+     * @brief Construct a sample clock with specified period and start time
      * @param sample_period_seconds Sample period in seconds (rounded to nearest picosecond)
-     * @param start Starting timestamp (default: zero)
-     * @throws std::invalid_argument if period is non-finite, zero, negative, or rounds to zero
-     * @throws std::overflow_error if period overflows uint64_t picoseconds
-     */
-    explicit SampleClock(double sample_period_seconds, time_point start = {})
-        : sample_period_picos_(normalize_period(sample_period_seconds)),
-          period_error_picos_(compute_period_error(sample_period_seconds, sample_period_picos_)),
-          period_is_exact_(period_error_picos_ == 0.0L),
-          start_seconds_(start.tsi()),
-          start_fractional_(start.tsf()) {}
-
-    /**
-     * @brief Construct a sample clock with deferred start time resolution
-     * @param sample_period_seconds Sample period in seconds (rounded to nearest picosecond)
-     * @param start_spec StartTime specification (resolved at construction)
+     * @param start_spec StartTime specification (resolved at construction, stored for reset)
      * @throws std::invalid_argument if period is non-finite, zero, negative, or rounds to zero
      * @throws std::overflow_error if period overflows uint64_t picoseconds
      *
@@ -97,11 +60,27 @@ public:
      * Example:
      * @code
      *   SampleClock<TsiType::utc> clock(1e-6, StartTime::at_next_second()); // PPS aligned
+     *   clock.reset();  // Re-resolves to next second boundary
      * @endcode
      */
-    explicit SampleClock(double sample_period_seconds, StartTime start_spec)
+    explicit SampleClock(double sample_period_seconds, StartTime start_spec = {})
         requires(TSI == TsiType::utc || TSI == TsiType::other)
-        : SampleClock(sample_period_seconds, make_time_point_from_start(start_spec)) {}
+        : sample_period_picos_(normalize_period(sample_period_seconds)),
+          period_error_picos_(compute_period_error(sample_period_seconds, sample_period_picos_)),
+          period_is_exact_(period_error_picos_ == 0.0L),
+          start_spec_(start_spec) {
+        resolve_start();
+    }
+
+    /**
+     * @brief Convenience constructor for absolute start time
+     * @param sample_period_seconds Sample period in seconds
+     * @param start Absolute start timestamp (stored as StartTime::absolute for reset)
+     */
+    explicit SampleClock(double sample_period_seconds, time_point start)
+        requires(TSI == TsiType::utc || TSI == TsiType::other)
+        : SampleClock(sample_period_seconds,
+                      StartTime::absolute(UtcRealTimestamp(start.tsi(), start.tsf()))) {}
 
     /// Get current time without advancing
     time_point now() const { return make_time_point(total_picos_); }
@@ -125,12 +104,10 @@ public:
         total_picos_ = checked_add(total_picos_, delta_picos);
     }
 
-    void reset() noexcept { total_picos_ = 0; }
-
-    void reset(time_point start) noexcept {
+    /// Reset elapsed samples and re-resolve start time from stored spec
+    void reset() noexcept {
         total_picos_ = 0;
-        start_seconds_ = start.tsi();
-        start_fractional_ = start.tsf();
+        resolve_start();
     }
 
     uint64_t sample_period_picoseconds() const noexcept { return sample_period_picos_; }
@@ -166,9 +143,10 @@ public:
     uint64_t elapsed_samples() const noexcept { return total_picos_ / sample_period_picos_; }
 
 private:
-    static time_point make_time_point_from_start(StartTime start_spec) noexcept {
-        auto resolved = start_spec.resolve();
-        return time_point(resolved.tsi(), resolved.tsf());
+    void resolve_start() noexcept {
+        auto resolved = start_spec_.resolve();
+        start_seconds_ = resolved.tsi();
+        start_fractional_ = resolved.tsf();
     }
 
     static uint64_t normalize_period(double seconds) {
@@ -256,6 +234,7 @@ private:
     long double period_error_picos_{0.0L};
     bool period_is_exact_{true};
     uint64_t total_picos_{0};
+    StartTime start_spec_{};
     uint32_t start_seconds_{0};
     uint64_t start_fractional_{0};
 };
@@ -272,10 +251,5 @@ class SampleClock<TSI, TsfType::sample_count> {
     static_assert(TSI != TSI, "SampleClock with TsfType::sample_count is not yet implemented. "
                               "Only TsfType::real_time is currently supported.");
 };
-
-// Verify that specializations conform to the SampleClockLike concept
-// Check the real_time specialization with a concrete instantiation
-static_assert(SampleClockLike<SampleClock<TsiType::other, TsfType::real_time>>,
-              "SampleClock<TSI, TsfType::real_time> must satisfy SampleClockLike concept");
 
 } // namespace vrtigo::utils
