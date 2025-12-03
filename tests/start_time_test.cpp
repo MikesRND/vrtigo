@@ -6,6 +6,8 @@
 
 using namespace vrtigo;
 using namespace std::chrono_literals;
+using utils::SampleClock;
+using utils::StartTime;
 
 // =============================================================================
 // Basic Resolution Tests
@@ -242,22 +244,21 @@ TEST(StartTimeTest, SampleClockOtherTsiWithStartTime) {
     EXPECT_GE(ts.tsi(), 0u);
 }
 
-TEST(StartTimeTest, SampleClockEquivalentConstructors) {
-    // Both constructors should produce equivalent clocks for same effective start time
+TEST(StartTimeTest, SampleClockAbsoluteStart) {
+    // Absolute start time should be preserved exactly
     UtcRealTimestamp start(500u, 0);
 
-    SampleClock<TsiType::utc> clock1(1e-3, start);
-    SampleClock<TsiType::utc> clock2(1e-3, StartTime::absolute(start));
+    SampleClock<TsiType::utc> clock(1e-3, StartTime::absolute(start));
 
-    EXPECT_EQ(clock1.now().tsi(), clock2.now().tsi());
-    EXPECT_EQ(clock1.now().tsf(), clock2.now().tsf());
+    EXPECT_EQ(clock.now().tsi(), 500u);
+    EXPECT_EQ(clock.now().tsf(), 0u);
 
-    // After ticking
-    auto ts1 = clock1.tick(100);
-    auto ts2 = clock2.tick(100);
+    // After ticking and reset, should return to same start
+    clock.tick(100);
+    clock.reset();
 
-    EXPECT_EQ(ts1.tsi(), ts2.tsi());
-    EXPECT_EQ(ts1.tsf(), ts2.tsf());
+    EXPECT_EQ(clock.now().tsi(), 500u);
+    EXPECT_EQ(clock.now().tsf(), 0u);
 }
 
 // =============================================================================
@@ -288,4 +289,35 @@ TEST(StartTimeTest, FactoryMethodsAreConstexpr) {
     (void)st_now_plus;
     (void)st_next;
     (void)st_next_plus;
+}
+
+// =============================================================================
+// StartTime Reuse Tests
+// =============================================================================
+
+TEST(StartTimeTest, ResolveCanBeCalledMultipleTimes) {
+    // StartTime::now() should produce fresh wall-clock on each resolve()
+    auto st = StartTime::now();
+
+    auto first = st.resolve();
+    std::this_thread::sleep_for(10ms);
+    auto second = st.resolve();
+
+    // Second resolution should be later than first
+    EXPECT_GT(second.tsi() * 1'000'000'000'000ULL + second.tsf(),
+              first.tsi() * 1'000'000'000'000ULL + first.tsf());
+}
+
+TEST(StartTimeTest, AbsoluteResolveIsIdempotent) {
+    // StartTime::absolute() should return same value on each resolve()
+    UtcRealTimestamp fixed(42u, 123'456'789'000ULL);
+    auto st = StartTime::absolute(fixed);
+
+    auto first = st.resolve();
+    auto second = st.resolve();
+
+    EXPECT_EQ(first.tsi(), second.tsi());
+    EXPECT_EQ(first.tsf(), second.tsf());
+    EXPECT_EQ(first.tsi(), 42u);
+    EXPECT_EQ(first.tsf(), 123'456'789'000ULL);
 }

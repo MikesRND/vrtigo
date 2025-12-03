@@ -18,8 +18,8 @@ namespace vrtigo::utils {
  * wall-clock access. Use absolute() to provide a pre-computed timestamp.
  *
  * @note Default-constructed StartTime equals StartTime::zero() (epoch 0,0).
- * @note resolve() should be called exactly once to avoid multiple system calls
- *       and time advancing between calls.
+ * @note resolve() may be called multiple times. Each call captures a fresh
+ *       timestamp for now/next_second bases. Caller controls resolution timing.
  *
  * Example usage:
  * @code
@@ -74,7 +74,7 @@ struct StartTime {
     }
 
     /// Resolve to concrete timestamp
-    /// @note Call exactly once to avoid multiple system calls and time drift
+    /// @note May be called multiple times; captures fresh wall-clock for now/next_second bases
     UtcRealTimestamp resolve() const noexcept {
         switch (base_) {
             case Base::now:

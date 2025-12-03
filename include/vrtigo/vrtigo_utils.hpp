@@ -26,11 +26,6 @@
 
 namespace vrtigo {
 // Import utilities into main namespace for convenience
-template <TsiType TSI = TsiType::other, TsfType TSF = TsfType::real_time>
-using SampleClock = utils::SampleClock<TSI, TSF>;
-
-using StartTime = utils::StartTime;
-
 template <uint16_t MaxPacketWords = 65535>
 using VRTFileReader = utils::fileio::VRTFileReader<MaxPacketWords>;
 
