@@ -30,13 +30,6 @@ configure_file(
 
 # Require C++20 for consumers
 target_compile_features(vrtigo INTERFACE cxx_std_20)
-set_property(TARGET vrtigo PROPERTY CXX_EXTENSIONS OFF)
-
-# Compiler warnings
-target_compile_options(vrtigo INTERFACE
-    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
-    $<$<CXX_COMPILER_ID:MSVC>:/W4>
-)
 
 # I/O helpers are always available (no optional toggle)
 
