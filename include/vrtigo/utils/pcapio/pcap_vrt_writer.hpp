@@ -23,10 +23,11 @@
 namespace vrtigo::utils::pcapio {
 
 /**
- * @brief Write VRT packets to PCAP capture files
+ * @brief Write VRT packets to PCAP capture files with proper UDP encapsulation
  *
- * Simplified PCAP writer designed for testing and validation. Wraps VRT packets
- * with PCAP record headers and optional link-layer headers (typically Ethernet).
+ * PCAP writer that wraps VRT packets in Ethernet/IPv4/UDP headers for
+ * analysis with Wireshark/tcpdump. The VITA 49 dissector will automatically
+ * decode packets on the configured UDP port (default 4991).
  *
  * Use cases:
  * - Capture live VRT streams to PCAP for analysis with Wireshark/tcpdump
@@ -36,9 +37,10 @@ namespace vrtigo::utils::pcapio {
  * **API matches VRTFileWriter patterns for consistency.**
  *
  * Features:
- * - Automatic PCAP global header generation
- * - Automatic timestamp generation (microsecond precision)
- * - Configurable link-layer header size
+ * - Proper Ethernet + IPv4 + UDP encapsulation (42-byte header)
+ * - Configurable IP addresses and UDP ports
+ * - Optional VRT timestamp extraction for accurate pcap timing
+ * - Automatic IP header checksum calculation
  * - Implements PacketWriter concept for write_all_packets() helpers
  * - Buffered writes for performance
  *
@@ -46,8 +48,11 @@ namespace vrtigo::utils::pcapio {
  *
  * Example usage:
  * @code
- * // Create PCAP with Ethernet encapsulation (14-byte headers)
+ * // Create PCAP with default settings (port 4991, dummy IPs)
  * PCAPVRTWriter writer("output.pcap");
+ *
+ * // Or with custom settings
+ * PCAPVRTWriter writer("output.pcap", 5000, 50000, "192.168.1.100", "192.168.1.200");
  *
  * // Write VRT packets
  * VRTFileReader<> reader("input.vrt");
@@ -63,32 +68,42 @@ namespace vrtigo::utils::pcapio {
 class PCAPVRTWriter {
 public:
     /**
-     * @brief Create PCAP file for writing VRT packets
+     * @brief Create PCAP file for writing VRT packets with UDP encapsulation
      *
      * Creates a new PCAP file and writes the global header.
      * If file exists, it will be truncated.
      *
      * @param filepath Path to PCAP file to create
-     * @param link_header_size Bytes of link-layer header per packet (default: 14 for Ethernet)
+     * @param dst_port Destination UDP port (default: 4991, VITA 49 standard)
+     * @param src_port Source UDP port (default: 50000)
+     * @param src_ip Source IP address string (default: "10.0.0.1")
+     * @param dst_ip Destination IP address string (default: "10.0.0.2")
      * @param snaplen Maximum packet length in PCAP (default: 65535)
      * @throws std::runtime_error if file cannot be created
-     * @throws std::invalid_argument if link_header_size exceeds MAX_LINK_HEADER_SIZE
+     * @throws std::invalid_argument if IP address cannot be parsed
      */
-    explicit PCAPVRTWriter(const char* filepath, size_t link_header_size = 14,
-                           uint32_t snaplen = 65535)
+    explicit PCAPVRTWriter(const char* filepath, uint16_t dst_port = 4991,
+                           uint16_t src_port = 50000, const std::string& src_ip = "10.0.0.1",
+                           const std::string& dst_ip = "10.0.0.2", uint32_t snaplen = 65535)
         : fd_(-1),
           packets_written_(0),
           bytes_written_(0),
-          link_header_size_(link_header_size),
+          ip_identification_(0),
           snaplen_(snaplen),
           write_buffer_{},
           buffer_pos_(0) {
-        // Validate link header size to prevent buffer overruns
-        if (link_header_size_ > MAX_LINK_HEADER_SIZE) {
-            throw std::invalid_argument("link_header_size (" + std::to_string(link_header_size_) +
-                                        ") exceeds maximum (" +
-                                        std::to_string(MAX_LINK_HEADER_SIZE) + ")");
+        // Parse and validate IP addresses
+        auto parsed_src = parse_ipv4(src_ip);
+        auto parsed_dst = parse_ipv4(dst_ip);
+        if (!parsed_src.has_value() || !parsed_dst.has_value()) {
+            throw std::invalid_argument("Invalid IP address format");
         }
+        src_ip_ = *parsed_src;
+        dst_ip_ = *parsed_dst;
+
+        // Store ports in network byte order
+        src_port_ = host_to_network16(src_port);
+        dst_port_ = host_to_network16(dst_port);
 
         // Open file for writing (create or truncate)
         fd_ = ::open(filepath, O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -106,17 +121,21 @@ public:
     }
 
     /**
-     * @brief Create PCAP file for writing VRT packets
+     * @brief Create PCAP file for writing VRT packets with UDP encapsulation
      *
      * @param filepath Path to PCAP file to create
-     * @param link_header_size Bytes of link-layer header per packet (default: 14 for Ethernet)
+     * @param dst_port Destination UDP port (default: 4991, VITA 49 standard)
+     * @param src_port Source UDP port (default: 50000)
+     * @param src_ip Source IP address string (default: "10.0.0.1")
+     * @param dst_ip Destination IP address string (default: "10.0.0.2")
      * @param snaplen Maximum packet length in PCAP (default: 65535)
      * @throws std::runtime_error if file cannot be created
-     * @throws std::invalid_argument if link_header_size exceeds MAX_LINK_HEADER_SIZE
+     * @throws std::invalid_argument if IP address cannot be parsed
      */
-    explicit PCAPVRTWriter(const std::string& filepath, size_t link_header_size = 14,
-                           uint32_t snaplen = 65535)
-        : PCAPVRTWriter(filepath.c_str(), link_header_size, snaplen) {}
+    explicit PCAPVRTWriter(const std::string& filepath, uint16_t dst_port = 4991,
+                           uint16_t src_port = 50000, const std::string& src_ip = "10.0.0.1",
+                           const std::string& dst_ip = "10.0.0.2", uint32_t snaplen = 65535)
+        : PCAPVRTWriter(filepath.c_str(), dst_port, src_port, src_ip, dst_ip, snaplen) {}
 
     /**
      * @brief Destructor - flushes and closes file
@@ -137,7 +156,11 @@ public:
         : fd_(other.fd_),
           packets_written_(other.packets_written_),
           bytes_written_(other.bytes_written_),
-          link_header_size_(other.link_header_size_),
+          ip_identification_(other.ip_identification_),
+          src_ip_(other.src_ip_),
+          dst_ip_(other.dst_ip_),
+          src_port_(other.src_port_),
+          dst_port_(other.dst_port_),
           snaplen_(other.snaplen_),
           write_buffer_(std::move(other.write_buffer_)),
           buffer_pos_(other.buffer_pos_) {
@@ -153,7 +176,11 @@ public:
             fd_ = other.fd_;
             packets_written_ = other.packets_written_;
             bytes_written_ = other.bytes_written_;
-            link_header_size_ = other.link_header_size_;
+            ip_identification_ = other.ip_identification_;
+            src_ip_ = other.src_ip_;
+            dst_ip_ = other.dst_ip_;
+            src_port_ = other.src_port_;
+            dst_port_ = other.dst_port_;
             snaplen_ = other.snaplen_;
             write_buffer_ = std::move(other.write_buffer_);
             buffer_pos_ = other.buffer_pos_;
@@ -165,24 +192,50 @@ public:
     /**
      * @brief Write VRT packet to PCAP file
      *
-     * Wraps the VRT packet with PCAP record header and link-layer header,
+     * Wraps the VRT packet with PCAP record header and Ethernet/IPv4/UDP headers,
      * then writes to file. Uses internal buffering for performance.
      *
      * @param pkt PacketVariant containing VRT packet (always valid)
      * @return true on success, false on I/O error
      *
-     * @note Timestamps are generated automatically using system time
+     * @note Uses VRT packet timestamp if available, otherwise falls back to system time
      */
     bool write_packet(const vrtigo::PacketVariant& pkt) noexcept {
-        // Get packet buffer
-        // PacketVariant now only contains valid packets (dynamic::DataPacketView or
-        // dynamic::ContextPacketView)
+        // Get packet buffer and optional VRT timestamp
         std::span<const uint8_t> vrt_bytes;
+        uint32_t vrt_ts_sec = 0;
+        uint32_t vrt_ts_frac = 0;
+        bool has_vrt_timestamp = false;
+
         std::visit(
-            [&vrt_bytes](auto&& p) {
+            [&](auto&& p) {
                 using T = std::decay_t<decltype(p)>;
                 if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacketView>) {
                     vrt_bytes = p.as_bytes();
+                    // Extract VRT timestamp if present
+                    if (auto ts = p.timestamp()) {
+                        // Try to narrow to UTC real_time for best conversion
+                        if (auto utc_ts = ts->template as<TsiType::utc, TsfType::real_time>()) {
+                            // Use chrono conversion for accurate microseconds
+                            auto tp = utc_ts->to_chrono();
+                            auto duration = tp.time_since_epoch();
+                            auto secs = std::chrono::duration_cast<std::chrono::seconds>(duration);
+                            auto usecs = std::chrono::duration_cast<std::chrono::microseconds>(
+                                duration - secs);
+                            vrt_ts_sec = static_cast<uint32_t>(secs.count());
+                            vrt_ts_frac = static_cast<uint32_t>(usecs.count());
+                            has_vrt_timestamp = true;
+                        } else if (ts->has_tsi()) {
+                            // Fallback: use raw values
+                            vrt_ts_sec = ts->tsi();
+                            has_vrt_timestamp = true;
+                            if (ts->has_tsf() && ts->tsf_kind() == TsfType::real_time) {
+                                // Convert picoseconds to microseconds
+                                constexpr uint64_t PICOS_PER_MICRO = 1'000'000ULL;
+                                vrt_ts_frac = static_cast<uint32_t>(ts->tsf() / PICOS_PER_MICRO);
+                            }
+                        }
+                    }
                 } else if constexpr (std::is_same_v<T, vrtigo::dynamic::ContextPacketView>) {
                     vrt_bytes = std::span<const uint8_t>{p.context_buffer(), p.size_bytes()};
                 }
@@ -193,24 +246,67 @@ public:
             return false;
         }
 
+        // Calculate sizes
+        size_t udp_payload_size = vrt_bytes.size();
+        size_t udp_length = sizeof(UDPHeader) + udp_payload_size;
+        size_t ip_total_length = sizeof(IPv4Header) + udp_length;
+        size_t total_frame_size = UDP_ENCAP_HEADER_SIZE + udp_payload_size;
+
         // Check if packet exceeds snaplen
-        size_t total_size = link_header_size_ + vrt_bytes.size();
-        if (total_size > snaplen_) {
-            return false; // Packet too large
+        if (total_frame_size > snaplen_) {
+            return false;
         }
 
-        // Generate timestamp (microseconds since epoch)
-        auto now = std::chrono::system_clock::now();
-        auto duration = now.time_since_epoch();
-        auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
-        auto micros = std::chrono::duration_cast<std::chrono::microseconds>(duration - seconds);
+        // Determine timestamp for PCAP record (prefer VRT timestamp, fall back to system time)
+        uint32_t ts_sec, ts_usec;
+        if (has_vrt_timestamp) {
+            ts_sec = vrt_ts_sec;
+            ts_usec = vrt_ts_frac;
+        } else {
+            auto now = std::chrono::system_clock::now();
+            auto duration = now.time_since_epoch();
+            auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
+            auto micros = std::chrono::duration_cast<std::chrono::microseconds>(duration - seconds);
+            ts_sec = static_cast<uint32_t>(seconds.count());
+            ts_usec = static_cast<uint32_t>(micros.count());
+        }
 
         // Build PCAP packet record header
         PCAPRecordHeader record_header{
-            .ts_sec = static_cast<uint32_t>(seconds.count()),
-            .ts_usec = static_cast<uint32_t>(micros.count()),
-            .incl_len = static_cast<uint32_t>(total_size),
-            .orig_len = static_cast<uint32_t>(total_size),
+            .ts_sec = ts_sec,
+            .ts_usec = ts_usec,
+            .incl_len = static_cast<uint32_t>(total_frame_size),
+            .orig_len = static_cast<uint32_t>(total_frame_size),
+        };
+
+        // Build Ethernet header
+        EthernetHeader eth_header{
+            .dst_mac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x02}, // Dummy destination
+            .src_mac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x01}, // Dummy source
+            .ethertype = host_to_network16(ETHERTYPE_IPV4_HOST),
+        };
+
+        // Build IPv4 header
+        IPv4Header ip_header{
+            .version_ihl = 0x45, // IPv4, 5 words (20 bytes)
+            .dscp_ecn = 0,
+            .total_length = host_to_network16(static_cast<uint16_t>(ip_total_length)),
+            .identification = host_to_network16(ip_identification_++),
+            .flags_fragment = host_to_network16(0x4000), // Don't fragment
+            .ttl = IP_DEFAULT_TTL,
+            .protocol = IP_PROTOCOL_UDP,
+            .checksum = 0, // Calculated below
+            .src_ip = src_ip_,
+            .dst_ip = dst_ip_,
+        };
+        ip_header.checksum = calculate_ip_checksum(&ip_header);
+
+        // Build UDP header
+        UDPHeader udp_header{
+            .src_port = src_port_,
+            .dst_port = dst_port_,
+            .length = host_to_network16(static_cast<uint16_t>(udp_length)),
+            .checksum = 0, // UDP checksum optional for IPv4
         };
 
         // Write PCAP record header
@@ -219,16 +315,22 @@ public:
             return false;
         }
 
-        // Write dummy link-layer header (all zeros)
-        // Note: link_header_size_ validated <= MAX_LINK_HEADER_SIZE in constructor
-        if (link_header_size_ > 0 && link_header_size_ <= MAX_LINK_HEADER_SIZE) {
-            std::array<uint8_t, MAX_LINK_HEADER_SIZE> dummy_header{};
-            if (!write_to_buffer(dummy_header.data(), link_header_size_)) {
-                return false;
-            }
+        // Write Ethernet header
+        if (!write_to_buffer(reinterpret_cast<const uint8_t*>(&eth_header), sizeof(eth_header))) {
+            return false;
         }
 
-        // Write VRT packet
+        // Write IPv4 header
+        if (!write_to_buffer(reinterpret_cast<const uint8_t*>(&ip_header), sizeof(ip_header))) {
+            return false;
+        }
+
+        // Write UDP header
+        if (!write_to_buffer(reinterpret_cast<const uint8_t*>(&udp_header), sizeof(udp_header))) {
+            return false;
+        }
+
+        // Write VRT packet payload
         if (!write_to_buffer(vrt_bytes.data(), vrt_bytes.size())) {
             return false;
         }
@@ -276,20 +378,29 @@ public:
     bool is_open() const noexcept { return fd_ >= 0; }
 
     /**
-     * @brief Get configured link-layer header size
-     */
-    size_t link_header_size() const noexcept { return link_header_size_; }
-
-    /**
      * @brief Get configured snaplen (maximum packet length)
      */
     uint32_t snaplen() const noexcept { return snaplen_; }
+
+    /**
+     * @brief Get configured destination UDP port (host byte order)
+     */
+    uint16_t dst_port() const noexcept { return network_to_host16(dst_port_); }
+
+    /**
+     * @brief Get configured source UDP port (host byte order)
+     */
+    uint16_t src_port() const noexcept { return network_to_host16(src_port_); }
 
 private:
     int fd_;                                  ///< File descriptor
     size_t packets_written_;                  ///< Number of packets written
     size_t bytes_written_;                    ///< Total bytes written (excluding buffer)
-    size_t link_header_size_;                 ///< Bytes of link-layer header per packet
+    uint16_t ip_identification_;              ///< IP identification counter
+    uint32_t src_ip_;                         ///< Source IP (network byte order)
+    uint32_t dst_ip_;                         ///< Destination IP (network byte order)
+    uint16_t src_port_;                       ///< Source UDP port (network byte order)
+    uint16_t dst_port_;                       ///< Destination UDP port (network byte order)
     uint32_t snaplen_;                        ///< Maximum packet length
     std::array<uint8_t, 65536> write_buffer_; ///< Internal write buffer
     size_t buffer_pos_;                       ///< Current position in write buffer

@@ -58,9 +58,9 @@ TEST(PCAPWriterTest, WriteSinglePacket) {
     // Verify file size:
     // 24 bytes: PCAP global header
     // 16 bytes: PCAP packet record header
-    // 14 bytes: Ethernet link-layer header
+    // 42 bytes: Ethernet + IPv4 + UDP headers
     // 48 bytes: VRT packet (2 words header + stream ID, 10 words payload = 12 words * 4)
-    size_t expected_min = 24 + 16 + 14 + (2 + 10) * 4;
+    size_t expected_min = 24 + 16 + 42 + (2 + 10) * 4;
     EXPECT_GE(std::filesystem::file_size(path), expected_min);
 
     // Cleanup
@@ -91,27 +91,24 @@ TEST(PCAPWriterTest, WriteMultiplePackets) {
     std::filesystem::remove(path);
 }
 
-TEST(PCAPWriterTest, RawLinkType) {
-    std::filesystem::path path = "test_pcap_write_raw.pcap";
+TEST(PCAPWriterTest, CustomPorts) {
+    std::filesystem::path path = "test_pcap_write_custom_ports.pcap";
 
-    // Write with no link-layer header
+    // Write with custom UDP ports
     {
-        PCAPVRTWriter writer(path.c_str(), 0);
+        PCAPVRTWriter writer(path.c_str(), 5000, 60000);
 
         auto vrt_pkt = create_simple_data_packet(0x99999999);
         auto pkt_result = parse_test_packet(vrt_pkt);
         ASSERT_TRUE(pkt_result.has_value());
 
         EXPECT_TRUE(writer.write_packet(pkt_result.value()));
-        EXPECT_EQ(writer.link_header_size(), 0);
+        EXPECT_EQ(writer.dst_port(), 5000);
+        EXPECT_EQ(writer.src_port(), 60000);
     }
 
-    // Verify smaller file size (no link-layer header):
-    // 24 bytes: PCAP global header
-    // 16 bytes: PCAP packet record header
-    // 48 bytes: VRT packet (2 + 10 words = 12 words * 4 bytes)
-    size_t expected_min = 24 + 16 + (2 + 10) * 4;
-    EXPECT_GE(std::filesystem::file_size(path), expected_min);
+    // Verify file exists
+    EXPECT_TRUE(std::filesystem::exists(path));
 
     // Cleanup
     std::filesystem::remove(path);
@@ -201,13 +198,15 @@ TEST(PCAPWriterTest, RoundTripMultiplePackets) {
     std::filesystem::remove(path);
 }
 
-TEST(PCAPWriterTest, RoundTripRawLinkType) {
-    std::filesystem::path path = "test_pcap_roundtrip_raw.pcap";
+TEST(PCAPWriterTest, RoundTripCustomPorts) {
+    std::filesystem::path path = "test_pcap_roundtrip_custom.pcap";
 
-    // Write with no link header
+    // Write with custom ports
     uint32_t expected_stream_id = 0x88888888;
+    uint16_t expected_dst_port = 5000;
+    uint16_t expected_src_port = 60000;
     {
-        PCAPVRTWriter writer(path.c_str(), 0);
+        PCAPVRTWriter writer(path.c_str(), expected_dst_port, expected_src_port);
 
         auto vrt_pkt = create_simple_data_packet(expected_stream_id);
         auto pkt_result = parse_test_packet(vrt_pkt);
@@ -216,9 +215,9 @@ TEST(PCAPWriterTest, RoundTripRawLinkType) {
         EXPECT_TRUE(writer.write_packet(*pkt_result));
     }
 
-    // Read with no link header
+    // Read back and verify ports are extracted
     {
-        PCAPVRTReader<> reader(path.c_str(), 0);
+        PCAPVRTReader<> reader(path.c_str());
 
         auto pkt_result = reader.read_next_packet();
         ASSERT_TRUE(pkt_result.has_value());
@@ -227,6 +226,74 @@ TEST(PCAPWriterTest, RoundTripRawLinkType) {
         ASSERT_NE(data_pkt, nullptr);
 
         EXPECT_EQ(data_pkt->stream_id().value(), expected_stream_id);
+
+        // Verify reader extracted correct ports
+        EXPECT_EQ(reader.last_src_port(), expected_src_port);
+        EXPECT_EQ(reader.last_dst_port(), expected_dst_port);
+    }
+
+    // Cleanup
+    std::filesystem::remove(path);
+}
+
+TEST(PCAPWriterTest, RoundTripIPAddresses) {
+    std::filesystem::path path = "test_pcap_roundtrip_ips.pcap";
+
+    // Write with custom IPs
+    std::string expected_src_ip = "192.168.10.20";
+    std::string expected_dst_ip = "192.168.10.30";
+    {
+        PCAPVRTWriter writer(path.c_str(), 4991, 50000, expected_src_ip, expected_dst_ip);
+
+        auto vrt_pkt = create_simple_data_packet(0x12345678);
+        auto pkt_result = parse_test_packet(vrt_pkt);
+        ASSERT_TRUE(pkt_result.has_value());
+
+        EXPECT_TRUE(writer.write_packet(*pkt_result));
+    }
+
+    // Read back and verify IPs
+    {
+        PCAPVRTReader<> reader(path.c_str());
+
+        auto pkt_result = reader.read_next_packet();
+        ASSERT_TRUE(pkt_result.has_value());
+
+        // Verify IPs match (in network byte order)
+        EXPECT_EQ(reader.last_src_ip(), *parse_ipv4(expected_src_ip));
+        EXPECT_EQ(reader.last_dst_ip(), *parse_ipv4(expected_dst_ip));
+    }
+
+    // Cleanup
+    std::filesystem::remove(path);
+}
+
+TEST(PCAPWriterTest, ReaderTimestampExtraction) {
+    std::filesystem::path path = "test_pcap_timestamp.pcap";
+
+    // Write a packet
+    {
+        PCAPVRTWriter writer(path.c_str());
+
+        auto vrt_pkt = create_simple_data_packet(0xAAAABBBB);
+        auto pkt_result = parse_test_packet(vrt_pkt);
+        ASSERT_TRUE(pkt_result.has_value());
+
+        EXPECT_TRUE(writer.write_packet(*pkt_result));
+    }
+
+    // Read back and verify timestamp is non-zero
+    {
+        PCAPVRTReader<> reader(path.c_str());
+
+        // Verify microsecond precision (default PCAP format)
+        EXPECT_FALSE(reader.is_nanosecond_precision());
+
+        auto pkt_result = reader.read_next_packet();
+        ASSERT_TRUE(pkt_result.has_value());
+
+        // Timestamp should be set (non-zero for any reasonable time)
+        EXPECT_GT(reader.last_timestamp_sec(), 0u);
     }
 
     // Cleanup
@@ -246,28 +313,27 @@ TEST(PCAPWriterTest, FileCreationError) {
     EXPECT_THROW({ PCAPVRTWriter writer("/nonexistent/directory/test.pcap"); }, std::runtime_error);
 }
 
-TEST(PCAPWriterTest, OversizedLinkHeaderRejected) {
-    std::filesystem::path path = "test_pcap_oversized_header.pcap";
+TEST(PCAPWriterTest, InvalidIPAddressRejected) {
+    std::filesystem::path path = "test_pcap_invalid_ip.pcap";
 
-    // Try to create writer with link header size exceeding maximum
+    // Try to create writer with invalid IP address
     EXPECT_THROW(
-        { PCAPVRTWriter writer(path.c_str(), MAX_LINK_HEADER_SIZE + 1); }, std::invalid_argument);
+        { PCAPVRTWriter writer(path.c_str(), 4991, 50000, "invalid.ip.address"); },
+        std::invalid_argument);
 
-    // Verify file was not created (constructor should fail before opening file)
-    // Note: file might exist if open() succeeded before validation - this tests current behavior
+    // Verify file was not created
     if (std::filesystem::exists(path)) {
         std::filesystem::remove(path);
     }
 }
 
-TEST(PCAPWriterTest, MaxLinkHeaderAccepted) {
-    std::filesystem::path path = "test_pcap_max_header.pcap";
+TEST(PCAPWriterTest, CustomIPAddresses) {
+    std::filesystem::path path = "test_pcap_custom_ip.pcap";
 
-    // Create writer with maximum allowed link header size
+    // Create writer with custom IP addresses
     {
-        PCAPVRTWriter writer(path.c_str(), MAX_LINK_HEADER_SIZE);
+        PCAPVRTWriter writer(path.c_str(), 4991, 50000, "192.168.1.100", "192.168.1.200");
         EXPECT_TRUE(writer.is_open());
-        EXPECT_EQ(writer.link_header_size(), MAX_LINK_HEADER_SIZE);
 
         // Write a packet to verify it works
         auto vrt_pkt = create_simple_data_packet(0x12345678);

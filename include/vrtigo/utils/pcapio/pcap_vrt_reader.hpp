@@ -31,14 +31,19 @@ namespace vrtigo::utils::pcapio {
  *
  * **API matches VRTFileReader for drop-in compatibility.**
  *
+ * **Auto-detects UDP encapsulation:** When EtherType is IPv4 (0x0800), automatically
+ * skips the additional IP and UDP headers (28 bytes). This allows reading both:
+ * - Raw VRT in Ethernet frames (14-byte link header)
+ * - VRT in UDP/IP/Ethernet frames (42-byte total header)
+ *
  * Assumptions for test data:
  * - All packets use same link-layer type
  * - Packets are complete (not truncated by snaplen)
- * - Link-layer header size is constant
+ * - Link-layer header size is constant (auto-detection adds IP/UDP if present)
  * - Both little-endian and big-endian PCAP files are supported
  *
  * Common link-layer header sizes:
- * - Ethernet: 14 bytes (default)
+ * - Ethernet: 14 bytes (default) - auto-detects UDP encapsulation
  * - Raw IP: 0 bytes (no link-layer header)
  * - Linux cooked capture (SLL): 16 bytes
  *
@@ -87,6 +92,13 @@ public:
           link_header_size_(link_header_size),
           pcap_global_header_size_(PCAP_GLOBAL_HEADER_SIZE),
           big_endian_pcap_(false),
+          nanosecond_precision_(false),
+          last_ts_sec_(0),
+          last_ts_usec_(0),
+          last_src_port_(0),
+          last_dst_port_(0),
+          last_src_ip_(0),
+          last_dst_ip_(0),
           vrt_buffer_{} {
         // Validate link header size
         if (link_header_size_ > MAX_LINK_HEADER_SIZE) {
@@ -150,6 +162,13 @@ public:
           link_header_size_(other.link_header_size_),
           pcap_global_header_size_(other.pcap_global_header_size_),
           big_endian_pcap_(other.big_endian_pcap_),
+          nanosecond_precision_(other.nanosecond_precision_),
+          last_ts_sec_(other.last_ts_sec_),
+          last_ts_usec_(other.last_ts_usec_),
+          last_src_port_(other.last_src_port_),
+          last_dst_port_(other.last_dst_port_),
+          last_src_ip_(other.last_src_ip_),
+          last_dst_ip_(other.last_dst_ip_),
           vrt_buffer_(std::move(other.vrt_buffer_)) {
         other.file_ = nullptr;
     }
@@ -166,6 +185,13 @@ public:
             link_header_size_ = other.link_header_size_;
             pcap_global_header_size_ = other.pcap_global_header_size_;
             big_endian_pcap_ = other.big_endian_pcap_;
+            nanosecond_precision_ = other.nanosecond_precision_;
+            last_ts_sec_ = other.last_ts_sec_;
+            last_ts_usec_ = other.last_ts_usec_;
+            last_src_port_ = other.last_src_port_;
+            last_dst_port_ = other.last_dst_port_;
+            last_src_ip_ = other.last_src_ip_;
+            last_dst_ip_ = other.last_dst_ip_;
             vrt_buffer_ = std::move(other.vrt_buffer_);
             other.file_ = nullptr;
         }
@@ -210,6 +236,16 @@ public:
             // Normalize record header fields to host endianness
             record_header = normalize_record_header(record_header);
 
+            // Store PCAP timestamp
+            last_ts_sec_ = record_header.ts_sec;
+            last_ts_usec_ = record_header.ts_usec;
+
+            // Reset network metadata (will be set if UDP encapsulated)
+            last_src_port_ = 0;
+            last_dst_port_ = 0;
+            last_src_ip_ = 0;
+            last_dst_ip_ = 0;
+
             // Extract captured length
             uint32_t incl_len = record_header.incl_len;
 
@@ -228,18 +264,136 @@ public:
                 continue;
             }
 
-            // Skip link-layer header
-            if (link_header_size_ > 0) {
+            // Read and skip link-layer header, detecting UDP encapsulation
+            size_t total_header_size = link_header_size_;
+            size_t vrt_size_from_headers =
+                0; // VRT size derived from IP/UDP lengths (0 = use captured size)
+
+            if (link_header_size_ >= sizeof(EthernetHeader)) {
+                // Read Ethernet header to check EtherType
+                EthernetHeader eth_header;
+                if (std::fread(&eth_header, sizeof(eth_header), 1, file_) != 1) {
+                    current_offset_ = std::ftell(file_);
+                    continue;
+                }
+
+                // Check for IPv4 encapsulation (EtherType 0x0800)
+                if (eth_header.ethertype == host_to_network16(ETHERTYPE_IPV4_HOST)) {
+                    // Need at least minimum IP header to read IHL
+                    if (incl_len < link_header_size_ + sizeof(IPv4Header)) {
+                        std::fseek(file_, incl_len - sizeof(EthernetHeader), SEEK_CUR);
+                        current_offset_ = std::ftell(file_);
+                        continue;
+                    }
+
+                    // Skip any remaining link header padding after Ethernet
+                    if (link_header_size_ > sizeof(EthernetHeader)) {
+                        std::fseek(file_, link_header_size_ - sizeof(EthernetHeader), SEEK_CUR);
+                    }
+
+                    // Read IPv4 header to extract IPs and check protocol
+                    IPv4Header ip_header;
+                    if (std::fread(&ip_header, sizeof(ip_header), 1, file_) != 1) {
+                        current_offset_ = std::ftell(file_);
+                        continue;
+                    }
+
+                    // Extract actual IP header length from IHL field (lower 4 bits, in 32-bit
+                    // words)
+                    size_t ip_header_len = (ip_header.version_ihl & 0x0F) * 4;
+                    if (ip_header_len < sizeof(IPv4Header)) {
+                        // Invalid IHL (must be at least 5 = 20 bytes) - skip packet
+                        std::fseek(file_, incl_len - link_header_size_ - sizeof(IPv4Header),
+                                   SEEK_CUR);
+                        current_offset_ = std::ftell(file_);
+                        continue;
+                    }
+
+                    // Validate IP total_length field
+                    uint16_t ip_total_length = network_to_host16(ip_header.total_length);
+                    if (ip_total_length < ip_header_len + sizeof(UDPHeader)) {
+                        // IP total_length too small for UDP - skip packet
+                        std::fseek(file_, incl_len - link_header_size_ - sizeof(IPv4Header),
+                                   SEEK_CUR);
+                        current_offset_ = std::ftell(file_);
+                        continue;
+                    }
+
+                    // Revalidate incl_len with actual IP header size
+                    if (incl_len < link_header_size_ + ip_header_len + sizeof(UDPHeader)) {
+                        // Not enough data for IP header + UDP - skip packet
+                        std::fseek(file_, incl_len - link_header_size_ - sizeof(IPv4Header),
+                                   SEEK_CUR);
+                        current_offset_ = std::ftell(file_);
+                        continue;
+                    }
+
+                    // Only process UDP packets (protocol 17)
+                    if (ip_header.protocol != IP_PROTOCOL_UDP) {
+                        // Not UDP - skip rest of packet
+                        std::fseek(file_, incl_len - link_header_size_ - sizeof(IPv4Header),
+                                   SEEK_CUR);
+                        current_offset_ = std::ftell(file_);
+                        continue;
+                    }
+
+                    last_src_ip_ = ip_header.src_ip;
+                    last_dst_ip_ = ip_header.dst_ip;
+
+                    // Skip any IP options (bytes beyond the fixed 20-byte header)
+                    if (ip_header_len > sizeof(IPv4Header)) {
+                        std::fseek(file_, ip_header_len - sizeof(IPv4Header), SEEK_CUR);
+                    }
+
+                    // Read UDP header to extract ports
+                    UDPHeader udp_header;
+                    if (std::fread(&udp_header, sizeof(udp_header), 1, file_) != 1) {
+                        current_offset_ = std::ftell(file_);
+                        continue;
+                    }
+                    last_src_port_ = network_to_host16(udp_header.src_port);
+                    last_dst_port_ = network_to_host16(udp_header.dst_port);
+
+                    // Validate UDP length field
+                    uint16_t udp_length = network_to_host16(udp_header.length);
+                    if (udp_length < sizeof(UDPHeader)) {
+                        // UDP length too small - skip packet
+                        std::fseek(file_,
+                                   incl_len - link_header_size_ - ip_header_len - sizeof(UDPHeader),
+                                   SEEK_CUR);
+                        current_offset_ = std::ftell(file_);
+                        continue;
+                    }
+
+                    // Calculate VRT size from protocol headers (use minimum of IP and UDP indicated
+                    // sizes)
+                    size_t ip_indicated_payload =
+                        ip_total_length - ip_header_len - sizeof(UDPHeader);
+                    size_t udp_indicated_payload = udp_length - sizeof(UDPHeader);
+                    vrt_size_from_headers = std::min(ip_indicated_payload, udp_indicated_payload);
+
+                    total_header_size = link_header_size_ + ip_header_len + sizeof(UDPHeader);
+                } else {
+                    // Not IPv4 - skip remaining link header only
+                    if (link_header_size_ > sizeof(EthernetHeader)) {
+                        std::fseek(file_, link_header_size_ - sizeof(EthernetHeader), SEEK_CUR);
+                    }
+                }
+            } else if (link_header_size_ > 0) {
                 std::fseek(file_, link_header_size_, SEEK_CUR);
             }
 
             // Calculate VRT packet size
-            size_t vrt_size = incl_len - link_header_size_;
+            // Use protocol-indicated size if available, bounded by captured bytes
+            size_t captured_payload = incl_len - total_header_size;
+            size_t vrt_size = (vrt_size_from_headers > 0)
+                                  ? std::min(vrt_size_from_headers, captured_payload)
+                                  : captured_payload;
 
             // Check if VRT packet size is valid
             if (vrt_size < 4 || vrt_size > vrt_buffer_.size()) {
                 // VRT packet too small or too large - skip and try next
-                std::fseek(file_, vrt_size, SEEK_CUR);
+                std::fseek(file_, captured_payload, SEEK_CUR);
                 current_offset_ = std::ftell(file_);
                 continue;
             }
@@ -253,6 +407,11 @@ public:
                 return vrtigo::unexpected(utils::ReaderError{utils::IOError{
                     utils::IOError::Kind::read_error, errno, PacketType::signal_data_no_id,
                     vrtigo::detail::DecodedHeader{}, std::span<const uint8_t>()}});
+            }
+
+            // Skip any trailing captured bytes beyond protocol-indicated payload
+            if (vrt_size < captured_payload) {
+                std::fseek(file_, captured_payload - vrt_size, SEEK_CUR);
             }
 
             // Update position and counter
@@ -384,6 +543,55 @@ public:
      */
     void set_link_header_size(size_t size) noexcept { link_header_size_ = size; }
 
+    /**
+     * @brief Check if timestamps use nanosecond precision
+     *
+     * @return true if PCAP file uses nanosecond timestamps, false for microsecond
+     */
+    bool is_nanosecond_precision() const noexcept { return nanosecond_precision_; }
+
+    /**
+     * @brief Get PCAP timestamp seconds from last read packet
+     *
+     * @return Seconds since epoch from PCAP record header
+     */
+    uint32_t last_timestamp_sec() const noexcept { return last_ts_sec_; }
+
+    /**
+     * @brief Get PCAP timestamp sub-seconds from last read packet
+     *
+     * @return Microseconds or nanoseconds (check is_nanosecond_precision())
+     */
+    uint32_t last_timestamp_subsec() const noexcept { return last_ts_usec_; }
+
+    /**
+     * @brief Get source UDP port from last read packet
+     *
+     * @return Source port in host byte order, or 0 if not UDP encapsulated
+     */
+    uint16_t last_src_port() const noexcept { return last_src_port_; }
+
+    /**
+     * @brief Get destination UDP port from last read packet
+     *
+     * @return Destination port in host byte order, or 0 if not UDP encapsulated
+     */
+    uint16_t last_dst_port() const noexcept { return last_dst_port_; }
+
+    /**
+     * @brief Get source IP address from last read packet
+     *
+     * @return Source IP in network byte order, or 0 if not UDP encapsulated
+     */
+    uint32_t last_src_ip() const noexcept { return last_src_ip_; }
+
+    /**
+     * @brief Get destination IP address from last read packet
+     *
+     * @return Destination IP in network byte order, or 0 if not UDP encapsulated
+     */
+    uint32_t last_dst_ip() const noexcept { return last_dst_ip_; }
+
 private:
     FILE* file_;                     ///< File handle
     size_t file_size_;               ///< Total file size in bytes
@@ -392,6 +600,13 @@ private:
     size_t link_header_size_;        ///< Bytes to skip per packet
     size_t pcap_global_header_size_; ///< Size of PCAP global header (24)
     bool big_endian_pcap_;           ///< True if PCAP file uses big-endian byte order
+    bool nanosecond_precision_;      ///< True if PCAP uses nanosecond timestamps
+    uint32_t last_ts_sec_;           ///< PCAP timestamp seconds of last packet
+    uint32_t last_ts_usec_;          ///< PCAP timestamp usec/nsec of last packet
+    uint16_t last_src_port_;         ///< Source UDP port of last packet (0 if not UDP)
+    uint16_t last_dst_port_;         ///< Destination UDP port of last packet (0 if not UDP)
+    uint32_t last_src_ip_;           ///< Source IP of last packet (0 if not UDP)
+    uint32_t last_dst_ip_;           ///< Destination IP of last packet (0 if not UDP)
     std::array<uint8_t, MaxPacketWords * vrt_word_size> vrt_buffer_; ///< VRT packet buffer
 
     /**
@@ -439,8 +654,9 @@ private:
             return false; // Not a valid PCAP file
         }
 
-        // Track endianness for later record header parsing
+        // Track endianness and precision for later record header parsing
         big_endian_pcap_ = is_big_endian_pcap(header.magic);
+        nanosecond_precision_ = vrtigo::utils::pcapio::is_nanosecond_precision(header.magic);
 
         // For testing purposes, we don't need to parse version, snaplen, etc.
         // Just validate that it's a PCAP file and position at first packet.
