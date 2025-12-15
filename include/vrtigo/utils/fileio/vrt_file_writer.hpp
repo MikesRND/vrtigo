@@ -3,13 +3,11 @@
 
 #pragma once
 
-#include "vrtigo/detail/packet_concepts.hpp"
 #include "vrtigo/detail/packet_variant.hpp"
-#include "vrtigo/utils/detail/writer_concepts.hpp"
-#include "vrtigo/utils/fileio/raw_vrt_file_writer.hpp"
+#include "vrtigo/utils/fileio/detail/raw_vrt_file_writer.hpp"
 #include "vrtigo/utils/fileio/writer_status.hpp"
 
-#include <variant>
+#include <span>
 
 #include <cerrno>
 #include <cstddef>
@@ -20,21 +18,15 @@ namespace vrtigo::utils::fileio {
  * @brief High-level VRT file writer with type safety
  *
  * Wraps RawVRTFileWriter to provide type-safe packet writing with
- * automatic validation. Accepts both compile-time packets (from
- * DataPacketBuilder or ContextPacketBuilder) and runtime packets
- * (from readers/parsers).
+ * automatic validation. Accepts both raw bytes and PacketVariants
+ * from the dynamic parsing path.
  *
  * Supported Packet Types:
+ * - Raw bytes: std::span<const uint8_t>
  * - PacketVariant (runtime packets from readers)
- * - dynamic::DataPacketView (runtime data packets)
- * - dynamic::ContextPacketView (runtime context packets)
- * - Any compile-time packet (from DataPacketBuilder or ContextPacketBuilder)
  *
- * Parse Error Handling:
- * - ParseResult errors are rejected (never written)
- * - write_packet() returns false immediately
- * - status() returns WriterStatus::invalid_packet
- * - No bytes written to file
+ * For compile-time packets (DataPacketBuilder/ContextPacketBuilder),
+ * call .as_bytes() and pass to the raw bytes overload.
  *
  * Error Propagation:
  * - Combines raw writer errors with high-level validation
@@ -70,91 +62,37 @@ public:
     VRTFileWriter& operator=(VRTFileWriter&&) noexcept = default;
 
     /**
+     * @brief Write raw packet bytes
+     *
+     * Writes raw VRT packet bytes to the file. No validation is performed;
+     * caller is responsible for ensuring bytes form a valid VRT packet.
+     *
+     * @param bytes Raw packet bytes to write
+     * @return true on success, false on I/O error
+     *
+     * @note The span contents are copied; caller's buffer can be reused immediately after return.
+     */
+    bool write_packet(std::span<const uint8_t> bytes) noexcept {
+        bool result = raw_writer_.write_packet(bytes);
+        if (result) {
+            high_level_status_ = WriterStatus::ready;
+        }
+        return result;
+    }
+
+    /**
      * @brief Write packet from variant
      *
-     * Writes a packet from a PacketVariant. If the variant holds
+     * Writes a packet from a PacketVariant (dynamic::DataPacketView or
+     * dynamic::ContextPacketView). Extracts raw bytes and delegates to
+     * raw bytes overload.
      *
      * @param packet The packet variant to write (always valid)
      * @return true on success, false on I/O error
      */
     bool write_packet(const PacketVariant& packet) noexcept {
-        // Write the packet using visitor pattern
-        // PacketVariant now only contains valid packets (dynamic::DataPacketView or
-        // dynamic::ContextPacketView)
-        bool result = std::visit(
-            [this](auto&& pkt) -> bool {
-                using T = std::decay_t<decltype(pkt)>;
-
-                if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacketView>) {
-                    return this->write_packet_impl(pkt);
-                } else if constexpr (std::is_same_v<T, vrtigo::dynamic::ContextPacketView>) {
-                    // dynamic::ContextPacketView uses context_buffer() instead of as_bytes()
-                    std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.size_bytes()};
-                    return this->raw_writer_.write_packet(bytes);
-                } else {
-                    return false; // Should never reach here
-                }
-            },
-            packet);
-
-        // Clear high-level status on successful write
-        if (result) {
-            high_level_status_ = WriterStatus::ready;
-        }
-
-        return result;
-    }
-
-    /**
-     * @brief Write data packet view
-     *
-     * @param packet The data packet to write
-     * @return true on success, false on error
-     */
-    bool write_packet(const vrtigo::dynamic::DataPacketView& packet) noexcept {
-        bool result = write_packet_impl(packet);
-        if (result) {
-            high_level_status_ = WriterStatus::ready;
-        }
-        return result;
-    }
-
-    /**
-     * @brief Write context packet view
-     *
-     * @param packet The context packet to write
-     * @return true on success, false on error
-     */
-    bool write_packet(const vrtigo::dynamic::ContextPacketView& packet) noexcept {
-        // dynamic::ContextPacketView uses context_buffer() instead of as_bytes()
-        std::span<const uint8_t> bytes{packet.context_buffer(), packet.size_bytes()};
-        bool result = raw_writer_.write_packet(bytes);
-        if (result) {
-            high_level_status_ = WriterStatus::ready;
-        }
-        return result;
-    }
-
-    /**
-     * @brief Write compile-time packet
-     *
-     * Accepts packets from DataPacketBuilder or ContextPacketBuilder,
-     * or any type satisfying CompileTimePacketLike concept. No conversion
-     * to variant needed.
-     *
-     * @tparam PacketType Type satisfying CompileTimePacketLike concept
-     * @param packet The packet to write
-     * @return true on success, false on error
-     */
-    template <typename PacketType>
-        requires vrtigo::CompileTimePacketLike<PacketType>
-    bool write_packet(const PacketType& packet) noexcept {
-        auto bytes = packet.as_bytes();
-        bool result = raw_writer_.write_packet(bytes);
-        if (result) {
-            high_level_status_ = WriterStatus::ready;
-        }
-        return result;
+        return vrtigo::detail::visit_packet_bytes(
+            packet, [this](std::span<const uint8_t> bytes) { return this->write_packet(bytes); });
     }
 
     /**
@@ -259,17 +197,6 @@ public:
 
 private:
     /**
-     * @brief Write runtime packet view
-     *
-     * Common implementation for dynamic::DataPacketView and dynamic::ContextPacketView.
-     */
-    template <typename PacketView>
-    bool write_packet_impl(const PacketView& packet) noexcept {
-        auto bytes = packet.as_bytes();
-        return raw_writer_.write_packet(bytes);
-    }
-
-    /**
      * @brief Map errno to WriterStatus
      *
      * @param err errno value
@@ -289,8 +216,8 @@ private:
         }
     }
 
-    RawVRTFileWriter<MaxPacketWords> raw_writer_; ///< Underlying raw writer
-    WriterStatus high_level_status_;              ///< High-level validation status
+    detail::RawVRTFileWriter<MaxPacketWords> raw_writer_; ///< Underlying raw writer
+    WriterStatus high_level_status_;                      ///< High-level validation status
 };
 
 } // namespace vrtigo::utils::fileio

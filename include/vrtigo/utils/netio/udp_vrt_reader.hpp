@@ -166,7 +166,8 @@ public:
         : socket_(other.socket_),
           owns_socket_(other.owns_socket_),
           scratch_buffer_(std::move(other.scratch_buffer_)),
-          status_(other.status_) {
+          status_(other.status_),
+          packets_read_(other.packets_read_) {
         other.socket_ = -1;
         other.owns_socket_ = false;
     }
@@ -180,6 +181,7 @@ public:
             owns_socket_ = other.owns_socket_;
             scratch_buffer_ = std::move(other.scratch_buffer_);
             status_ = other.status_;
+            packets_read_ = other.packets_read_;
             other.socket_ = -1;
             other.owns_socket_ = false;
         }
@@ -330,6 +332,17 @@ public:
     }
 
     /**
+     * @brief Read next datagram as raw bytes (no parsing)
+     *
+     * Reads the raw datagram bytes without validation or parsing. This is useful
+     * for low-level processing or when you want to defer validation.
+     *
+     * @return Span valid until next read call; empty span on error/timeout
+     * @note After empty span, check transport_status() for error details
+     */
+    std::span<const uint8_t> read_next_raw() noexcept { return read_next_datagram(); }
+
+    /**
      * @brief Get transport status from last receive operation
      *
      * Provides detailed information about the last datagram reception, including
@@ -379,6 +392,13 @@ public:
      * @return true if socket is open and not in error state
      */
     bool is_open() const noexcept { return socket_ >= 0 && !status_.is_terminal(); }
+
+    /**
+     * @brief Get number of packets read so far
+     *
+     * @return Count of successfully received datagrams
+     */
+    size_t packets_read() const noexcept { return packets_read_; }
 
     /**
      * @brief Get underlying socket file descriptor
@@ -492,6 +512,7 @@ private:
         // Successful receive
         status_.state = UDPTransportStatus::State::packet_ready;
         status_.bytes_received = static_cast<size_t>(bytes);
+        packets_read_++; // Increment packet counter
 
         // Decode header if we have at least 4 bytes
         if (bytes >= 4) {
@@ -511,6 +532,7 @@ private:
     bool owns_socket_; ///< Whether to close socket in destructor
     std::array<uint8_t, MaxPacketWords * 4> scratch_buffer_; ///< Internal datagram buffer
     UDPTransportStatus status_;                              ///< Status of last receive operation
+    size_t packets_read_ = 0;                                ///< Number of packets read
 };
 
 } // namespace vrtigo::utils::netio

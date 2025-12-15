@@ -211,16 +211,4 @@ concept HasPacketCount = requires(T& pkt) {
     { std::as_const(pkt).packet_count() } -> std::same_as<uint8_t>;
 };
 
-// ============================================================================
-// Legacy Aliases (deprecated, will be removed)
-// ============================================================================
-
-// PacketLike is now PacketMetadataLike
-template <typename T>
-concept PacketLike = PacketMetadataLike<T>;
-
-// AnyPacket is redundant with PacketMetadataLike
-template <typename T>
-concept AnyPacket = PacketMetadataLike<T>;
-
 } // namespace vrtigo

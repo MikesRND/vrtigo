@@ -16,6 +16,7 @@
 #include <unistd.h>
 
 #include "../../detail/buffer_io.hpp"
+#include "../../detail/header_decode.hpp"
 #include "../../detail/packet_variant.hpp"
 #include "../../types.hpp"
 #include "pcap_common.hpp"
@@ -190,79 +191,95 @@ public:
     }
 
     /**
-     * @brief Write VRT packet to PCAP file
+     * @brief Write VRT packet to PCAP file with explicit PCAP timestamp
      *
      * Wraps the VRT packet with PCAP record header and Ethernet/IPv4/UDP headers,
      * then writes to file. Uses internal buffering for performance.
      *
-     * @param pkt PacketVariant containing VRT packet (always valid)
+     * This is the most deterministic overload - timestamps are used exactly as provided.
+     *
+     * @param bytes VRT packet bytes to write
+     * @param ts_sec PCAP timestamp seconds (Unix epoch)
+     * @param ts_usec PCAP timestamp microseconds (0-999999)
      * @return true on success, false on I/O error
      *
-     * @note Uses VRT packet timestamp if available, otherwise falls back to system time
+     * @note The span contents are copied; caller's buffer can be reused immediately after return.
      */
-    bool write_packet(const vrtigo::PacketVariant& pkt) noexcept {
-        // Get packet buffer and optional VRT timestamp
-        std::span<const uint8_t> vrt_bytes;
-        uint32_t vrt_ts_sec = 0;
-        uint32_t vrt_ts_frac = 0;
+    bool write_packet(std::span<const uint8_t> bytes, uint32_t ts_sec, uint32_t ts_usec) noexcept {
+        return write_packet_impl(bytes, ts_sec, ts_usec);
+    }
+
+    /**
+     * @brief Write VRT packet to PCAP file, extracting timestamp from VRT header
+     *
+     * Parses the VRT header to extract TSI/TSF timestamp fields. If present,
+     * converts to PCAP epoch format. If no timestamp present, falls back to system time.
+     *
+     * @param bytes VRT packet bytes to write
+     * @return true on success, false on I/O error
+     *
+     * @note The span contents are copied; caller's buffer can be reused immediately after return.
+     * @note For deterministic timestamps, use the overload with explicit ts_sec/ts_usec parameters.
+     */
+    bool write_packet(std::span<const uint8_t> bytes) noexcept {
+        // Parse minimal VRT header to check for timestamp
+        if (bytes.size() < 4) {
+            return false; // Invalid packet - need at least header word
+        }
+
+        // Read header word
+        uint32_t header_word = vrtigo::detail::read_u32(bytes.data(), 0);
+        auto decoded = vrtigo::detail::decode_header(header_word);
+
+        uint32_t ts_sec = 0;
+        uint32_t ts_usec = 0;
         bool has_vrt_timestamp = false;
 
-        std::visit(
-            [&](auto&& p) {
-                using T = std::decay_t<decltype(p)>;
-                if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacketView>) {
-                    vrt_bytes = p.as_bytes();
-                    // Extract VRT timestamp if present
-                    if (auto ts = p.timestamp()) {
-                        // Try to narrow to UTC real_time for best conversion
-                        if (auto utc_ts = ts->template as<TsiType::utc, TsfType::real_time>()) {
-                            // Use chrono conversion for accurate microseconds
-                            auto tp = utc_ts->to_chrono();
-                            auto duration = tp.time_since_epoch();
-                            auto secs = std::chrono::duration_cast<std::chrono::seconds>(duration);
-                            auto usecs = std::chrono::duration_cast<std::chrono::microseconds>(
-                                duration - secs);
-                            vrt_ts_sec = static_cast<uint32_t>(secs.count());
-                            vrt_ts_frac = static_cast<uint32_t>(usecs.count());
-                            has_vrt_timestamp = true;
-                        } else if (ts->has_tsi()) {
-                            // Fallback: use raw values
-                            vrt_ts_sec = ts->tsi();
-                            has_vrt_timestamp = true;
-                            if (ts->has_tsf() && ts->tsf_kind() == TsfType::real_time) {
-                                // Convert picoseconds to microseconds
-                                constexpr uint64_t PICOS_PER_MICRO = 1'000'000ULL;
-                                vrt_ts_frac = static_cast<uint32_t>(ts->tsf() / PICOS_PER_MICRO);
-                            }
-                        }
-                    }
-                } else if constexpr (std::is_same_v<T, vrtigo::dynamic::ContextPacketView>) {
-                    vrt_bytes = std::span<const uint8_t>{p.context_buffer(), p.size_bytes()};
+        // Check if packet has TSI (integer timestamp)
+        if (decoded.tsi != TsiType::none) {
+            // Calculate offset to TSI field
+            size_t offset = 4; // After header word
+            if (decoded.type == PacketType::signal_data_no_id ||
+                decoded.type == PacketType::signal_data ||
+                decoded.type == PacketType::extension_data_no_id ||
+                decoded.type == PacketType::extension_data) {
+                // Stream ID present for types 1, 3 (signal_data, extension_data)
+                if (decoded.type == PacketType::signal_data ||
+                    decoded.type == PacketType::extension_data) {
+                    offset += 4;
                 }
-            },
-            pkt);
+            } else if (decoded.type == PacketType::context ||
+                       decoded.type == PacketType::extension_context) {
+                offset += 4; // Stream ID always present for context packets
+            }
 
-        if (vrt_bytes.empty()) {
-            return false;
+            if (decoded.has_class_id) {
+                offset += 8; // Class ID is 64 bits
+            }
+
+            // Read TSI (integer timestamp) - always 32 bits
+            if (offset + 4 <= bytes.size()) {
+                ts_sec = vrtigo::detail::read_u32(bytes.data(), offset);
+                has_vrt_timestamp = true;
+                offset += 4;
+
+                // Check if packet has TSF (fractional timestamp)
+                if (decoded.tsf != TsfType::none && offset + 8 <= bytes.size()) {
+                    uint64_t tsf = vrtigo::detail::read_u64(bytes.data(), offset);
+
+                    // Convert TSF to microseconds based on type
+                    if (decoded.tsf == TsfType::real_time) {
+                        // Real-time: picoseconds since last integer second
+                        constexpr uint64_t PICOS_PER_MICRO = 1'000'000ULL;
+                        ts_usec = static_cast<uint32_t>(tsf / PICOS_PER_MICRO);
+                    }
+                    // For other TSF types, leave ts_usec as 0
+                }
+            }
         }
 
-        // Calculate sizes
-        size_t udp_payload_size = vrt_bytes.size();
-        size_t udp_length = sizeof(UDPHeader) + udp_payload_size;
-        size_t ip_total_length = sizeof(IPv4Header) + udp_length;
-        size_t total_frame_size = UDP_ENCAP_HEADER_SIZE + udp_payload_size;
-
-        // Check if packet exceeds snaplen
-        if (total_frame_size > snaplen_) {
-            return false;
-        }
-
-        // Determine timestamp for PCAP record (prefer VRT timestamp, fall back to system time)
-        uint32_t ts_sec, ts_usec;
-        if (has_vrt_timestamp) {
-            ts_sec = vrt_ts_sec;
-            ts_usec = vrt_ts_frac;
-        } else {
+        // Fall back to system time if no VRT timestamp
+        if (!has_vrt_timestamp) {
             auto now = std::chrono::system_clock::now();
             auto duration = now.time_since_epoch();
             auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
@@ -271,72 +288,69 @@ public:
             ts_usec = static_cast<uint32_t>(micros.count());
         }
 
-        // Build PCAP packet record header
-        PCAPRecordHeader record_header{
-            .ts_sec = ts_sec,
-            .ts_usec = ts_usec,
-            .incl_len = static_cast<uint32_t>(total_frame_size),
-            .orig_len = static_cast<uint32_t>(total_frame_size),
-        };
+        return write_packet_impl(bytes, ts_sec, ts_usec);
+    }
 
-        // Build Ethernet header
-        EthernetHeader eth_header{
-            .dst_mac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x02}, // Dummy destination
-            .src_mac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x01}, // Dummy source
-            .ethertype = host_to_network16(ETHERTYPE_IPV4_HOST),
-        };
+    /**
+     * @brief Write VRT packet to PCAP file (dynamic path)
+     *
+     * Extracts VRT timestamp from the packet variant if available,
+     * otherwise falls back to system time.
+     *
+     * @param pkt PacketVariant containing VRT packet (always valid)
+     * @return true on success, false on I/O error
+     *
+     * @note The span contents are copied; caller's buffer can be reused immediately after return.
+     * @note For deterministic timestamps, use the overload with explicit ts_sec/ts_usec parameters.
+     */
+    bool write_packet(const vrtigo::PacketVariant& pkt) noexcept {
+        // Extract bytes and timestamp from PacketVariant
+        uint32_t vrt_ts_sec = 0;
+        uint32_t vrt_ts_usec = 0;
+        bool has_vrt_timestamp = false;
 
-        // Build IPv4 header
-        IPv4Header ip_header{
-            .version_ihl = 0x45, // IPv4, 5 words (20 bytes)
-            .dscp_ecn = 0,
-            .total_length = host_to_network16(static_cast<uint16_t>(ip_total_length)),
-            .identification = host_to_network16(ip_identification_++),
-            .flags_fragment = host_to_network16(0x4000), // Don't fragment
-            .ttl = IP_DEFAULT_TTL,
-            .protocol = IP_PROTOCOL_UDP,
-            .checksum = 0, // Calculated below
-            .src_ip = src_ip_,
-            .dst_ip = dst_ip_,
-        };
-        ip_header.checksum = calculate_ip_checksum(&ip_header);
+        // Use visit_packet_bytes to get the raw bytes span
+        auto bytes = vrtigo::detail::visit_packet_bytes(pkt, [](auto span) { return span; });
 
-        // Build UDP header
-        UDPHeader udp_header{
-            .src_port = src_port_,
-            .dst_port = dst_port_,
-            .length = host_to_network16(static_cast<uint16_t>(udp_length)),
-            .checksum = 0, // UDP checksum optional for IPv4
-        };
-
-        // Write PCAP record header
-        if (!write_to_buffer(reinterpret_cast<const uint8_t*>(&record_header),
-                             sizeof(record_header))) {
-            return false;
+        // Extract timestamp if this is a data packet
+        if (std::holds_alternative<vrtigo::dynamic::DataPacketView>(pkt)) {
+            const auto& data_pkt = std::get<vrtigo::dynamic::DataPacketView>(pkt);
+            if (auto ts = data_pkt.timestamp()) {
+                // Try to narrow to UTC real_time for best conversion
+                if (auto utc_ts = ts->template as<TsiType::utc, TsfType::real_time>()) {
+                    // Use chrono conversion for accurate microseconds
+                    auto tp = utc_ts->to_chrono();
+                    auto duration = tp.time_since_epoch();
+                    auto secs = std::chrono::duration_cast<std::chrono::seconds>(duration);
+                    auto usecs =
+                        std::chrono::duration_cast<std::chrono::microseconds>(duration - secs);
+                    vrt_ts_sec = static_cast<uint32_t>(secs.count());
+                    vrt_ts_usec = static_cast<uint32_t>(usecs.count());
+                    has_vrt_timestamp = true;
+                } else if (ts->has_tsi()) {
+                    // Fallback: use raw values
+                    vrt_ts_sec = ts->tsi();
+                    has_vrt_timestamp = true;
+                    if (ts->has_tsf() && ts->tsf_kind() == TsfType::real_time) {
+                        // Convert picoseconds to microseconds
+                        constexpr uint64_t PICOS_PER_MICRO = 1'000'000ULL;
+                        vrt_ts_usec = static_cast<uint32_t>(ts->tsf() / PICOS_PER_MICRO);
+                    }
+                }
+            }
         }
 
-        // Write Ethernet header
-        if (!write_to_buffer(reinterpret_cast<const uint8_t*>(&eth_header), sizeof(eth_header))) {
-            return false;
+        // Fall back to system time if no VRT timestamp
+        if (!has_vrt_timestamp) {
+            auto now = std::chrono::system_clock::now();
+            auto duration = now.time_since_epoch();
+            auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
+            auto micros = std::chrono::duration_cast<std::chrono::microseconds>(duration - seconds);
+            vrt_ts_sec = static_cast<uint32_t>(seconds.count());
+            vrt_ts_usec = static_cast<uint32_t>(micros.count());
         }
 
-        // Write IPv4 header
-        if (!write_to_buffer(reinterpret_cast<const uint8_t*>(&ip_header), sizeof(ip_header))) {
-            return false;
-        }
-
-        // Write UDP header
-        if (!write_to_buffer(reinterpret_cast<const uint8_t*>(&udp_header), sizeof(udp_header))) {
-            return false;
-        }
-
-        // Write VRT packet payload
-        if (!write_to_buffer(vrt_bytes.data(), vrt_bytes.size())) {
-            return false;
-        }
-
-        packets_written_++;
-        return true;
+        return write_packet_impl(bytes, vrt_ts_sec, vrt_ts_usec);
     }
 
     /**
@@ -457,6 +471,101 @@ private:
         std::memcpy(write_buffer_.data() + buffer_pos_, data, size);
         buffer_pos_ += size;
 
+        return true;
+    }
+
+    /**
+     * @brief Internal implementation: Write packet with explicit timestamp
+     *
+     * Common implementation used by all write_packet overloads.
+     *
+     * @param vrt_bytes VRT packet bytes
+     * @param ts_sec PCAP timestamp seconds (Unix epoch)
+     * @param ts_usec PCAP timestamp microseconds (0-999999)
+     * @return true on success, false on I/O error
+     */
+    bool write_packet_impl(std::span<const uint8_t> vrt_bytes, uint32_t ts_sec,
+                           uint32_t ts_usec) noexcept {
+        if (vrt_bytes.empty()) {
+            return false;
+        }
+
+        // Calculate sizes
+        size_t udp_payload_size = vrt_bytes.size();
+        size_t udp_length = sizeof(UDPHeader) + udp_payload_size;
+        size_t ip_total_length = sizeof(IPv4Header) + udp_length;
+        size_t total_frame_size = UDP_ENCAP_HEADER_SIZE + udp_payload_size;
+
+        // Check if packet exceeds snaplen
+        if (total_frame_size > snaplen_) {
+            return false;
+        }
+
+        // Build PCAP packet record header
+        PCAPRecordHeader record_header{
+            .ts_sec = ts_sec,
+            .ts_usec = ts_usec,
+            .incl_len = static_cast<uint32_t>(total_frame_size),
+            .orig_len = static_cast<uint32_t>(total_frame_size),
+        };
+
+        // Build Ethernet header
+        EthernetHeader eth_header{
+            .dst_mac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x02}, // Dummy destination
+            .src_mac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x01}, // Dummy source
+            .ethertype = host_to_network16(ETHERTYPE_IPV4_HOST),
+        };
+
+        // Build IPv4 header
+        IPv4Header ip_header{
+            .version_ihl = 0x45, // IPv4, 5 words (20 bytes)
+            .dscp_ecn = 0,
+            .total_length = host_to_network16(static_cast<uint16_t>(ip_total_length)),
+            .identification = host_to_network16(ip_identification_++),
+            .flags_fragment = host_to_network16(0x4000), // Don't fragment
+            .ttl = IP_DEFAULT_TTL,
+            .protocol = IP_PROTOCOL_UDP,
+            .checksum = 0, // Calculated below
+            .src_ip = src_ip_,
+            .dst_ip = dst_ip_,
+        };
+        ip_header.checksum = calculate_ip_checksum(&ip_header);
+
+        // Build UDP header
+        UDPHeader udp_header{
+            .src_port = src_port_,
+            .dst_port = dst_port_,
+            .length = host_to_network16(static_cast<uint16_t>(udp_length)),
+            .checksum = 0, // UDP checksum optional for IPv4
+        };
+
+        // Write PCAP record header
+        if (!write_to_buffer(reinterpret_cast<const uint8_t*>(&record_header),
+                             sizeof(record_header))) {
+            return false;
+        }
+
+        // Write Ethernet header
+        if (!write_to_buffer(reinterpret_cast<const uint8_t*>(&eth_header), sizeof(eth_header))) {
+            return false;
+        }
+
+        // Write IPv4 header
+        if (!write_to_buffer(reinterpret_cast<const uint8_t*>(&ip_header), sizeof(ip_header))) {
+            return false;
+        }
+
+        // Write UDP header
+        if (!write_to_buffer(reinterpret_cast<const uint8_t*>(&udp_header), sizeof(udp_header))) {
+            return false;
+        }
+
+        // Write VRT packet payload
+        if (!write_to_buffer(vrt_bytes.data(), vrt_bytes.size())) {
+            return false;
+        }
+
+        packets_written_++;
         return true;
     }
 };

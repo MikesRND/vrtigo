@@ -18,7 +18,7 @@ int main() {
 
     std::cout << "Creating minimal packet...\n";
     std::cout << "  Packet size: " << MinimalPacket::size_bytes() << " bytes\n";
-    std::cout << "  Payload size: " << MinimalPacket::payload_size_bytes << " bytes\n";
+    std::cout << "  Payload size: " << MinimalPacket::payload_size_bytes() << " bytes\n";
 
     // Allocate buffer and create packet
     alignas(4) std::array<uint8_t, MinimalPacket::size_bytes()> buffer;

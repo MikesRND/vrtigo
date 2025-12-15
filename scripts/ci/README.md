@@ -95,11 +95,41 @@ make ci-coverage
 open build-coverage/coverage_html/index.html
 ```
 
+### `python-test.sh` (Advisory)
+**Matches**: CI `python-test` job
+**Usage**: `./scripts/ci/python-test.sh [build-python] [--no-test] [--force-recreate]`
+**What**: Build Python bindings and run pytest
+**Venv**: Reuses `bindings/python/.venv`, upgrades deps each run
+**Requires**: Python 3.11+ (checked at runtime)
+
+**Flags**:
+- `--no-test` - build only, skip pytest
+- `--force-recreate` - nuke venv if corrupted
+
+```bash
+# Direct (build + test)
+./scripts/ci/python-test.sh
+
+# Build only
+./scripts/ci/python-test.sh --no-test
+
+# Force venv recreation
+./scripts/ci/python-test.sh --force-recreate
+
+# Via Make
+make python-test    # build + test
+make python         # build only
+
+# Override Python interpreter
+PYTHON_BIN=python3.12 ./scripts/ci/python-test.sh
+```
+
 ## Environment Variables
 
 All scripts respect these environment variables:
 
 - `CXX` - C++ compiler (default: `g++` or `clang++`)
+- `PYTHON_BIN` - Python interpreter for python-test.sh (default: `python3`)
 - Build directory is always customizable via first argument
 
 ## Build Caching (ccache)

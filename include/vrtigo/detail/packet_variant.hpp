@@ -151,3 +151,34 @@ inline bool is_context_packet(const ParseResult<PacketVariant>& result) noexcept
 }
 
 } // namespace vrtigo
+
+namespace vrtigo::detail {
+
+/**
+ * @brief Extract bytes from PacketVariant and invoke callback
+ *
+ * This helper visits a PacketVariant, extracts the raw bytes via as_bytes(),
+ * and invokes the provided callback with the byte span.
+ *
+ * @tparam Func Callback type accepting std::span<const uint8_t>
+ * @param packet The packet variant to extract bytes from
+ * @param fn Callback to invoke with the byte span
+ * @return Result of invoking fn with the byte span
+ *
+ * @note Span lifetime: The returned span is valid only as long as the
+ *       underlying packet view's buffer remains valid.
+ */
+template <typename Func>
+auto visit_packet_bytes(const PacketVariant& packet, Func&& fn) noexcept {
+    return std::visit(
+        [&fn](auto&& pkt) {
+            using T = std::decay_t<decltype(pkt)>;
+            static_assert(std::is_same_v<T, dynamic::DataPacketView> ||
+                              std::is_same_v<T, dynamic::ContextPacketView>,
+                          "visit_packet_bytes: unhandled PacketVariant type - update this visitor");
+            return fn(pkt.as_bytes());
+        },
+        packet);
+}
+
+} // namespace vrtigo::detail
