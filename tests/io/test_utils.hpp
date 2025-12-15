@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <vrtigo/sample_span.hpp>
 
 namespace test_utils {
 
@@ -23,23 +24,13 @@ inline double compute_signal_energy(std::span<const uint8_t> payload) {
         return 0.0; // Invalid payload size
     }
 
+    vrtigo::SampleSpanView<std::complex<int16_t>> samples(payload);
     double energy = 0.0;
-    size_t num_samples = payload.size() / 4; // Each IQ sample is 4 bytes (2 * int16)
 
-    for (size_t i = 0; i < num_samples; ++i) {
-        size_t offset = i * 4;
-
-        // Read I sample (16-bit, network byte order)
-        int16_t i_sample = static_cast<int16_t>((static_cast<uint16_t>(payload[offset]) << 8) |
-                                                static_cast<uint16_t>(payload[offset + 1]));
-
-        // Read Q sample (16-bit, network byte order)
-        int16_t q_sample = static_cast<int16_t>((static_cast<uint16_t>(payload[offset + 2]) << 8) |
-                                                static_cast<uint16_t>(payload[offset + 3]));
-
-        // Accumulate energy: I² + Q²
-        energy +=
-            static_cast<double>(i_sample) * i_sample + static_cast<double>(q_sample) * q_sample;
+    for (size_t i = 0; i < samples.count(); ++i) {
+        auto sample = samples[i];
+        energy += static_cast<double>(sample.real()) * sample.real() +
+                  static_cast<double>(sample.imag()) * sample.imag();
     }
 
     return energy;
@@ -90,29 +81,13 @@ inline uint32_t compute_checksum(std::span<const uint8_t> data) {
  * @return Vector of complex samples (empty if invalid payload)
  */
 inline std::vector<std::complex<int16_t>> extract_iq_samples(std::span<const uint8_t> payload) {
-    std::vector<std::complex<int16_t>> samples;
-
     if (payload.size() < 4 || payload.size() % 4 != 0) {
-        return samples; // Invalid payload size
+        return {}; // Invalid payload size
     }
 
-    size_t num_samples = payload.size() / 4;
-    samples.reserve(num_samples);
-
-    for (size_t i = 0; i < num_samples; ++i) {
-        size_t offset = i * 4;
-
-        // Read I sample (16-bit, network byte order)
-        int16_t i_sample = static_cast<int16_t>((static_cast<uint16_t>(payload[offset]) << 8) |
-                                                static_cast<uint16_t>(payload[offset + 1]));
-
-        // Read Q sample (16-bit, network byte order)
-        int16_t q_sample = static_cast<int16_t>((static_cast<uint16_t>(payload[offset + 2]) << 8) |
-                                                static_cast<uint16_t>(payload[offset + 3]));
-
-        samples.emplace_back(i_sample, q_sample);
-    }
-
+    vrtigo::SampleSpanView<std::complex<int16_t>> view(payload);
+    std::vector<std::complex<int16_t>> samples(view.count());
+    view.read(samples);
     return samples;
 }
 
@@ -140,7 +115,7 @@ inline bool has_nonzero_samples(std::span<const uint8_t> payload) {
  * @return Number of complete IQ sample pairs
  */
 inline size_t count_iq_samples(std::span<const uint8_t> payload) {
-    return payload.size() / 4;
+    return vrtigo::SampleSpanView<std::complex<int16_t>>(payload).count();
 }
 
 /**
@@ -156,21 +131,13 @@ inline uint32_t compute_peak_magnitude(std::span<const uint8_t> payload) {
         return 0;
     }
 
+    vrtigo::SampleSpanView<std::complex<int16_t>> samples(payload);
     uint32_t peak = 0;
-    size_t num_samples = payload.size() / 4;
 
-    for (size_t i = 0; i < num_samples; ++i) {
-        size_t offset = i * 4;
-
-        int16_t i_sample = static_cast<int16_t>((static_cast<uint16_t>(payload[offset]) << 8) |
-                                                static_cast<uint16_t>(payload[offset + 1]));
-
-        int16_t q_sample = static_cast<int16_t>((static_cast<uint16_t>(payload[offset + 2]) << 8) |
-                                                static_cast<uint16_t>(payload[offset + 3]));
-
-        uint32_t magnitude =
-            static_cast<uint32_t>(std::abs(i_sample)) + static_cast<uint32_t>(std::abs(q_sample));
-
+    for (size_t i = 0; i < samples.count(); ++i) {
+        auto sample = samples[i];
+        uint32_t magnitude = static_cast<uint32_t>(std::abs(sample.real())) +
+                             static_cast<uint32_t>(std::abs(sample.imag()));
         if (magnitude > peak) {
             peak = magnitude;
         }
