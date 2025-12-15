@@ -12,6 +12,7 @@
 
 // PacketVariant and related types are now in vrtigo namespace
 using namespace vrtigo::utils::fileio;
+using vrtigo::utils::fileio::detail::RawVRTFileWriter;
 
 // Import specific types from vrtigo namespace to avoid ambiguity
 using vrtigo::NoClassId;
@@ -68,7 +69,7 @@ TEST_F(FileWriterTest, WriteCompileTimePacket) {
     packet.set_packet_count(1);
 
     VRTFileWriter<> writer(test_file.string());
-    EXPECT_TRUE(writer.write_packet(packet));
+    EXPECT_TRUE(writer.write_packet(packet.as_bytes()));
     EXPECT_EQ(writer.packets_written(), 1);
     EXPECT_GT(writer.bytes_written(), 0);
 
@@ -92,7 +93,7 @@ TEST_F(FileWriterTest, WriteMultiplePackets) {
         PacketType packet(buffer);
         packet.set_stream_id(i);
         packet.set_packet_count(static_cast<uint8_t>(i));
-        EXPECT_TRUE(writer.write_packet(packet));
+        EXPECT_TRUE(writer.write_packet(packet.as_bytes()));
     }
 
     EXPECT_EQ(writer.packets_written(), 10);
@@ -110,7 +111,7 @@ TEST_F(FileWriterTest, FlushBufferedData) {
     packet.set_packet_count(1);
 
     VRTFileWriter<> writer(test_file.string());
-    writer.write_packet(packet);
+    writer.write_packet(packet.as_bytes());
 
     // Data may be buffered
     EXPECT_TRUE(writer.flush());
@@ -142,7 +143,7 @@ TEST_F(FileWriterTest, RoundTripSinglePacket) {
 
     {
         VRTFileWriter<> writer(test_file.string());
-        EXPECT_TRUE(writer.write_packet(write_packet));
+        EXPECT_TRUE(writer.write_packet(write_packet.as_bytes()));
         writer.flush();
     }
 
@@ -177,7 +178,7 @@ TEST_F(FileWriterTest, RoundTripMultiplePackets) {
             PacketType packet(buffer);
             packet.set_stream_id(static_cast<uint32_t>(i));
             packet.set_packet_count(static_cast<uint8_t>(i & 0xFF));
-            EXPECT_TRUE(writer.write_packet(packet));
+            EXPECT_TRUE(writer.write_packet(packet.as_bytes()));
         }
         writer.flush();
     }
@@ -221,7 +222,7 @@ TEST_F(FileWriterTest, RoundTripContextPacket) {
 
     {
         VRTFileWriter<> writer(test_file.string());
-        EXPECT_TRUE(writer.write_packet(write_packet));
+        EXPECT_TRUE(writer.write_packet(write_packet.as_bytes()));
         writer.flush();
     }
 
@@ -261,7 +262,7 @@ TEST_F(FileWriterTest, WriteLargePacket) {
     packet.set_payload(payload.data(), payload.size());
 
     VRTFileWriter<> writer(test_file.string());
-    EXPECT_TRUE(writer.write_packet(packet));
+    EXPECT_TRUE(writer.write_packet(packet.as_bytes()));
     writer.flush();
 
     // Verify file size
@@ -312,4 +313,138 @@ TEST_F(FileWriterTest, RawWriterErrorState) {
     // After successful write, error state should be clear
     raw_writer.clear_error();
     EXPECT_FALSE(raw_writer.has_error());
+}
+
+// =============================================================================
+// VRTFileReader Raw API Tests (read_next_raw, last_error)
+// =============================================================================
+
+TEST_F(FileWriterTest, VRTFileReaderReadNextRaw) {
+    auto test_file = temp_dir_ / "test_read_raw.vrt";
+
+    // Write packets
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<64>;
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+
+    {
+        VRTFileWriter<> writer(test_file.string());
+        for (uint32_t i = 0; i < 5; i++) {
+            PacketType packet(buffer);
+            packet.set_stream_id(0x1000 + i);
+            packet.set_packet_count(static_cast<uint8_t>(i));
+            EXPECT_TRUE(writer.write_packet(packet.as_bytes()));
+        }
+        writer.flush();
+    }
+
+    // Read using read_next_raw()
+    VRTFileReader<> reader(test_file.string());
+
+    size_t count = 0;
+    while (true) {
+        auto raw_bytes = reader.read_next_raw();
+        if (raw_bytes.empty()) {
+            // Check EOF via last_error()
+            EXPECT_TRUE(reader.last_error().is_eof());
+            break;
+        }
+
+        // Verify raw bytes are valid VRT packet
+        EXPECT_GE(raw_bytes.size(), 4);
+        EXPECT_EQ(raw_bytes.size() % 4, 0); // Word-aligned
+
+        count++;
+    }
+
+    EXPECT_EQ(count, 5);
+}
+
+TEST_F(FileWriterTest, VRTFileReaderLastErrorOnSuccess) {
+    auto test_file = temp_dir_ / "test_last_error.vrt";
+
+    // Write single packet
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<64>;
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+
+    {
+        VRTFileWriter<> writer(test_file.string());
+        PacketType packet(buffer);
+        packet.set_stream_id(0x12345678);
+        writer.write_packet(packet.as_bytes());
+        writer.flush();
+    }
+
+    // Read and check last_error() on success
+    VRTFileReader<> reader(test_file.string());
+
+    auto raw_bytes = reader.read_next_raw();
+    ASSERT_FALSE(raw_bytes.empty());
+
+    // On success, last_error() should indicate valid read
+    auto& err = reader.last_error();
+    EXPECT_TRUE(err.is_valid());
+    EXPECT_EQ(err.packet_size_bytes, raw_bytes.size());
+}
+
+TEST_F(FileWriterTest, VRTFileReaderRawThenParsed) {
+    auto test_file = temp_dir_ / "test_raw_then_parsed.vrt";
+
+    // Write packets
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<64>;
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+
+    {
+        VRTFileWriter<> writer(test_file.string());
+        for (uint32_t i = 0; i < 3; i++) {
+            PacketType packet(buffer);
+            packet.set_stream_id(0x2000 + i);
+            writer.write_packet(packet.as_bytes());
+        }
+        writer.flush();
+    }
+
+    // Mix raw and parsed reads
+    VRTFileReader<> reader(test_file.string());
+
+    // Read first as raw
+    auto raw1 = reader.read_next_raw();
+    ASSERT_FALSE(raw1.empty());
+
+    // Read second as parsed
+    auto parsed = reader.read_next_packet();
+    ASSERT_TRUE(parsed.has_value());
+
+    // Read third as raw
+    auto raw2 = reader.read_next_raw();
+    ASSERT_FALSE(raw2.empty());
+
+    // Should be at EOF
+    auto raw3 = reader.read_next_raw();
+    EXPECT_TRUE(raw3.empty());
+    EXPECT_TRUE(reader.last_error().is_eof());
+}
+
+TEST_F(FileWriterTest, VRTFileWriterRawBytesOverload) {
+    auto test_file = temp_dir_ / "test_write_raw_bytes.vrt";
+
+    // Create raw packet bytes manually
+    std::array<uint8_t, 8> raw_packet = {
+        0x10, 0x00, 0x00, 0x02, // Header: type 1 (signal_data), size 2 words
+        0x12, 0x34, 0x56, 0x78  // Stream ID
+    };
+
+    // Write using span overload
+    {
+        VRTFileWriter<> writer(test_file.string());
+        EXPECT_TRUE(writer.write_packet(std::span<const uint8_t>(raw_packet)));
+        EXPECT_EQ(writer.packets_written(), 1);
+        writer.flush();
+    }
+
+    // Verify by reading back
+    VRTFileReader<> reader(test_file.string());
+    auto raw = reader.read_next_raw();
+
+    ASSERT_EQ(raw.size(), 8);
+    EXPECT_TRUE(std::equal(raw.begin(), raw.end(), raw_packet.begin()));
 }

@@ -43,7 +43,6 @@
 # Build directories
 # Main build directory
 build/
-build_python/
 
 # CI build directories (specific patterns to avoid over-matching)
 build-quick/
@@ -52,6 +51,7 @@ build-clang/
 build-coverage/
 build-install/
 build-install-consumer/
+build-python/
 
 # IDE build directories
 cmake-build-*/

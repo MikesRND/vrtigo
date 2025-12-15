@@ -9,7 +9,7 @@
 
 #include "test_utils.hpp"
 
-using namespace vrtigo::utils::fileio;
+using namespace vrtigo::utils::fileio::detail;
 using namespace vrtigo::detail;
 using vrtigo::PacketType;
 using vrtigo::ValidationError;

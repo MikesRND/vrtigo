@@ -65,7 +65,7 @@ TEST_F(UDPWriterTest, WriteCompileTimePacket) {
     packet.set_stream_id(0x12345678);
     packet.set_packet_count(1);
 
-    EXPECT_TRUE(writer.write_packet(packet));
+    EXPECT_TRUE(writer.write_packet(packet.as_bytes()));
     EXPECT_EQ(writer.packets_sent(), 1);
     EXPECT_GT(writer.bytes_sent(), 0);
 
@@ -92,7 +92,7 @@ TEST_F(UDPWriterTest, WriteMultiplePackets) {
         PacketType packet(buffer);
         packet.set_stream_id(i);
         packet.set_packet_count(static_cast<uint8_t>(i));
-        EXPECT_TRUE(writer.write_packet(packet));
+        EXPECT_TRUE(writer.write_packet(packet.as_bytes()));
     }
 
     EXPECT_EQ(writer.packets_sent(), 10);
@@ -129,7 +129,7 @@ TEST_F(UDPWriterTest, RoundTripDataPacket) {
     packet.set_timestamp(test_timestamp);
     packet.set_packet_count(1);
 
-    EXPECT_TRUE(writer.write_packet(packet));
+    EXPECT_TRUE(writer.write_packet(packet.as_bytes()));
 
     // Read back
     auto received = reader.read_next_packet();
@@ -162,7 +162,7 @@ TEST_F(UDPWriterTest, RoundTripContextPacket) {
     packet.set_stream_id(test_stream_id);
     packet[vrtigo::field::reference_point_id].set_encoded(test_ref_point);
 
-    EXPECT_TRUE(writer.write_packet(packet));
+    EXPECT_TRUE(writer.write_packet(packet.as_bytes()));
 
     // Read back
     auto received = reader.read_next_packet();
@@ -197,7 +197,7 @@ TEST_F(UDPWriterTest, EnforceMTU) {
     packet.set_payload(large_payload.data(), large_payload.size());
 
     // Should reject due to MTU
-    EXPECT_FALSE(writer.write_packet(packet));
+    EXPECT_FALSE(writer.write_packet(packet.as_bytes()));
     EXPECT_EQ(writer.transport_status().errno_value, EMSGSIZE);
 }
 
@@ -221,7 +221,7 @@ TEST_F(UDPWriterTest, MTUAllowsValidPacket) {
     packet.set_payload(payload.data(), payload.size());
 
     // Should succeed
-    EXPECT_TRUE(writer.write_packet(packet));
+    EXPECT_TRUE(writer.write_packet(packet.as_bytes()));
 
     // Verify received
     auto received = reader.read_next_packet();
@@ -300,7 +300,7 @@ TEST_F(UDPWriterTest, FlushIsNoOp) {
     packet.set_stream_id(0x12345678);
     packet.set_packet_count(1);
 
-    EXPECT_TRUE(writer.write_packet(packet));
+    EXPECT_TRUE(writer.write_packet(packet.as_bytes()));
 
     // flush() should still succeed
     EXPECT_TRUE(writer.flush());
@@ -324,7 +324,7 @@ TEST_F(UDPWriterTest, MoveConstructor) {
     packet.set_stream_id(0x11111111);
     packet.set_packet_count(1);
 
-    EXPECT_TRUE(writer1.write_packet(packet));
+    EXPECT_TRUE(writer1.write_packet(packet.as_bytes()));
     EXPECT_EQ(writer1.packets_sent(), 1);
 
     // Move to writer2
@@ -332,7 +332,7 @@ TEST_F(UDPWriterTest, MoveConstructor) {
     EXPECT_EQ(writer2.packets_sent(), 1);
 
     // writer2 should still be usable
-    EXPECT_TRUE(writer2.write_packet(packet));
+    EXPECT_TRUE(writer2.write_packet(packet.as_bytes()));
     EXPECT_EQ(writer2.packets_sent(), 2);
 }
 
@@ -347,10 +347,169 @@ TEST_F(UDPWriterTest, MoveAssignment) {
     packet.set_stream_id(0x22222222);
     packet.set_packet_count(1);
 
-    writer1.write_packet(packet);
+    writer1.write_packet(packet.as_bytes());
     EXPECT_EQ(writer1.packets_sent(), 1);
 
     // Move assign
     writer2 = std::move(writer1);
     EXPECT_EQ(writer2.packets_sent(), 1);
+}
+
+// =============================================================================
+// UDPVRTReader Raw API Tests (read_next_raw, packets_read, transport_status)
+// =============================================================================
+
+TEST_F(UDPWriterTest, UDPVRTReaderReadNextRaw) {
+    vrtigo::utils::netio::UDPVRTReader<> reader(test_port);
+    reader.try_set_timeout(std::chrono::milliseconds(100));
+
+    UDPVRTWriter writer("127.0.0.1", test_port);
+
+    // Create and send test packets
+    using PacketType = SignalDataPacketBuilder<64>;
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+
+    // Send 3 packets with different stream IDs
+    for (uint32_t i = 0; i < 3; i++) {
+        PacketType packet(buffer);
+        packet.set_stream_id(0x10000000 + i);
+        packet.set_packet_count(static_cast<uint8_t>(i));
+        EXPECT_TRUE(writer.write_packet(packet.as_bytes()));
+    }
+
+    // Read using read_next_raw() and verify raw bytes
+    for (uint32_t i = 0; i < 3; i++) {
+        auto raw_bytes = reader.read_next_raw();
+
+        // Verify we got valid data
+        ASSERT_FALSE(raw_bytes.empty()) << "Failed to read packet " << i;
+
+        // Verify minimum VRT packet size (at least header)
+        EXPECT_GE(raw_bytes.size(), 4u) << "Packet " << i << " too small";
+
+        // Verify word-aligned size
+        EXPECT_EQ(raw_bytes.size() % 4, 0u) << "Packet " << i << " not word-aligned";
+
+        // Verify we can extract a valid header
+        if (raw_bytes.size() >= 4) {
+            uint32_t network_header;
+            std::memcpy(&network_header, raw_bytes.data(), 4);
+            uint32_t header = vrtigo::detail::network_to_host32(network_header);
+
+            // Verify packet size field matches actual size
+            uint16_t size_words = static_cast<uint16_t>(header & 0xFFFF);
+            EXPECT_EQ(size_words * 4, raw_bytes.size()) << "Packet " << i << " size mismatch";
+        }
+    }
+}
+
+TEST_F(UDPWriterTest, UDPVRTReaderPacketsReadCounter) {
+    vrtigo::utils::netio::UDPVRTReader<> reader(test_port);
+    reader.try_set_timeout(std::chrono::milliseconds(100));
+
+    UDPVRTWriter writer("127.0.0.1", test_port);
+
+    using PacketType = SignalDataPacketBuilder<64>;
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+
+    // Initial counter should be 0
+    EXPECT_EQ(reader.packets_read(), 0u);
+
+    // Send and read 5 packets
+    for (uint32_t i = 0; i < 5; i++) {
+        PacketType packet(buffer);
+        packet.set_stream_id(0x20000000 + i);
+        packet.set_packet_count(static_cast<uint8_t>(i));
+        EXPECT_TRUE(writer.write_packet(packet.as_bytes()));
+
+        auto raw_bytes = reader.read_next_raw();
+        ASSERT_FALSE(raw_bytes.empty()) << "Failed to read packet " << i;
+
+        // Counter should increment after each successful read
+        EXPECT_EQ(reader.packets_read(), i + 1) << "Counter mismatch after packet " << i;
+    }
+
+    // Final count should be 5
+    EXPECT_EQ(reader.packets_read(), 5u);
+}
+
+TEST_F(UDPWriterTest, UDPVRTReaderTransportStatusOnSuccess) {
+    vrtigo::utils::netio::UDPVRTReader<> reader(test_port);
+    reader.try_set_timeout(std::chrono::milliseconds(100));
+
+    UDPVRTWriter writer("127.0.0.1", test_port);
+
+    using PacketType = SignalDataPacketBuilder<64>;
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+
+    PacketType packet(buffer);
+    packet.set_stream_id(0x30303030);
+    packet.set_packet_count(42);
+    EXPECT_TRUE(writer.write_packet(packet.as_bytes()));
+
+    // Read the packet
+    auto raw_bytes = reader.read_next_raw();
+    ASSERT_FALSE(raw_bytes.empty());
+
+    // Verify transport status indicates success
+    const auto& status = reader.transport_status();
+    EXPECT_EQ(status.state, UDPTransportStatus::State::packet_ready);
+    EXPECT_EQ(status.bytes_received, raw_bytes.size());
+    EXPECT_FALSE(status.is_terminal());
+    EXPECT_FALSE(status.is_truncated());
+    EXPECT_EQ(status.errno_value, 0);
+
+    // Verify header was decoded correctly
+    EXPECT_NE(status.header, 0u);
+    EXPECT_EQ(status.packet_type, PacketType::type());
+}
+
+TEST_F(UDPWriterTest, UDPVRTReaderRawThenParsed) {
+    vrtigo::utils::netio::UDPVRTReader<> reader(test_port);
+    reader.try_set_timeout(std::chrono::milliseconds(100));
+
+    UDPVRTWriter writer("127.0.0.1", test_port);
+
+    using PacketType = SignalDataPacketBuilder<64>;
+    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+
+    // Send first packet - read with read_next_raw()
+    PacketType packet1(buffer);
+    packet1.set_stream_id(0x40000001);
+    packet1.set_packet_count(1);
+    EXPECT_TRUE(writer.write_packet(packet1.as_bytes()));
+
+    auto raw_bytes = reader.read_next_raw();
+    ASSERT_FALSE(raw_bytes.empty());
+    EXPECT_EQ(reader.packets_read(), 1u);
+
+    // Send second packet - read with read_next_packet()
+    PacketType packet2(buffer);
+    packet2.set_stream_id(0x40000002);
+    packet2.set_packet_count(2);
+    EXPECT_TRUE(writer.write_packet(packet2.as_bytes()));
+
+    auto received = reader.read_next_packet();
+    ASSERT_TRUE(received.has_value()) << vrtigo::utils::error_message(received.error());
+    EXPECT_EQ(reader.packets_read(), 2u);
+
+    auto data_pkt = std::get<vrtigo::dynamic::DataPacketView>(*received);
+    EXPECT_EQ(data_pkt.stream_id(), 0x40000002);
+    EXPECT_EQ(data_pkt.packet_count(), 2);
+
+    // Send third packet - read with read_next_raw() again
+    PacketType packet3(buffer);
+    packet3.set_stream_id(0x40000003);
+    packet3.set_packet_count(3);
+    EXPECT_TRUE(writer.write_packet(packet3.as_bytes()));
+
+    auto raw_bytes3 = reader.read_next_raw();
+    ASSERT_FALSE(raw_bytes3.empty());
+    EXPECT_EQ(reader.packets_read(), 3u);
+
+    // Verify we can still parse the raw bytes manually if needed
+    auto parse_result = vrtigo::dynamic::DataPacketView::parse(raw_bytes3);
+    ASSERT_TRUE(parse_result.has_value());
+    EXPECT_EQ(parse_result->stream_id(), 0x40000003);
+    EXPECT_EQ(parse_result->packet_count(), 3);
 }

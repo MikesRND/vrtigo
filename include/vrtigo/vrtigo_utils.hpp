@@ -4,7 +4,6 @@
 // Optional utilities that may allocate memory and use exceptions
 
 // File I/O
-#include "vrtigo/utils/fileio/raw_vrt_file_writer.hpp"
 #include "vrtigo/utils/fileio/vrt_file_reader.hpp"
 #include "vrtigo/utils/fileio/vrt_file_writer.hpp"
 
@@ -31,9 +30,6 @@ using VRTFileReader = utils::fileio::VRTFileReader<MaxPacketWords>;
 
 template <size_t MaxPacketWords = 65535>
 using VRTFileWriter = utils::fileio::VRTFileWriter<MaxPacketWords>;
-
-template <size_t MaxPacketWords = 65535>
-using RawVRTFileWriter = utils::fileio::RawVRTFileWriter<MaxPacketWords>;
 
 template <uint16_t MaxPacketWords = 65535>
 using PCAPVRTReader = utils::pcapio::PCAPVRTReader<MaxPacketWords>;

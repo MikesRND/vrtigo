@@ -155,22 +155,6 @@ TEST(PacketConceptsTest, NonPacketTypesRejected) {
 }
 
 // ============================================================================
-// Legacy aliases (for backwards compatibility during transition)
-// ============================================================================
-
-TEST(PacketConceptsTest, LegacyAliasesWork) {
-    using DataPkt = typed::DataPacketBuilder<PacketType::signal_data, 64>;
-
-    // PacketLike is alias for PacketMetadataLike
-    static_assert(PacketLike<DataPkt>);
-    static_assert(PacketLike<dynamic::DataPacketView>);
-
-    // AnyPacket is alias for PacketMetadataLike
-    static_assert(AnyPacket<DataPkt>);
-    static_assert(AnyPacket<dynamic::ContextPacketView>);
-}
-
-// ============================================================================
 // Runtime behavior verification
 // ============================================================================
 

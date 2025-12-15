@@ -10,10 +10,10 @@
 #include <cstring>
 #include <vrtigo/types.hpp>
 
-#include "../../detail/endian.hpp"
-#include "../../detail/header_decode.hpp"
+#include "../../../detail/endian.hpp"
+#include "../../../detail/header_decode.hpp"
 
-namespace vrtigo::utils::fileio {
+namespace vrtigo::utils::fileio::detail {
 
 /**
  * @brief Low-level VRT file reader returning raw packet bytes
@@ -364,4 +364,4 @@ private:
     ReadResult last_error_; ///< Last error from read_next_span()
 };
 
-} // namespace vrtigo::utils::fileio
+} // namespace vrtigo::utils::fileio::detail

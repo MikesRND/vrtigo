@@ -404,3 +404,252 @@ TEST(PCAPWriterTest, ConvertVRTFileToPCAP) {
     std::filesystem::remove(vrt_path);
     std::filesystem::remove(pcap_path);
 }
+
+// =============================================================================
+// PCAPVRTWriter Raw Bytes API Tests
+// =============================================================================
+
+TEST(PCAPVRTWriterRawBytesOverload, WriteRawPacketBytes) {
+    std::filesystem::path path = "test_pcap_raw_bytes.pcap";
+
+    // Create raw VRT packet bytes manually
+    auto raw_packet = create_simple_data_packet(0xDEADBEEF, 15);
+
+    // Write using raw bytes overload (no timestamp - extracts from VRT)
+    {
+        PCAPVRTWriter writer(path.c_str());
+
+        std::span<const uint8_t> packet_span(raw_packet.data(), raw_packet.size());
+        bool result = writer.write_packet(packet_span);
+        EXPECT_TRUE(result);
+        EXPECT_EQ(writer.packets_written(), 1);
+
+        writer.flush();
+    }
+
+    // Read back and verify packet was written correctly
+    {
+        PCAPVRTReader<> reader(path.c_str());
+
+        auto pkt_result = reader.read_next_packet();
+        ASSERT_TRUE(pkt_result.has_value());
+
+        auto* data_pkt = std::get_if<DataPacket>(&*pkt_result);
+        ASSERT_NE(data_pkt, nullptr);
+
+        auto sid = data_pkt->stream_id();
+        ASSERT_TRUE(sid.has_value());
+        EXPECT_EQ(*sid, 0xDEADBEEF);
+
+        // Verify payload size matches
+        EXPECT_EQ(data_pkt->payload_size_words(), 15);
+    }
+
+    // Cleanup
+    std::filesystem::remove(path);
+}
+
+TEST(PCAPVRTWriterRawBytesOverload, WriteMultipleRawPackets) {
+    std::filesystem::path path = "test_pcap_raw_bytes_multiple.pcap";
+
+    // Create multiple raw VRT packets
+    std::vector<std::vector<uint8_t>> raw_packets;
+    std::vector<uint32_t> expected_stream_ids = {0x11111111, 0x22222222, 0x33333333, 0x44444444};
+
+    for (auto sid : expected_stream_ids) {
+        raw_packets.push_back(create_simple_data_packet(sid, 8));
+    }
+
+    // Write using raw bytes overload
+    {
+        PCAPVRTWriter writer(path.c_str());
+
+        for (const auto& packet : raw_packets) {
+            std::span<const uint8_t> packet_span(packet.data(), packet.size());
+            EXPECT_TRUE(writer.write_packet(packet_span));
+        }
+
+        EXPECT_EQ(writer.packets_written(), raw_packets.size());
+        writer.flush();
+    }
+
+    // Read back and verify all packets
+    {
+        PCAPVRTReader<> reader(path.c_str());
+
+        std::vector<uint32_t> read_stream_ids;
+        while (true) {
+            auto pkt_result = reader.read_next_packet();
+            if (!pkt_result.has_value()) {
+                if (vrtigo::utils::is_eof(pkt_result.error()))
+                    break;
+                continue;
+            }
+
+            if (auto* data_pkt = std::get_if<DataPacket>(&*pkt_result)) {
+                auto sid = data_pkt->stream_id();
+                if (sid.has_value()) {
+                    read_stream_ids.push_back(*sid);
+                }
+            }
+        }
+
+        ASSERT_EQ(read_stream_ids.size(), expected_stream_ids.size());
+        for (size_t i = 0; i < expected_stream_ids.size(); i++) {
+            EXPECT_EQ(read_stream_ids[i], expected_stream_ids[i]);
+        }
+    }
+
+    // Cleanup
+    std::filesystem::remove(path);
+}
+
+TEST(PCAPVRTWriterRawBytesOverload, WriteWithExplicitTimestamp) {
+    std::filesystem::path path = "test_pcap_raw_bytes_timestamp.pcap";
+
+    // Create raw VRT packet bytes
+    auto raw_packet = create_simple_data_packet(0xCAFEBABE, 20);
+
+    // Write using raw bytes overload with explicit timestamp
+    uint32_t expected_ts_sec = 1234567890;
+    uint32_t expected_ts_usec = 500000; // 0.5 seconds
+    {
+        PCAPVRTWriter writer(path.c_str());
+
+        std::span<const uint8_t> packet_span(raw_packet.data(), raw_packet.size());
+        bool result = writer.write_packet(packet_span, expected_ts_sec, expected_ts_usec);
+        EXPECT_TRUE(result);
+        EXPECT_EQ(writer.packets_written(), 1);
+
+        writer.flush();
+    }
+
+    // Read back and verify timestamp was preserved
+    {
+        PCAPVRTReader<> reader(path.c_str());
+
+        auto pkt_result = reader.read_next_packet();
+        ASSERT_TRUE(pkt_result.has_value());
+
+        auto* data_pkt = std::get_if<DataPacket>(&*pkt_result);
+        ASSERT_NE(data_pkt, nullptr);
+
+        // Verify stream ID
+        auto sid = data_pkt->stream_id();
+        ASSERT_TRUE(sid.has_value());
+        EXPECT_EQ(*sid, 0xCAFEBABE);
+
+        // Verify timestamp was written correctly
+        EXPECT_EQ(reader.last_timestamp_sec(), expected_ts_sec);
+        EXPECT_EQ(reader.last_timestamp_subsec(), expected_ts_usec);
+    }
+
+    // Cleanup
+    std::filesystem::remove(path);
+}
+
+TEST(PCAPVRTWriterRawBytesOverload, WriteInvalidPacketTooSmall) {
+    std::filesystem::path path = "test_pcap_raw_bytes_invalid.pcap";
+
+    // Create invalid packet (too small - less than 4 bytes)
+    std::vector<uint8_t> invalid_packet = {0x01, 0x02};
+
+    {
+        PCAPVRTWriter writer(path.c_str());
+
+        std::span<const uint8_t> packet_span(invalid_packet.data(), invalid_packet.size());
+        bool result = writer.write_packet(packet_span);
+        EXPECT_FALSE(result); // Should fail - packet too small
+        EXPECT_EQ(writer.packets_written(), 0);
+    }
+
+    // Cleanup
+    std::filesystem::remove(path);
+}
+
+TEST(PCAPVRTWriterRawBytesOverload, RawBytesWithCustomPorts) {
+    std::filesystem::path path = "test_pcap_raw_bytes_custom_ports.pcap";
+
+    // Create raw VRT packet
+    auto raw_packet = create_simple_data_packet(0xAAAABBBB, 12);
+
+    // Write with custom ports
+    uint16_t custom_dst_port = 6000;
+    uint16_t custom_src_port = 55555;
+    {
+        PCAPVRTWriter writer(path.c_str(), custom_dst_port, custom_src_port);
+
+        std::span<const uint8_t> packet_span(raw_packet.data(), raw_packet.size());
+        EXPECT_TRUE(writer.write_packet(packet_span));
+
+        EXPECT_EQ(writer.dst_port(), custom_dst_port);
+        EXPECT_EQ(writer.src_port(), custom_src_port);
+
+        writer.flush();
+    }
+
+    // Read back and verify ports were preserved
+    {
+        PCAPVRTReader<> reader(path.c_str());
+
+        auto pkt_result = reader.read_next_packet();
+        ASSERT_TRUE(pkt_result.has_value());
+
+        auto* data_pkt = std::get_if<DataPacket>(&*pkt_result);
+        ASSERT_NE(data_pkt, nullptr);
+
+        EXPECT_EQ(reader.last_src_port(), custom_src_port);
+        EXPECT_EQ(reader.last_dst_port(), custom_dst_port);
+    }
+
+    // Cleanup
+    std::filesystem::remove(path);
+}
+
+TEST(PCAPVRTWriterRawBytesOverload, RawBytesSequentialTimestamps) {
+    std::filesystem::path path = "test_pcap_raw_bytes_sequential_ts.pcap";
+
+    // Create several raw packets with sequential timestamps
+    std::vector<uint32_t> stream_ids = {0x1000, 0x2000, 0x3000};
+    std::vector<uint32_t> timestamps_sec = {1000000000, 1000000001, 1000000002};
+    std::vector<uint32_t> timestamps_usec = {100000, 200000, 300000};
+
+    // Write packets with explicit timestamps
+    {
+        PCAPVRTWriter writer(path.c_str());
+
+        for (size_t i = 0; i < stream_ids.size(); i++) {
+            auto raw_packet = create_simple_data_packet(stream_ids[i], 5);
+            std::span<const uint8_t> packet_span(raw_packet.data(), raw_packet.size());
+            EXPECT_TRUE(writer.write_packet(packet_span, timestamps_sec[i], timestamps_usec[i]));
+        }
+
+        EXPECT_EQ(writer.packets_written(), stream_ids.size());
+        writer.flush();
+    }
+
+    // Read back and verify timestamps are correct and sequential
+    {
+        PCAPVRTReader<> reader(path.c_str());
+
+        for (size_t i = 0; i < stream_ids.size(); i++) {
+            auto pkt_result = reader.read_next_packet();
+            ASSERT_TRUE(pkt_result.has_value()) << "Failed to read packet " << i;
+
+            auto* data_pkt = std::get_if<DataPacket>(&*pkt_result);
+            ASSERT_NE(data_pkt, nullptr);
+
+            // Verify stream ID matches
+            auto sid = data_pkt->stream_id();
+            ASSERT_TRUE(sid.has_value());
+            EXPECT_EQ(*sid, stream_ids[i]);
+
+            // Verify timestamp matches
+            EXPECT_EQ(reader.last_timestamp_sec(), timestamps_sec[i]);
+            EXPECT_EQ(reader.last_timestamp_subsec(), timestamps_usec[i]);
+        }
+    }
+
+    // Cleanup
+    std::filesystem::remove(path);
+}

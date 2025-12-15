@@ -4,7 +4,7 @@
 .PHONY: test install uninstall autodocs
 .PHONY: quick-check coverage debug-build clang-build install-verify ci-full clean-all
 .PHONY: format-check format-fix format-diff clang-tidy clang-tidy-fix
-.PHONY: python python-test python-stubs
+.PHONY: python python-test python-stubs python-clean
 
 # Default build directory
 BUILD_DIR ?= build
@@ -116,8 +116,8 @@ clang-build:
 install-verify:
 	@./scripts/ci/install-verify.sh build-install
 
-# Clean all build directories (including CI build dirs)
-clean-all:
+# Clean all build directories (including CI build dirs and Python venv)
+clean-all: python-clean
 	@echo "Removing all build directories..."
 	@rm -rf build build-* install-test
 	@echo "✓ All build artifacts removed"
@@ -179,27 +179,23 @@ clang-tidy-fix:
 # Python Targets
 # ============================================================================
 
-# Build Python bindings
+PYTHON_BUILD_DIR ?= build-python
+
+# Build + test Python bindings (CI entry point)
+python-test:
+	@./scripts/ci/python-test.sh $(PYTHON_BUILD_DIR)
+
+# Build Python bindings only (no tests)
 python:
-	@mkdir -p $(BUILD_DIR)
-	@cd $(BUILD_DIR) && cmake .. \
-		-DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
-		-DVRTIGO_BUILD_PYTHON=ON
-	@cmake --build $(BUILD_DIR) --target vrtigo_py vrtigo_stub -j$(NPROC)
-	@echo "✓ Python bindings built"
-	@echo "  Module: $(BUILD_DIR)/bindings/python/vrtigo*.so"
-	@echo "  Stubs:  $(BUILD_DIR)/bindings/python/vrtigo.pyi"
+	@./scripts/ci/python-test.sh $(PYTHON_BUILD_DIR) --no-test
 
-# Run Python tests
-python-test: python
-	@echo "Running Python tests..."
-	@PYTHONPATH=$(BUILD_DIR)/bindings/python pytest bindings/python/tests -v
-	@echo "✓ Python tests passed"
-
-# Generate Python stubs only
+# Stubs are built with python target (alias for clarity)
 python-stubs: python
-	@cmake --build $(BUILD_DIR) --target vrtigo_stub
-	@echo "✓ Stubs generated: $(BUILD_DIR)/bindings/python/vrtigo.pyi"
+
+# Clean Python environment and build directory
+python-clean:
+	@rm -rf bindings/python/.venv $(PYTHON_BUILD_DIR)
+	@echo "✓ Python environment removed"
 
 # ============================================================================
 # Help Target
@@ -253,6 +249,10 @@ help:
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "PYTHON BINDINGS"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "  make python               Build Python bindings + stubs"
-	@echo "  make python-test          Run Python tests"
+	@echo "  make python               Build Python bindings (no tests)"
+	@echo "  make python-test          Build + test Python bindings"
+	@echo "  make python-stubs         Alias for python (stubs included)"
+	@echo "  make python-clean         Remove venv and build dir"
+	@echo ""
+	@echo "  Override build dir: make python-test PYTHON_BUILD_DIR=my-build"
 	@echo ""

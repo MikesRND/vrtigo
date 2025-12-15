@@ -162,6 +162,49 @@ constexpr size_t UDP_ENCAP_HEADER_SIZE =
 static_assert(UDP_ENCAP_HEADER_SIZE == 42, "UDP encapsulation headers must be 42 bytes");
 
 // =============================================================================
+// PCAP Read Status
+// =============================================================================
+
+/**
+ * @brief Status codes for PCAP read operations
+ *
+ * Used by PCAPVRTReader to distinguish different error conditions when reading packets.
+ */
+enum class PCAPReadStatus : uint8_t {
+    ok,               ///< Successful read
+    eof,              ///< End of file reached
+    read_error,       ///< File I/O error
+    invalid_pcap,     ///< Malformed PCAP record header
+    packet_truncated, ///< PCAP record shorter than VRT header indicates
+    parse_error       ///< VRT packet validation failed (read_next_packet only)
+};
+
+/**
+ * @brief Convert PCAPReadStatus to human-readable string
+ *
+ * @param s Status code
+ * @return String description of status
+ */
+constexpr const char* pcap_read_status_string(PCAPReadStatus s) noexcept {
+    switch (s) {
+        case PCAPReadStatus::ok:
+            return "ok";
+        case PCAPReadStatus::eof:
+            return "end of file";
+        case PCAPReadStatus::read_error:
+            return "file I/O error";
+        case PCAPReadStatus::invalid_pcap:
+            return "malformed PCAP record header";
+        case PCAPReadStatus::packet_truncated:
+            return "PCAP record shorter than VRT header indicates";
+        case PCAPReadStatus::parse_error:
+            return "VRT packet validation failed";
+        default:
+            return "unknown";
+    }
+}
+
+// =============================================================================
 // Helper Functions
 // =============================================================================
 

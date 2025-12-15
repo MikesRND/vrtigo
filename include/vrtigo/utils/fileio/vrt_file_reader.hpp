@@ -9,7 +9,7 @@
 #include "../../expected.hpp"
 #include "../detail/iteration_helpers.hpp"
 #include "../detail/reader_error.hpp"
-#include "raw_vrt_file_reader.hpp"
+#include "detail/raw_vrt_file_reader.hpp"
 
 namespace vrtigo::utils::fileio {
 
@@ -187,7 +187,7 @@ public:
      */
     template <typename Callback>
     size_t for_each_validated_packet(Callback&& callback) noexcept {
-        return detail::for_each_validated_packet(*this, std::forward<Callback>(callback));
+        return utils::detail::for_each_validated_packet(*this, std::forward<Callback>(callback));
     }
 
     /**
@@ -211,7 +211,7 @@ public:
      */
     template <typename Callback>
     size_t for_each_data_packet(Callback&& callback) noexcept {
-        return detail::for_each_data_packet(*this, std::forward<Callback>(callback));
+        return utils::detail::for_each_data_packet(*this, std::forward<Callback>(callback));
     }
 
     /**
@@ -237,7 +237,7 @@ public:
      */
     template <typename Callback>
     size_t for_each_context_packet(Callback&& callback) noexcept {
-        return detail::for_each_context_packet(*this, std::forward<Callback>(callback));
+        return utils::detail::for_each_context_packet(*this, std::forward<Callback>(callback));
     }
 
     /**
@@ -261,8 +261,8 @@ public:
      */
     template <typename Callback>
     size_t for_each_packet_with_stream_id(uint32_t stream_id_filter, Callback&& callback) noexcept {
-        return detail::for_each_packet_with_stream_id(*this, stream_id_filter,
-                                                      std::forward<Callback>(callback));
+        return utils::detail::for_each_packet_with_stream_id(*this, stream_id_filter,
+                                                             std::forward<Callback>(callback));
     }
 
     /**
@@ -291,23 +291,43 @@ public:
     bool is_open() const noexcept { return reader_.is_open(); }
 
     /**
+     * @brief Read next packet as raw bytes (no parsing)
+     *
+     * Reads the raw packet bytes without validation or parsing. This is useful
+     * for low-level processing or when you want to defer validation.
+     *
+     * @return Span valid until next read call; empty span on error/EOF
+     * @note After empty span, check last_error() to distinguish EOF from errors
+     */
+    std::span<const uint8_t> read_next_raw() noexcept { return reader_.read_next_span(); }
+
+    /**
+     * @brief Error accessor - inspect why read_next_raw() returned empty span
+     *
+     * @return Error information from the underlying reader
+     */
+    const auto& last_error() const noexcept { return reader_.last_error(); }
+
+    /**
      * @brief Access underlying RawVRTFileReader for advanced use
      *
      * Use this if you need direct access to the low-level reader API.
      *
      * @return Reference to underlying RawVRTFileReader
      */
-    RawVRTFileReader<MaxPacketWords>& underlying_reader() noexcept { return reader_; }
+    detail::RawVRTFileReader<MaxPacketWords>& underlying_reader() noexcept { return reader_; }
 
     /**
      * @brief Access underlying RawVRTFileReader for advanced use (const)
      *
      * @return Const reference to underlying RawVRTFileReader
      */
-    const RawVRTFileReader<MaxPacketWords>& underlying_reader() const noexcept { return reader_; }
+    const detail::RawVRTFileReader<MaxPacketWords>& underlying_reader() const noexcept {
+        return reader_;
+    }
 
 private:
-    RawVRTFileReader<MaxPacketWords> reader_; ///< Underlying low-level reader
+    detail::RawVRTFileReader<MaxPacketWords> reader_; ///< Underlying low-level reader
 };
 
 } // namespace vrtigo::utils::fileio

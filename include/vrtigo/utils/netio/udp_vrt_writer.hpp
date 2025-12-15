@@ -16,9 +16,7 @@
 #include <unistd.h>
 
 // Linux/POSIX socket headers
-#include "vrtigo/detail/packet_concepts.hpp"
 #include "vrtigo/detail/packet_variant.hpp"
-#include "vrtigo/utils/detail/writer_concepts.hpp"
 #include "vrtigo/utils/netio/udp_transport_status.hpp"
 
 #include <arpa/inet.h>
@@ -40,16 +38,8 @@ namespace vrtigo::utils::netio {
  * - Unbound mode: Specify destination per packet with sendto()
  *
  * Supported Packet Types:
+ * - Raw bytes (std::span<const uint8_t>)
  * - PacketVariant (runtime packets)
- * - dynamic::DataPacketView (runtime data packets)
- * - dynamic::ContextPacketView (runtime context packets)
- * - Any compile-time packet (from DataPacketBuilder or ContextPacketBuilder)
- *
- * Parse Error Handling:
- * - ParseResult errors are rejected (never sent)
- * - write_packet() returns false immediately
- * - No datagram sent
- * - transport_status() reflects error
  *
  * MTU Enforcement:
  * - Default MTU: 1500 bytes
@@ -77,7 +67,15 @@ namespace vrtigo::utils::netio {
  * packet.set_stream_id(0x1234);
  * packet.set_packet_count(1);
  *
- * writer.write_packet(packet);
+ * // Option 1: Write raw bytes
+ * writer.write_packet(packet.as_bytes());
+ *
+ * // Option 2: Convert to variant
+ * auto result = vrtigo::dynamic::DataPacketView::parse(packet.as_bytes());
+ * if (result) {
+ *     vrtigo::PacketVariant variant = result.value();
+ *     writer.write_packet(variant);
+ * }
  *
  * // Unbound mode - per-packet destination
  * UDPVRTWriter multi_writer(0);  // bind to any local port
@@ -92,13 +90,10 @@ namespace vrtigo::utils::netio {
  * dest2.sin_port = htons(12345);
  * inet_pton(AF_INET, "192.168.1.101", &dest2.sin_addr);
  *
- * // Convert to variant for per-destination API
+ * // Write to multiple destinations using raw bytes
  * auto bytes = packet.as_bytes();
- * auto result = vrtigo::dynamic::DataPacketView::parse(bytes);
- * vrtigo::PacketVariant variant = result.value();
- *
- * multi_writer.write_packet(variant, dest1);
- * multi_writer.write_packet(variant, dest2);
+ * multi_writer.write_packet(bytes, dest1);
+ * multi_writer.write_packet(bytes, dest2);
  * @endcode
  */
 class UDPVRTWriter {
@@ -231,6 +226,93 @@ public:
     }
 
     /**
+     * @brief Write raw packet bytes (bound mode)
+     *
+     * Sends packet to connected destination. Only valid in bound mode.
+     *
+     * @param bytes The packet bytes to write
+     * @return true on success, false on I/O error
+     * @note The span contents are copied; caller's buffer can be reused immediately after return.
+     */
+    bool write_packet(std::span<const uint8_t> bytes) noexcept {
+        if (!bound_mode_) {
+            // Bound mode required for this method
+            status_.state = UDPTransportStatus::State::socket_error;
+            status_.errno_value = ENOTCONN;
+            return false;
+        }
+
+        // Check MTU
+        if (bytes.size() > mtu_) {
+            status_.state = UDPTransportStatus::State::socket_error;
+            status_.errno_value = EMSGSIZE;
+            return false;
+        }
+
+        // Send datagram
+        ssize_t sent = ::send(socket_, bytes.data(), bytes.size(), 0);
+        if (sent < 0) {
+            status_.state = map_errno_to_state(errno);
+            status_.errno_value = errno;
+            return false;
+        }
+
+        if (static_cast<size_t>(sent) != bytes.size()) {
+            // Partial send (should not happen with UDP)
+            status_.state = UDPTransportStatus::State::socket_error;
+            status_.errno_value = EIO;
+            return false;
+        }
+
+        packets_sent_++;
+        bytes_sent_ += bytes.size();
+        status_.state = UDPTransportStatus::State::packet_ready;
+        return true;
+    }
+
+    /**
+     * @brief Write raw packet bytes to specific destination (unbound mode)
+     *
+     * Sends packet to specified destination. Can be used in both bound
+     * and unbound modes, but typically used in unbound mode for
+     * per-packet destination control.
+     *
+     * @param bytes The packet bytes to write
+     * @param dest Destination address
+     * @return true on success, false on I/O error
+     * @note The span contents are copied; caller's buffer can be reused immediately after return.
+     */
+    bool write_packet(std::span<const uint8_t> bytes, const struct sockaddr_in& dest) noexcept {
+        // Check MTU
+        if (bytes.size() > mtu_) {
+            status_.state = UDPTransportStatus::State::socket_error;
+            status_.errno_value = EMSGSIZE;
+            return false;
+        }
+
+        // Send datagram
+        ssize_t sent = ::sendto(socket_, bytes.data(), bytes.size(), 0,
+                                reinterpret_cast<const struct sockaddr*>(&dest), sizeof(dest));
+        if (sent < 0) {
+            status_.state = map_errno_to_state(errno);
+            status_.errno_value = errno;
+            return false;
+        }
+
+        if (static_cast<size_t>(sent) != bytes.size()) {
+            // Partial send (should not happen with UDP)
+            status_.state = UDPTransportStatus::State::socket_error;
+            status_.errno_value = EIO;
+            return false;
+        }
+
+        packets_sent_++;
+        bytes_sent_ += bytes.size();
+        status_.state = UDPTransportStatus::State::packet_ready;
+        return true;
+    }
+
+    /**
      * @brief Write packet from variant (bound mode)
      *
      * Sends packet to connected destination. Only valid in bound mode.
@@ -239,59 +321,8 @@ public:
      * @return true on success, false on I/O error
      */
     bool write_packet(const vrtigo::PacketVariant& packet) noexcept {
-        // Write the packet using visitor pattern
-        // PacketVariant now only contains valid packets (dynamic::DataPacketView or
-        // dynamic::ContextPacketView)
-        return std::visit(
-            [this](auto&& pkt) -> bool {
-                using T = std::decay_t<decltype(pkt)>;
-
-                if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacketView>) {
-                    return this->write_packet_impl(pkt.as_bytes());
-                } else if constexpr (std::is_same_v<T, vrtigo::dynamic::ContextPacketView>) {
-                    // dynamic::ContextPacketView uses context_buffer() instead of as_bytes()
-                    std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.size_bytes()};
-                    return this->write_packet_impl(bytes);
-                } else {
-                    return false; // Should never reach here
-                }
-            },
-            packet);
-    }
-
-    /**
-     * @brief Write data packet view (bound mode)
-     *
-     * @param packet The data packet to write
-     * @return true on success, false on error
-     */
-    bool write_packet(const vrtigo::dynamic::DataPacketView& packet) noexcept {
-        return write_packet_impl(packet.as_bytes());
-    }
-
-    /**
-     * @brief Write context packet view (bound mode)
-     *
-     * @param packet The context packet to write
-     * @return true on success, false on error
-     */
-    bool write_packet(const vrtigo::dynamic::ContextPacketView& packet) noexcept {
-        // dynamic::ContextPacketView uses context_buffer() instead of as_bytes()
-        std::span<const uint8_t> bytes{packet.context_buffer(), packet.size_bytes()};
-        return write_packet_impl(bytes);
-    }
-
-    /**
-     * @brief Write compile-time packet (bound mode)
-     *
-     * @tparam PacketType Type satisfying CompileTimePacketLike concept
-     * @param packet The packet to write
-     * @return true on success, false on error
-     */
-    template <typename PacketType>
-        requires vrtigo::CompileTimePacketLike<PacketType>
-    bool write_packet(const PacketType& packet) noexcept {
-        return write_packet_impl(packet.as_bytes());
+        return vrtigo::detail::visit_packet_bytes(
+            packet, [this](std::span<const uint8_t> bytes) { return this->write_packet(bytes); });
     }
 
     /**
@@ -307,24 +338,10 @@ public:
      */
     bool write_packet(const vrtigo::PacketVariant& packet,
                       const struct sockaddr_in& dest) noexcept {
-        // Write the packet using visitor pattern
-        // PacketVariant now only contains valid packets (dynamic::DataPacketView or
-        // dynamic::ContextPacketView)
-        return std::visit(
-            [this, &dest](auto&& pkt) -> bool {
-                using T = std::decay_t<decltype(pkt)>;
-
-                if constexpr (std::is_same_v<T, vrtigo::dynamic::DataPacketView>) {
-                    return this->write_packet_to(pkt.as_bytes(), dest);
-                } else if constexpr (std::is_same_v<T, vrtigo::dynamic::ContextPacketView>) {
-                    // dynamic::ContextPacketView uses context_buffer() instead of as_bytes()
-                    std::span<const uint8_t> bytes{pkt.context_buffer(), pkt.size_bytes()};
-                    return this->write_packet_to(bytes, dest);
-                } else {
-                    return false; // Should never reach here
-                }
-            },
-            packet);
+        return vrtigo::detail::visit_packet_bytes(packet,
+                                                  [this, &dest](std::span<const uint8_t> bytes) {
+                                                      return this->write_packet(bytes, dest);
+                                                  });
     }
 
     /**
@@ -386,82 +403,6 @@ public:
     }
 
 private:
-    /**
-     * @brief Write packet bytes (bound mode)
-     *
-     * Sends to connected destination using send().
-     */
-    bool write_packet_impl(std::span<const uint8_t> bytes) noexcept {
-        if (!bound_mode_) {
-            // Bound mode required for this method
-            status_.state = UDPTransportStatus::State::socket_error;
-            status_.errno_value = ENOTCONN;
-            return false;
-        }
-
-        // Check MTU
-        if (bytes.size() > mtu_) {
-            status_.state = UDPTransportStatus::State::socket_error;
-            status_.errno_value = EMSGSIZE;
-            return false;
-        }
-
-        // Send datagram
-        ssize_t sent = ::send(socket_, bytes.data(), bytes.size(), 0);
-        if (sent < 0) {
-            status_.state = map_errno_to_state(errno);
-            status_.errno_value = errno;
-            return false;
-        }
-
-        if (static_cast<size_t>(sent) != bytes.size()) {
-            // Partial send (should not happen with UDP)
-            status_.state = UDPTransportStatus::State::socket_error;
-            status_.errno_value = EIO;
-            return false;
-        }
-
-        packets_sent_++;
-        bytes_sent_ += bytes.size();
-        status_.state = UDPTransportStatus::State::packet_ready;
-        return true;
-    }
-
-    /**
-     * @brief Write packet bytes to specific destination
-     *
-     * Uses sendto() for per-packet destination control.
-     */
-    bool write_packet_to(std::span<const uint8_t> bytes, const struct sockaddr_in& dest) noexcept {
-        // Check MTU
-        if (bytes.size() > mtu_) {
-            status_.state = UDPTransportStatus::State::socket_error;
-            status_.errno_value = EMSGSIZE;
-            return false;
-        }
-
-        // Send datagram
-        ssize_t sent = ::sendto(socket_, bytes.data(), bytes.size(), 0,
-                                reinterpret_cast<const struct sockaddr*>(&dest), sizeof(dest));
-        if (sent < 0) {
-            status_.state = map_errno_to_state(errno);
-            status_.errno_value = errno;
-            return false;
-        }
-
-        if (static_cast<size_t>(sent) != bytes.size()) {
-            // Partial send (should not happen with UDP)
-            status_.state = UDPTransportStatus::State::socket_error;
-            status_.errno_value = EIO;
-            return false;
-        }
-
-        packets_sent_++;
-        bytes_sent_ += bytes.size();
-        status_.state = UDPTransportStatus::State::packet_ready;
-        return true;
-    }
-
     /**
      * @brief Resolve hostname to sockaddr_in
      *
