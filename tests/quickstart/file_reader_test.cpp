@@ -9,6 +9,7 @@
 #include <iostream>
 
 #include <gtest/gtest.h>
+#include <vrtigo/sample_span.hpp>
 #include <vrtigo/vrtigo_io.hpp>
 
 // Test data file paths
@@ -58,9 +59,9 @@ TEST(QuickstartSnippet, ReadVRTFile) {
             // Access type-safe data packet view
             const auto& data = std::get<DataPacketView>(pkt);
 
-            // Get payload - zero-copy span into file buffer!
-            auto payload = data.payload();
-            total_samples += payload.size() / 4; // 4 bytes per I/Q sample
+            // Typed sample access - count I/Q samples directly
+            auto samples = vrtigo::SampleSpanView<std::complex<int16_t>>(data.payload());
+            total_samples += samples.count();
 
         } else if (vrtigo::is_context_packet(pkt)) {
             context_packets++;
