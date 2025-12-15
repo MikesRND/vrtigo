@@ -123,7 +123,7 @@ public:
      * @return Number of frames emitted, or error
      */
     expected<size_t, FrameError> ingest_payload(std::span<const uint8_t> payload) {
-        constexpr size_t sample_size = detail::SampleTraits<SampleT>::sample_size;
+        constexpr size_t sample_size = vrtigo::detail::SampleTraits<SampleT>::sample_size;
 
         // Check alignment
         if (payload.size() % sample_size != 0) {

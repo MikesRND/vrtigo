@@ -42,6 +42,12 @@ if(VRTIGO_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
+# Optional: Build Python bindings
+option(VRTIGO_BUILD_PYTHON "Build Python bindings (requires Python and nanobind)" OFF)
+if(VRTIGO_BUILD_PYTHON)
+    add_subdirectory(bindings/python)
+endif()
+
 # Custom target: Generate documentation from test files
 add_custom_target(autodocs ALL
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/extract_docs.sh cif_access

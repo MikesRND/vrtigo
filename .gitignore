@@ -43,6 +43,7 @@
 # Build directories
 # Main build directory
 build/
+build_python/
 
 # CI build directories (specific patterns to avoid over-matching)
 build-quick/
@@ -78,3 +79,20 @@ Testing/
 # Ignore personal VSCode files
 .vscode/launch.json
 .vscode/tasks.json
+
+# PYTHON
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+ENV/
+.env/
+.venv/
+env.bak/
+venv.bak/
+*.egg-info/
+.pytest_cache/
+.coverage
+uv.lock
