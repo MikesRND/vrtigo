@@ -18,3 +18,5 @@ vrtigo_add_gtest(file_writer_test file_writer_test.cpp)
 if(UNIX)
     vrtigo_add_gtest(udp_writer_test udp_writer_test.cpp)
 endif()
+
+vrtigo_add_gtest(sample_framer_test sample_framer_test.cpp)

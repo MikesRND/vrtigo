@@ -15,7 +15,7 @@ namespace detail {
 
 // Read a single scalar component from buffer with endian conversion
 template <typename T>
-[[nodiscard]] inline T read_component(const uint8_t* buffer) noexcept {
+inline T read_component(const uint8_t* buffer) noexcept {
     T value;
     std::memcpy(&value, buffer, sizeof(T));
 
@@ -66,7 +66,7 @@ inline void write_component(uint8_t* buffer, T value) noexcept {
 
 // Read a sample (scalar or complex) from buffer
 template <ValidSampleType T>
-[[nodiscard]] inline T read_sample(const uint8_t* buffer) noexcept {
+inline T read_sample(const uint8_t* buffer) noexcept {
     if constexpr (SampleTraits<T>::sample_size != SampleTraits<T>::component_size) {
         // Complex type: read I then Q
         using Component = typename T::value_type;
@@ -123,19 +123,19 @@ public:
      * Number of complete samples in the payload.
      * Trailing bytes that don't form a complete sample are ignored.
      */
-    [[nodiscard]] size_t count() const noexcept { return data_.size() / traits::sample_size; }
+    size_t count() const noexcept { return data_.size() / traits::sample_size; }
 
     /**
      * Size of the underlying payload in bytes.
      */
-    [[nodiscard]] size_t size_bytes() const noexcept { return data_.size(); }
+    size_t size_bytes() const noexcept { return data_.size(); }
 
     /**
      * Access a single sample by index (unchecked).
      * @param index Zero-based sample index. Must be < count().
      * @return Sample value in host byte order.
      */
-    [[nodiscard]] T operator[](size_t index) const noexcept {
+    T operator[](size_t index) const noexcept {
         return detail::read_sample<T>(data_.data() + index * traits::sample_size);
     }
 
