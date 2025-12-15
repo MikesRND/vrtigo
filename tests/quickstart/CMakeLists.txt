@@ -14,3 +14,6 @@ vrtigo_add_gtest(quickstart_packet_parsing packet_parsing_test.cpp)
 
 # Sample Clock snippet test
 vrtigo_add_gtest(quickstart_sample_clock sample_clock_test.cpp)
+
+# Sample Framer snippet test
+vrtigo_add_gtest(quickstart_sample_framer sample_framer_test.cpp)
