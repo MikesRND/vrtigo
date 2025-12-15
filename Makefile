@@ -4,6 +4,7 @@
 .PHONY: test install uninstall autodocs
 .PHONY: quick-check coverage debug-build clang-build install-verify ci-full clean-all
 .PHONY: format-check format-fix format-diff clang-tidy clang-tidy-fix
+.PHONY: python python-test python-stubs
 
 # Default build directory
 BUILD_DIR ?= build
@@ -89,6 +90,7 @@ ci-full:
 	@$(MAKE) clang-build
 	@$(MAKE) clang-tidy
 	@$(MAKE) install-verify
+	@$(MAKE) python-test
 	@$(MAKE) coverage
 	@echo "\n✓ Full CI validation complete - safe to push!"
 
@@ -174,6 +176,32 @@ clang-tidy-fix:
 	@./scripts/ci/clang-tidy.sh build --fix
 
 # ============================================================================
+# Python Targets
+# ============================================================================
+
+# Build Python bindings
+python:
+	@mkdir -p $(BUILD_DIR)
+	@cd $(BUILD_DIR) && cmake .. \
+		-DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
+		-DVRTIGO_BUILD_PYTHON=ON
+	@cmake --build $(BUILD_DIR) --target vrtigo_py vrtigo_stub -j$(NPROC)
+	@echo "✓ Python bindings built"
+	@echo "  Module: $(BUILD_DIR)/bindings/python/vrtigo*.so"
+	@echo "  Stubs:  $(BUILD_DIR)/bindings/python/vrtigo.pyi"
+
+# Run Python tests
+python-test: python
+	@echo "Running Python tests..."
+	@PYTHONPATH=$(BUILD_DIR)/bindings/python pytest bindings/python/tests -v
+	@echo "✓ Python tests passed"
+
+# Generate Python stubs only
+python-stubs: python
+	@cmake --build $(BUILD_DIR) --target vrtigo_stub
+	@echo "✓ Stubs generated: $(BUILD_DIR)/bindings/python/vrtigo.pyi"
+
+# ============================================================================
 # Help Target
 # ============================================================================
 
@@ -222,4 +250,9 @@ help:
 	@echo "    make install             Install library system-wide"
 	@echo "    make uninstall           Uninstall from system"
 	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "PYTHON BINDINGS"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "  make python               Build Python bindings + stubs"
+	@echo "  make python-test          Run Python tests"
 	@echo ""
