@@ -26,7 +26,12 @@ nanobind_add_module(
 )
 
 # Link to the main vrtigo library (header-only)
-target_link_libraries(vrtigo_py PRIVATE vrtigo::vrtigo)
+# When standalone (pip install), vrtigo::vrtigo doesn't exist - add include path directly
+if(VRTIGO_STANDALONE_PYTHON)
+    target_include_directories(vrtigo_py PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+else()
+    target_link_libraries(vrtigo_py PRIVATE vrtigo::vrtigo)
+endif()
 
 # Set output name to 'vrtigo' (importable as 'import vrtigo')
 set_target_properties(vrtigo_py PROPERTIES OUTPUT_NAME vrtigo)
