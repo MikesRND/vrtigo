@@ -35,7 +35,10 @@ inline void bind_readers(nb::module_& m) {
         .def(
             "read_next_packet",
             [](PyVRTFileReader& r, bool strict) -> nb::object {
-                auto result = r.reader.read_next_packet();
+                auto result = [&]() {
+                    nb::gil_scoped_release release;
+                    return r.reader.read_next_packet();
+                }();
 
                 // Handle errors
                 if (!result.has_value()) {
@@ -95,7 +98,10 @@ inline void bind_readers(nb::module_& m) {
             "__next__",
             [](PyVRTFileReader& r) -> nb::object {
                 while (true) {
-                    auto result = r.reader.read_next_packet();
+                    auto result = [&]() {
+                        nb::gil_scoped_release release;
+                        return r.reader.read_next_packet();
+                    }();
 
                     if (!result.has_value()) {
                         const auto& err = result.error();
@@ -179,7 +185,10 @@ inline void bind_readers(nb::module_& m) {
         .def(
             "read_next_packet",
             [](PyUDPVRTReader& r, bool strict) -> nb::object {
-                auto result = r.reader.read_next_packet();
+                auto result = [&]() {
+                    nb::gil_scoped_release release;
+                    return r.reader.read_next_packet();
+                }();
 
                 if (!result.has_value()) {
                     const auto& err = result.error();
@@ -244,7 +253,10 @@ inline void bind_readers(nb::module_& m) {
             "__next__",
             [](PyUDPVRTReader& r) -> nb::object {
                 while (true) {
-                    auto result = r.reader.read_next_packet();
+                    auto result = [&]() {
+                        nb::gil_scoped_release release;
+                        return r.reader.read_next_packet();
+                    }();
 
                     if (!result.has_value()) {
                         const auto& err = result.error();
