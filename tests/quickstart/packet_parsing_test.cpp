@@ -21,7 +21,7 @@ static auto create_test_data_packet() {
     using PacketType =
         vrtigo::typed::SignalDataPacketBuilder<2, vrtigo::UtcRealTimestamp>; // 8 bytes payload
 
-    alignas(4) static std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) static std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     std::array<uint8_t, 8> payload{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
 
     PacketType packet(buffer);

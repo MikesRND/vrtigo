@@ -161,7 +161,7 @@ TEST(PacketConceptsTest, NonPacketTypesRejected) {
 TEST(PacketConceptsTest, RuntimeBehaviorConsistency) {
     // Create data packet
     using SignalType = typed::DataPacketBuilder<PacketType::signal_data, 32>;
-    alignas(4) std::array<uint8_t, SignalType::size_bytes()> signal_buffer;
+    alignas(4) std::array<uint8_t, SignalType::max_size_bytes()> signal_buffer;
     SignalType signal_pkt(signal_buffer);
 
     EXPECT_NO_THROW({

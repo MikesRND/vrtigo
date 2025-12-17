@@ -35,6 +35,7 @@ vrtigo_add_gtest(start_time_test start_time_test.cpp)
 vrtigo_add_gtest(runtime_data_packet_test runtime_data_packet_test.cpp)
 vrtigo_add_gtest(packet_concepts_test packet_concepts_test.cpp)
 vrtigo_add_gtest(sample_span_test sample_span_test.cpp)
+vrtigo_add_gtest(variable_packet_size_test variable_packet_size_test.cpp)
 
 vrtigo_add_gtest(context_basic_test context_basic_test.cpp)
 vrtigo_add_gtest(context_validation_test context_validation_test.cpp)

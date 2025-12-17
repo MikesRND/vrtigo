@@ -46,21 +46,25 @@ concept PacketMetadataLike = requires(const T& pkt) {
  * template parameters (DataPacket<...>, ContextPacket<...>).
  *
  * Key characteristics:
- * - Static size functions available (T::size_bytes(), T::size_words())
  * - Static feature functions available (T::has_stream_id(), etc.)
  * - Mutable access (can modify packet contents)
+ *
+ * Note: Size methods vary by packet type:
+ * - Context packets: T::size_bytes(), T::size_words() (static, fixed size)
+ * - Data packets: T::max_size_bytes(), T::max_size_words() (static, max buffer size)
+ *                 pkt.size_bytes(), pkt.size_words() (instance, current packet size)
  */
 template <typename T>
-concept CompileTimePacketLike = PacketMetadataLike<T> && requires(T& mut) {
-    // Static size (callable without instance)
-    { T::size_bytes() } -> std::same_as<size_t>;
-    { T::size_words() } -> std::same_as<size_t>;
-
+concept CompileTimePacketLike = PacketMetadataLike<T> && requires(T& mut, const T& pkt) {
     // Static feature queries
     { T::has_stream_id() } -> std::same_as<bool>;
     { T::has_class_id() } -> std::same_as<bool>;
     { T::has_timestamp() } -> std::same_as<bool>;
     { T::has_trailer() } -> std::same_as<bool>;
+
+    // Instance size access (works for both context and data packets)
+    { pkt.size_bytes() } -> std::same_as<size_t>;
+    { pkt.size_words() } -> std::same_as<size_t>;
 
     // Mutable operations
     { mut.set_packet_count(uint8_t{}) } -> std::same_as<void>;

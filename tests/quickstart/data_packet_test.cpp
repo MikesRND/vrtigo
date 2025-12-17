@@ -35,7 +35,7 @@ TEST(QuickstartSnippet, CreateDataPacket) {
                                                >;
 
     // Allocate aligned buffer for the packet
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     // Build packet structure
     PacketType packet(buffer);

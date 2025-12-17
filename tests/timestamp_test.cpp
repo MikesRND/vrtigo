@@ -264,7 +264,7 @@ TEST_F(TimestampTest, MaxSafeTimestampDifference) {
 TEST_F(TimestampTest, PacketIntegration) {
     using PacketType = typed::SignalDataPacketBuilder<256, UtcRealTimestamp>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     PacketType packet(buffer);
 
     // Set timestamp using unified interface
@@ -280,7 +280,7 @@ TEST_F(TimestampTest, PacketIntegration) {
 TEST_F(TimestampTest, BuilderIntegration) {
     using PacketType = typed::SignalDataPacketBuilder<256, UtcRealTimestamp>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     UtcRealTimestamp ts(test_seconds, test_picoseconds);
 
@@ -322,7 +322,7 @@ TEST_F(TimestampTest, GPSTimestampPacketStructure) {
     // Verify the packet has timestamp support
     static_assert(GPSPacket::has_timestamp());
 
-    alignas(4) std::array<uint8_t, GPSPacket::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, GPSPacket::max_size_bytes()> buffer{};
     GPSPacket packet(buffer);
 
     // Use typed timestamp methods for GPS values

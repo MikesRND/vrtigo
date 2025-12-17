@@ -9,7 +9,7 @@ using namespace vrtigo;
 TEST(RtDataPacketTest, BasicPacketNoStream) {
     using PacketType = typed::SignalDataPacketBuilderNoId<64>; // 64 words payload
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     PacketType packet(buffer);
 
     // Parse with runtime view
@@ -21,7 +21,7 @@ TEST(RtDataPacketTest, BasicPacketNoStream) {
     EXPECT_FALSE(view.has_stream_id());
     EXPECT_FALSE(view.has_trailer());
     EXPECT_FALSE(view.has_timestamp());
-    EXPECT_EQ(view.size_words(), PacketType::size_bytes() / 4);
+    EXPECT_EQ(view.size_words(), PacketType::max_size_bytes() / 4);
     EXPECT_EQ(view.payload_size_bytes(), 64 * 4);
 }
 
@@ -29,7 +29,7 @@ TEST(RtDataPacketTest, BasicPacketNoStream) {
 TEST(RtDataPacketTest, PacketWithStreamID) {
     using PacketType = typed::SignalDataPacketBuilder<64>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     PacketType packet(buffer);
     packet.set_stream_id(0x12345678);
@@ -51,7 +51,7 @@ TEST(RtDataPacketTest, PacketWithStreamID) {
 TEST(RtDataPacketTest, PacketWithTimestamps) {
     using PacketType = typed::SignalDataPacketBuilder<64, UtcRealTimestamp>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     PacketType packet(buffer);
     packet.set_stream_id(0xABCDEF00);
@@ -79,7 +79,7 @@ TEST(RtDataPacketTest, PacketWithTimestamps) {
 TEST(RtDataPacketTest, PacketWithTrailer) {
     using PacketType = typed::SignalDataPacketBuilder<64, NoTimestamp, NoClassId, WithTrailer>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     PacketType packet(buffer);
     packet.set_stream_id(0x11111111);
@@ -103,7 +103,7 @@ TEST(RtDataPacketTest, FullFeaturedPacket) {
     using PacketType =
         typed::SignalDataPacketBuilder<128, UtcRealTimestamp, NoClassId, WithTrailer>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     PacketType packet(buffer);
     packet.set_stream_id(0xCAFEBABE);
@@ -136,7 +136,7 @@ TEST(RtDataPacketTest, FullFeaturedPacket) {
 TEST(RtDataPacketTest, PayloadAccess) {
     using PacketType = typed::SignalDataPacketBuilderNoId<16>; // 16 words = 64 bytes
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     PacketType packet(buffer);
 
     // Fill payload with test pattern
@@ -166,7 +166,7 @@ TEST(RtDataPacketTest, PayloadAccess) {
 TEST(RtDataPacketTest, ValidationBufferTooSmall) {
     using PacketType = typed::SignalDataPacketBuilderNoId<64>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     PacketType packet(buffer);
 
     // Parse with smaller buffer size
@@ -207,7 +207,7 @@ TEST(RtDataPacketTest, RoundTripBuildParse) {
         typed::SignalDataPacketBuilder<256, Timestamp<TsiType::gps, TsfType::real_time>, NoClassId,
                                        WithTrailer>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     // Build packet
     std::array<uint8_t, 256 * 4> payload_data{};
