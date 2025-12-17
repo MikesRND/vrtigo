@@ -25,7 +25,7 @@ TEST_F(SecurityTest, ValidPacketParsesSuccessfully) {
         vrtigo::typed::SignalDataPacketBuilder<256, vrtigo::UtcRealTimestamp, vrtigo::NoClassId,
                                                vrtigo::WithTrailer>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     PacketType packet(buffer);
 
     // Parse with dynamic::DataPacketView
@@ -35,7 +35,7 @@ TEST_F(SecurityTest, ValidPacketParsesSuccessfully) {
     if (result.has_value()) {
         const auto& view = result.value();
         EXPECT_EQ(view.type(), vrtigo::PacketType::signal_data);
-        EXPECT_EQ(view.size_bytes(), PacketType::size_bytes());
+        EXPECT_EQ(view.size_bytes(), PacketType::max_size_bytes());
         EXPECT_TRUE(view.has_trailer());
         EXPECT_TRUE(view.has_timestamp());
     }
@@ -54,7 +54,7 @@ TEST_F(SecurityTest, BufferTooSmallForHeader) {
 TEST_F(SecurityTest, BufferTooSmallForDeclaredSize) {
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<128>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     PacketType packet(buffer);
 
     // Parse with truncated buffer
@@ -68,7 +68,7 @@ TEST_F(SecurityTest, BufferTooSmallForDeclaredSize) {
 TEST_F(SecurityTest, ContextPacketTypeMismatch) {
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<128>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     PacketType packet(buffer);
 
     // Corrupt packet type field (bits 31-28) to type 4 (context)
@@ -83,7 +83,7 @@ TEST_F(SecurityTest, ContextPacketTypeMismatch) {
 TEST_F(SecurityTest, ExtensionContextPacketTypeMismatch) {
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<128>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     PacketType packet(buffer);
 
     // Corrupt packet type field to type 5 (extension context)
@@ -98,7 +98,7 @@ TEST_F(SecurityTest, ExtensionContextPacketTypeMismatch) {
 TEST_F(SecurityTest, SizeFieldTooLarge) {
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<128>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     PacketType packet(buffer);
 
     // Corrupt size field (bits 15-0) to claim larger size than buffer
@@ -113,7 +113,7 @@ TEST_F(SecurityTest, SizeFieldTooLarge) {
 TEST_F(SecurityTest, SizeFieldZero) {
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<128>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     PacketType packet(buffer);
 
     // Corrupt size field to 0
@@ -129,12 +129,12 @@ TEST_F(SecurityTest, SizeFieldZero) {
 TEST_F(SecurityTest, MinimalPacketValidation) {
     using PacketType = vrtigo::typed::SignalDataPacketBuilderNoId<0>; // Zero payload
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     PacketType packet(buffer);
 
     auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
     EXPECT_TRUE(result.has_value());
-    EXPECT_EQ(PacketType::size_bytes(), 4); // Just header
+    EXPECT_EQ(PacketType::max_size_bytes(), 4); // Just header
 
     if (result.has_value()) {
         EXPECT_EQ(result.value().payload_size_bytes(), 0);
@@ -147,7 +147,7 @@ TEST_F(SecurityTest, MaximumConfigurationValidation) {
         vrtigo::typed::SignalDataPacketBuilder<1024, vrtigo::UtcRealTimestamp, vrtigo::NoClassId,
                                                vrtigo::WithTrailer>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     PacketType packet(buffer);
 
     auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
@@ -164,7 +164,7 @@ TEST_F(SecurityTest, MultipleErrors) {
         vrtigo::typed::SignalDataPacketBuilder<256, vrtigo::UtcRealTimestamp, vrtigo::NoClassId,
                                                vrtigo::WithTrailer>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     PacketType packet(buffer);
 
     // Corrupt type field to context
@@ -197,7 +197,7 @@ TEST_F(SecurityTest, ErrorStringConversion) {
 TEST_F(SecurityTest, Type0PacketValidation) {
     using PacketType = vrtigo::typed::SignalDataPacketBuilderNoId<256, vrtigo::UtcRealTimestamp>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     PacketType packet(buffer);
 
     auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
@@ -213,7 +213,7 @@ TEST_F(SecurityTest, Type0PacketValidation) {
 TEST_F(SecurityTest, Type1PacketValidation) {
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<256, vrtigo::UtcRealTimestamp>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     PacketType packet(buffer);
     packet.set_stream_id(0x12345678);
 
@@ -237,8 +237,8 @@ TEST_F(SecurityTest, UntrustedNetworkDataPattern) {
     alignas(4) std::array<uint8_t, 2048> network_buffer{};
 
     // Build valid packet
-    std::span<uint8_t, PacketType::size_bytes()> packet_span{network_buffer.data(),
-                                                             PacketType::size_bytes()};
+    std::span<uint8_t, PacketType::max_size_bytes()> packet_span{network_buffer.data(),
+                                                                 PacketType::max_size_bytes()};
     PacketType tx_packet(packet_span);
     tx_packet.set_stream_id(0x12345678);
     auto ts = vrtigo::UtcRealTimestamp(1234567890, 999999999999ULL);
@@ -262,7 +262,7 @@ TEST_F(SecurityTest, UntrustedNetworkDataPattern) {
 TEST_F(SecurityTest, SizeFieldManipulationDefense) {
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<128>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     PacketType packet(buffer);
 
     // Attacker tries to claim packet is larger than buffer
@@ -278,7 +278,7 @@ TEST_F(SecurityTest, SizeFieldManipulationDefense) {
 TEST_F(SecurityTest, ParseErrorInformation) {
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<128>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     PacketType packet(buffer);
 
     // Corrupt to context packet type
@@ -298,7 +298,7 @@ TEST_F(SecurityTest, ParseErrorInformation) {
 TEST_F(SecurityTest, ExtensionDataPacketValidation) {
     using PacketType = vrtigo::typed::ExtensionDataPacketBuilder<64>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     PacketType packet(buffer);
 
     auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
@@ -316,7 +316,7 @@ TEST_F(SecurityTest, TimestampVariations) {
         using PacketType = vrtigo::typed::SignalDataPacketBuilder<
             32, vrtigo::Timestamp<vrtigo::TsiType::utc, vrtigo::TsfType::none>>;
 
-        alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+        alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
         PacketType packet(buffer);
 
         auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
@@ -334,7 +334,7 @@ TEST_F(SecurityTest, TimestampVariations) {
         using PacketType = vrtigo::typed::SignalDataPacketBuilder<
             32, vrtigo::Timestamp<vrtigo::TsiType::none, vrtigo::TsfType::real_time>>;
 
-        alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+        alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
         PacketType packet(buffer);
 
         auto result = vrtigo::dynamic::DataPacketView::parse(buffer);
@@ -351,7 +351,7 @@ TEST_F(SecurityTest, TimestampVariations) {
     {
         using PacketType = vrtigo::typed::SignalDataPacketBuilder<32>;
 
-        alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+        alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
         PacketType packet(buffer);
 
         auto result = vrtigo::dynamic::DataPacketView::parse(buffer);

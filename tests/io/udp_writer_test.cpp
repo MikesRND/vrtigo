@@ -59,7 +59,7 @@ TEST_F(UDPWriterTest, WriteCompileTimePacket) {
 
     // Create and send packet
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<64>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     PacketType packet(buffer);
     packet.set_stream_id(0x12345678);
@@ -85,7 +85,7 @@ TEST_F(UDPWriterTest, WriteMultiplePackets) {
     UDPVRTWriter writer("127.0.0.1", test_port);
 
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<64>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     // Send 10 packets
     for (uint32_t i = 0; i < 10; i++) {
@@ -119,7 +119,7 @@ TEST_F(UDPWriterTest, RoundTripDataPacket) {
 
     // Create packet with stream ID and timestamp
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<64, UtcRealTimestamp>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     const uint32_t test_stream_id = 0xABCDEF01;
     auto test_timestamp = UtcRealTimestamp::now();
@@ -188,7 +188,7 @@ TEST_F(UDPWriterTest, EnforceMTU) {
 
     // Create packet larger than MTU
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<256>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     std::array<uint8_t, 1024> large_payload{};
     PacketType packet(buffer);
@@ -212,7 +212,7 @@ TEST_F(UDPWriterTest, MTUAllowsValidPacket) {
 
     // Create packet within MTU
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<64>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     std::array<uint8_t, 256> payload{};
     PacketType packet(buffer);
@@ -244,7 +244,7 @@ TEST_F(UDPWriterTest, UnboundModeMultipleDestinations) {
 
     // Create packet
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<64>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     PacketType packet(buffer);
     packet.set_stream_id(0x55555555);
@@ -294,7 +294,7 @@ TEST_F(UDPWriterTest, FlushIsNoOp) {
 
     // Create and send packet
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<64>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     PacketType packet(buffer);
     packet.set_stream_id(0x12345678);
@@ -318,7 +318,7 @@ TEST_F(UDPWriterTest, MoveConstructor) {
 
     // Send packet with writer1
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<64>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     PacketType packet(buffer);
     packet.set_stream_id(0x11111111);
@@ -341,7 +341,7 @@ TEST_F(UDPWriterTest, MoveAssignment) {
     UDPVRTWriter writer2("127.0.0.1", test_port_2);
 
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<64>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     PacketType packet(buffer);
     packet.set_stream_id(0x22222222);
@@ -367,7 +367,7 @@ TEST_F(UDPWriterTest, UDPVRTReaderReadNextRaw) {
 
     // Create and send test packets
     using PacketType = SignalDataPacketBuilder<64>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     // Send 3 packets with different stream IDs
     for (uint32_t i = 0; i < 3; i++) {
@@ -410,7 +410,7 @@ TEST_F(UDPWriterTest, UDPVRTReaderPacketsReadCounter) {
     UDPVRTWriter writer("127.0.0.1", test_port);
 
     using PacketType = SignalDataPacketBuilder<64>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     // Initial counter should be 0
     EXPECT_EQ(reader.packets_read(), 0u);
@@ -440,7 +440,7 @@ TEST_F(UDPWriterTest, UDPVRTReaderTransportStatusOnSuccess) {
     UDPVRTWriter writer("127.0.0.1", test_port);
 
     using PacketType = SignalDataPacketBuilder<64>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     PacketType packet(buffer);
     packet.set_stream_id(0x30303030);
@@ -471,7 +471,7 @@ TEST_F(UDPWriterTest, UDPVRTReaderRawThenParsed) {
     UDPVRTWriter writer("127.0.0.1", test_port);
 
     using PacketType = SignalDataPacketBuilder<64>;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     // Send first packet - read with read_next_raw()
     PacketType packet1(buffer);

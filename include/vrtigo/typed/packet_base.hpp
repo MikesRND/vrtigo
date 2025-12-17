@@ -136,16 +136,18 @@ public:
 
     // ========================================================================
     // Buffer access
-    // Uses Derived::size_bytes() via CRTP for compile-time extent
+    // Uses Derived::safe_size_words() via CRTP for dynamic extent (clamped for safety)
     // Note: auto return type required because Derived is incomplete at base instantiation
     // ========================================================================
 
     auto as_bytes() noexcept {
-        return std::span<uint8_t, Derived::size_bytes()>(buffer_, Derived::size_bytes());
+        return std::span<uint8_t>(buffer_,
+                                  static_cast<Derived*>(this)->safe_size_words() * vrt_word_size);
     }
 
     auto as_bytes() const noexcept {
-        return std::span<const uint8_t, Derived::size_bytes()>(buffer_, Derived::size_bytes());
+        return std::span<const uint8_t>(
+            buffer_, static_cast<const Derived*>(this)->safe_size_words() * vrt_word_size);
     }
 };
 

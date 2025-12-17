@@ -12,7 +12,7 @@ protected:
         vrtigo::typed::SignalDataPacketBuilder<128, vrtigo::UtcRealTimestamp, vrtigo::NoClassId,
                                                vrtigo::WithTrailer>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     void SetUp() override {
         PacketType packet(buffer);

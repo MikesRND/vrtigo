@@ -140,6 +140,9 @@ public:
     /// Get packet size in bytes
     static constexpr size_t size_bytes() noexcept { return size_words() * 4; }
 
+    /// Get safe packet size (for uniformity with data packets - always returns size_words)
+    static constexpr size_t safe_size_words() noexcept { return size_words(); }
+
     /// Check if packet has trailer (always false for context packets per spec)
     static constexpr bool has_trailer() noexcept { return false; }
 

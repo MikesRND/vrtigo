@@ -33,7 +33,7 @@ protected:
 TEST_F(RoundTripTest, MinimalPacket) {
     using PacketType = vrtigo::typed::SignalDataPacketBuilderNoId<128>; // 512 bytes payload
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     // Create and populate packet
     PacketType packet(buffer);
@@ -58,7 +58,7 @@ TEST_F(RoundTripTest, MinimalPacket) {
 TEST_F(RoundTripTest, PacketWithStreamId) {
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<256>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     // Create packet
     PacketType packet(buffer);
@@ -79,7 +79,7 @@ TEST_F(RoundTripTest, PacketWithStreamId) {
 TEST_F(RoundTripTest, PacketWithIntegerTimestamp) {
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<128, vrtigo::UtcRealTimestamp>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     // Create packet
     PacketType packet(buffer);
@@ -104,7 +104,7 @@ TEST_F(RoundTripTest, PacketWithIntegerTimestamp) {
 TEST_F(RoundTripTest, PacketWithFractionalTimestamp) {
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<256, vrtigo::UtcRealTimestamp>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     // Create packet
     PacketType packet(buffer);
@@ -133,7 +133,7 @@ TEST_F(RoundTripTest, PacketWithTrailer) {
         vrtigo::typed::SignalDataPacketBuilder<128, vrtigo::UtcRealTimestamp, vrtigo::NoClassId,
                                                vrtigo::WithTrailer>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     // Create packet
     PacketType packet(buffer);
@@ -162,7 +162,7 @@ TEST_F(RoundTripTest, FullFeaturedPacket) {
         vrtigo::typed::SignalDataPacketBuilder<512, vrtigo::UtcRealTimestamp, vrtigo::NoClassId,
                                                vrtigo::WithTrailer>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     // Create packet with all fields
     PacketType packet(buffer);
@@ -196,7 +196,7 @@ TEST_F(RoundTripTest, BuilderRoundTrip) {
         vrtigo::typed::SignalDataPacketBuilder<256, vrtigo::UtcRealTimestamp, vrtigo::NoClassId,
                                                vrtigo::WithTrailer>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> tx_buffer;
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> tx_buffer;
     alignas(4) std::array<uint8_t, 1024> payload_data;
 
     // Fill payload
@@ -215,8 +215,8 @@ TEST_F(RoundTripTest, BuilderRoundTrip) {
     packet.set_payload(payload_data.data(), payload_data.size());
 
     // Simulate network transmission by copying buffer
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> rx_buffer;
-    std::memcpy(rx_buffer.data(), tx_buffer.data(), PacketType::size_bytes());
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> rx_buffer;
+    std::memcpy(rx_buffer.data(), tx_buffer.data(), PacketType::max_size_bytes());
 
     // Parse received packet
     PacketType received(rx_buffer, false);
@@ -243,12 +243,12 @@ TEST_F(RoundTripTest, MultiplePackets) {
     using PacketType = vrtigo::typed::SignalDataPacketBuilder<128, vrtigo::UtcRealTimestamp>;
 
     constexpr size_t NUM_PACKETS = 10;
-    alignas(4) std::array<uint8_t, PacketType::size_bytes() * NUM_PACKETS> buffer;
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes() * NUM_PACKETS> buffer;
 
     // Create multiple packets
     for (size_t i = 0; i < NUM_PACKETS; ++i) {
-        std::span<uint8_t, PacketType::size_bytes()> packet_span{
-            buffer.data() + (i * PacketType::size_bytes()), PacketType::size_bytes()};
+        std::span<uint8_t, PacketType::max_size_bytes()> packet_span{
+            buffer.data() + (i * PacketType::max_size_bytes()), PacketType::max_size_bytes()};
         PacketType packet(packet_span);
 
         packet.set_stream_id(0x1000 + i);
@@ -265,8 +265,8 @@ TEST_F(RoundTripTest, MultiplePackets) {
 
     // Parse and verify all packets
     for (size_t i = 0; i < NUM_PACKETS; ++i) {
-        std::span<uint8_t, PacketType::size_bytes()> packet_span{
-            buffer.data() + (i * PacketType::size_bytes()), PacketType::size_bytes()};
+        std::span<uint8_t, PacketType::max_size_bytes()> packet_span{
+            buffer.data() + (i * PacketType::max_size_bytes()), PacketType::max_size_bytes()};
         PacketType received(packet_span, false);
 
         EXPECT_EQ(received.stream_id(), 0x1000 + i);
@@ -289,7 +289,7 @@ TEST_F(RoundTripTest, HeaderBitsCorrect) {
         vrtigo::typed::SignalDataPacketBuilder<256, vrtigo::UtcRealTimestamp, vrtigo::NoClassId,
                                                vrtigo::WithTrailer>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
     PacketType packet(buffer);
 
     // Read raw header (network byte order)
@@ -309,15 +309,15 @@ TEST_F(RoundTripTest, HeaderBitsCorrect) {
     // Verify TSF field (bits 21-20) = 2 (real-time)
     EXPECT_EQ((raw_header >> 20) & 0x03, 2);
 
-    // Verify packet size (bits 15-0)
-    EXPECT_EQ(raw_header & 0xFFFF, PacketType::size_words());
+    // Verify packet size (bits 15-0) - initialized to max size
+    EXPECT_EQ(raw_header & 0xFFFF, PacketType::max_size_words());
 }
 
 // Test 10: Type 0 packet (no stream ID)
 TEST_F(RoundTripTest, Type0PacketNoStreamId) {
     using PacketType = vrtigo::typed::SignalDataPacketBuilderNoId<256, vrtigo::UtcRealTimestamp>;
 
-    alignas(4) std::array<uint8_t, PacketType::size_bytes()> buffer{};
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
 
     // Create packet
     PacketType packet(buffer);

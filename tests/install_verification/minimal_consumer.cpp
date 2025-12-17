@@ -17,12 +17,13 @@ int main() {
     using MinimalPacket = vrtigo::typed::SignalDataPacketBuilderNoId<64>; // 256 bytes payload
 
     std::cout << "Creating minimal packet...\n";
-    std::cout << "  Packet size: " << MinimalPacket::size_bytes() << " bytes\n";
-    std::cout << "  Payload size: " << MinimalPacket::payload_size_bytes() << " bytes\n";
+    std::cout << "  Max packet size: " << MinimalPacket::max_size_bytes() << " bytes\n";
 
     // Allocate buffer and create packet
-    alignas(4) std::array<uint8_t, MinimalPacket::size_bytes()> buffer;
+    alignas(4) std::array<uint8_t, MinimalPacket::max_size_bytes()> buffer;
     MinimalPacket packet(buffer);
+
+    std::cout << "  Payload size: " << packet.payload_size_bytes() << " bytes\n";
 
     // Set and verify a field
     packet.set_packet_count(5);
