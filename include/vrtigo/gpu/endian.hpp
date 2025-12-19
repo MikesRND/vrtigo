@@ -11,7 +11,6 @@
  */
 
 #include <cstdint>
-
 #include <vrtigo/gpu/detail/cuda_macros.hpp>
 
 namespace vrtigo {
