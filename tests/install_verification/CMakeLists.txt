@@ -24,3 +24,22 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 elseif(MSVC)
     target_compile_options(minimal_consumer PRIVATE /W4)
 endif()
+
+# Optional: GPU consumer (requires CUDA and vrtigo::gpu target)
+option(VRTIGO_TEST_GPU "Build GPU install verification" OFF)
+if(VRTIGO_TEST_GPU)
+    # Check if vrtigo::gpu target exists (installed with CUDA support)
+    if(TARGET vrtigo::gpu)
+        enable_language(CUDA)
+
+        add_executable(gpu_consumer gpu_consumer.cu)
+        target_link_libraries(gpu_consumer PRIVATE vrtigo::gpu)
+        set_target_properties(gpu_consumer PROPERTIES
+            CUDA_STANDARD 20
+            CUDA_STANDARD_REQUIRED ON
+        )
+    else()
+        message(WARNING "VRTIGO_TEST_GPU=ON but vrtigo::gpu target not found. "
+                        "Was vrtigo built with -DVRTIGO_ENABLE_CUDA=ON?")
+    endif()
+endif()

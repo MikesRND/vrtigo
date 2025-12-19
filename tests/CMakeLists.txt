@@ -70,3 +70,66 @@ endif()
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cif_access)
     add_subdirectory(cif_access)
 endif()
+
+# ============================================================================
+# GPU Tests (requires CUDA)
+# ============================================================================
+
+# Set default CUDA architectures if not specified
+# Use 'native' to detect local GPU; set CMAKE_CUDA_ARCHITECTURES explicitly for headless builds
+if(VRTIGO_ENABLE_CUDA AND NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES native)
+endif()
+
+# GPU syntax check - compile-only, no runtime needed
+# Can run in nvidia/cuda container without actual GPU
+if(VRTIGO_ENABLE_CUDA AND VRTIGO_BUILD_GPU_SYNTAX_CHECK)
+    add_library(gpu_compile_check OBJECT
+        gpu/compile_check.cu
+    )
+    target_link_libraries(gpu_compile_check PRIVATE vrtigo::vrtigo)
+    target_compile_definitions(gpu_compile_check PRIVATE VRTIGO_ENABLE_CUDA)
+    set_target_properties(gpu_compile_check PROPERTIES
+        CUDA_STANDARD 20
+        CUDA_STANDARD_REQUIRED ON
+    )
+endif()
+
+# GPU runtime tests - require actual GPU
+if(VRTIGO_ENABLE_CUDA AND VRTIGO_BUILD_GPU_TESTS)
+    # Complex type unit tests
+    add_executable(gpu_complex_test
+        gpu/complex_test.cu
+    )
+    target_link_libraries(gpu_complex_test PRIVATE
+        vrtigo::vrtigo
+        GTest::gtest
+        GTest::gtest_main
+    )
+    target_compile_definitions(gpu_complex_test PRIVATE VRTIGO_ENABLE_CUDA)
+    set_target_properties(gpu_complex_test PROPERTIES
+        CUDA_STANDARD 20
+        CUDA_STANDARD_REQUIRED ON
+    )
+
+    add_test(NAME gpu_complex_test COMMAND gpu_complex_test)
+    set_tests_properties(gpu_complex_test PROPERTIES LABELS "gpu")
+
+    # Integration tests (end-to-end pipeline)
+    add_executable(gpu_integration_test
+        gpu/integration_test.cu
+    )
+    target_link_libraries(gpu_integration_test PRIVATE
+        vrtigo::vrtigo
+        GTest::gtest
+        GTest::gtest_main
+    )
+    target_compile_definitions(gpu_integration_test PRIVATE VRTIGO_ENABLE_CUDA)
+    set_target_properties(gpu_integration_test PROPERTIES
+        CUDA_STANDARD 20
+        CUDA_STANDARD_REQUIRED ON
+    )
+
+    add_test(NAME gpu_integration_test COMMAND gpu_integration_test)
+    set_tests_properties(gpu_integration_test PROPERTIES LABELS "gpu")
+endif()

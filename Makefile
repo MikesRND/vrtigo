@@ -5,6 +5,7 @@
 .PHONY: quick-check coverage debug-build clang-build install-verify ci-full clean-all
 .PHONY: format-check format-fix format-diff clang-tidy clang-tidy-fix
 .PHONY: python python-test python-stubs python-clean
+.PHONY: gpu-test gpu-syntax-check gpu-install-verify
 
 # Default build directory
 BUILD_DIR ?= build
@@ -116,10 +117,14 @@ clang-build:
 install-verify:
 	@./scripts/ci/install-verify.sh build-install
 
+# GPU install verification - tests vrtigo::gpu target after install
+gpu-install-verify:
+	@./scripts/ci/install-verify.sh build-install-gpu "$(CURDIR)/install-test-gpu" --gpu
+
 # Clean all build directories (including CI build dirs and Python venv)
 clean-all: python-clean
 	@echo "Removing all build directories..."
-	@rm -rf build build-* install-test
+	@rm -rf build build-* install-test install-test-*
 	@echo "✓ All build artifacts removed"
 
 # ============================================================================
@@ -198,6 +203,18 @@ python-clean:
 	@echo "✓ Python environment removed"
 
 # ============================================================================
+# GPU Targets
+# ============================================================================
+
+# GPU build and test (requires CUDA toolkit + GPU runtime)
+gpu-test:
+	@./scripts/ci/gpu-test.sh build-gpu
+
+# GPU header syntax check (requires CUDA toolkit, no GPU runtime needed)
+gpu-syntax-check:
+	@./scripts/ci/gpu-syntax-check.sh build-gpu-syntax
+
+# ============================================================================
 # Help Target
 # ============================================================================
 
@@ -255,4 +272,11 @@ help:
 	@echo "  make python-clean         Remove venv and build dir"
 	@echo ""
 	@echo "  Override build dir: make python-test PYTHON_BUILD_DIR=my-build"
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "GPU EXTENSIONS"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "  make gpu-test             Build + test GPU extensions (needs GPU)"
+	@echo "  make gpu-syntax-check     Compile GPU headers (needs nvcc, no GPU)"
+	@echo "  make gpu-install-verify   Test vrtigo::gpu install (needs GPU)"
 	@echo ""

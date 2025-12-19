@@ -51,6 +51,10 @@ build-clang/
 build-coverage/
 build-install/
 build-install-consumer/
+build-install-gpu/
+build-install-gpu-consumer/
+build-gpu/
+build-gpu-syntax/
 build-python/
 
 # IDE build directories
@@ -58,6 +62,7 @@ cmake-build-*/
 
 # Install test staging
 install-test/
+install-test-gpu/
 
 # CMake
 CMakeCache.txt

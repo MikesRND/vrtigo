@@ -2,6 +2,15 @@
 
 # vrtigo is a header-only C++20 library for VITA 49.2 VRT packet handling
 
+# Record whether CUDA support was enabled at build time
+set(VRTIGO_CUDA_ENABLED @VRTIGO_CUDA_ENABLED@)
+
+# If GPU support was built, find CUDA so CUDA::cudart is available
+if(VRTIGO_CUDA_ENABLED)
+    include(CMakeFindDependencyMacro)
+    find_dependency(CUDAToolkit)
+endif()
+
 include("${CMAKE_CURRENT_LIST_DIR}/vrtigoTargets.cmake")
 
 check_required_components(vrtigo)
