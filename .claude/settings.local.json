@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(chmod:*)",
+      "Bash(export PATH=/usr/local/cuda/bin:$PATH)",
+      "Bash(./scripts/ci/gpu-test.sh)",
+      "Bash(cmake --version:*)",
+      "Bash(./scripts/ci/gpu-syntax-check.sh:*)",
+      "Bash(nvcc:*)",
+      "WebSearch",
+      "Bash(./cdo \"cd external/vrtigo && ./scripts/ci/gpu-syntax-check.sh\")",
+      "Bash(export PATH=/usr/local/cuda/bin:/usr/bin:/bin:$PATH)",
+      "Bash(./scripts/ci/install-verify.sh:*)"
+    ]
+  }
+}

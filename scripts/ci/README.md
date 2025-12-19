@@ -124,6 +124,41 @@ make python         # build only
 PYTHON_BIN=python3.12 ./scripts/ci/python-test.sh
 ```
 
+### `gpu-test.sh` (Requires GPU)
+**Matches**: CI `gpu-test` job (self-hosted runner with GPU)
+**Usage**: `./scripts/ci/gpu-test.sh [build-gpu]`
+**What**: Full GPU build and test with CUDA enabled
+**Requires**: CUDA toolkit (nvcc) and GPU runtime
+
+```bash
+# Direct
+./scripts/ci/gpu-test.sh
+
+# Custom build directory
+./scripts/ci/gpu-test.sh build-gpu-custom
+
+# Via Make
+make gpu-test
+```
+
+### `gpu-syntax-check.sh` (Advisory)
+**Matches**: CI `gpu-syntax-check` job
+**Usage**: `./scripts/ci/gpu-syntax-check.sh [build-gpu-syntax]`
+**What**: Validates GPU header syntax compiles (no runtime needed)
+**Requires**: CUDA toolkit (nvcc), no GPU runtime required
+**Note**: Can run in `nvidia/cuda` container without actual GPU
+
+```bash
+# Direct
+./scripts/ci/gpu-syntax-check.sh
+
+# Custom build directory
+./scripts/ci/gpu-syntax-check.sh build-gpu-syntax-custom
+
+# Via Make
+make gpu-syntax-check
+```
+
 ## Environment Variables
 
 All scripts respect these environment variables:
