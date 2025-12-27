@@ -1,5 +1,6 @@
 #pragma once
 
+#include "vrtigo/duration.hpp"
 #include "vrtigo/timestamp.hpp"
 #include "vrtigo/utils/start_time.hpp"
 
@@ -12,6 +13,19 @@ namespace vrtigo::utils {
 
 /**
  * @brief Synthetic sample clock for generating timestamps at fixed sample intervals
+ *
+ * ## Overflow Policy
+ * Uses saturation semantics - arithmetic saturates to maximum timestamp on overflow.
+ * With the Duration-based accumulator, overflow occurs only after ~68 years of
+ * continuous operation (vs previous ~213 day limit).
+ *
+ * **Detection:** Use `saturated(ts)` helper to check if returned timestamp hit max.
+ * Alternatively, compare against previous timestamp - if `ts <= prev_ts`, the clock
+ * has saturated.
+ *
+ * **Rationale:** With 68-year range, overflow indicates extraordinary circumstances
+ * (programmer error or truly exceptional runtime). No `expected<>` return types,
+ * no exceptions - callers needing safety must guard hot paths.
  *
  * Template specializations exist for different TsfType values:
  * - TsfType::real_time: Generates picosecond-precision timestamps (implemented)
@@ -28,11 +42,7 @@ class SampleClock;
  *
  * Provides deterministic timestamp generation for sample-based systems. The input sample period
  * is rounded to the nearest picosecond once at construction and used consistently thereafter.
- * Use is_exact() to check whether rounding occurred.
- *
- * @warning Maximum runtime: ~213 days. The internal uint64_t picosecond accumulator overflows
- *          at UINT64_MAX picoseconds (~213.5 days). tick() operations throw overflow_error after
- *          this limit.
+ * Use period().is_exact() to check whether rounding occurred.
  *
  * @note Thread safety: const methods are safe for concurrent reads. Non-const methods require
  *       external synchronization.
@@ -51,7 +61,6 @@ public:
      * @param sample_period_seconds Sample period in seconds (rounded to nearest picosecond)
      * @param start_spec StartTime specification (resolved at construction, stored for reset)
      * @throws std::invalid_argument if period is non-finite, zero, negative, or rounds to zero
-     * @throws std::overflow_error if period overflows uint64_t picoseconds
      *
      * @note Constrained to UTC and "other" TSI types to prevent silent GPS epoch mismatch.
      *       StartTime::now() captures UTC wall-clock time; using it with TsiType::gps would
@@ -65,9 +74,7 @@ public:
      */
     explicit SampleClock(double sample_period_seconds, StartTime start_spec = {})
         requires(TSI == TsiType::utc || TSI == TsiType::other)
-        : sample_period_picos_(normalize_period(sample_period_seconds)),
-          period_error_picos_(compute_period_error(sample_period_seconds, sample_period_picos_)),
-          period_is_exact_(period_error_picos_ == 0.0L),
+        : period_(make_period(sample_period_seconds)),
           start_spec_(start_spec) {
         resolve_start();
     }
@@ -83,160 +90,82 @@ public:
                       StartTime::absolute(UtcRealTimestamp(start.tsi(), start.tsf()))) {}
 
     /// Get current time without advancing
-    time_point now() const { return make_time_point(total_picos_); }
+    time_point now() const noexcept { return start_ + accumulated_; }
 
-    /// Advance by 1 sample and return new time
-    /// @throws std::overflow_error if accumulator exceeds ~213 days
-    time_point tick() { return tick(1); }
+    /**
+     * Advance by 1 sample and return new time
+     *
+     * Returns the new timestamp directly. On overflow (after ~68 years), the timestamp
+     * saturates to maximum value. Use `saturated(result)` to detect overflow if needed.
+     */
+    time_point tick() noexcept { return tick(1); }
 
-    /// Advance by N samples and return new time
-    /// @throws std::overflow_error if accumulator exceeds ~213 days or sample count too large
-    time_point tick(uint64_t samples) {
-        uint64_t delta_picos = checked_multiply(sample_period_picos_, samples);
-        total_picos_ = checked_add(total_picos_, delta_picos);
-        return make_time_point(total_picos_);
+    /**
+     * Advance by N samples and return new time
+     *
+     * Returns the new timestamp directly. On overflow, the timestamp saturates to
+     * maximum value. Use `saturated(result)` to detect overflow if needed.
+     */
+    time_point tick(uint64_t samples) noexcept {
+        advance(samples);
+        return now();
     }
 
-    /// Advance by N samples without returning time
-    /// @throws std::overflow_error if accumulator exceeds ~213 days or sample count too large
-    void advance(uint64_t samples) {
-        uint64_t delta_picos = checked_multiply(sample_period_picos_, samples);
-        total_picos_ = checked_add(total_picos_, delta_picos);
+    /**
+     * Advance by N samples without returning time
+     *
+     * Saturates accumulated duration on overflow (after ~68 years).
+     */
+    void advance(uint64_t samples) noexcept {
+        // Compute delta as Duration: period * samples
+        // This saturates internally on multiplication overflow
+        Duration delta = period_.to_duration() * static_cast<int64_t>(samples);
+        accumulated_ += delta;
     }
 
     /// Reset elapsed samples and re-resolve start time from stored spec
     void reset() noexcept {
-        total_picos_ = 0;
+        accumulated_ = Duration::zero();
         resolve_start();
     }
 
-    uint64_t sample_period_picoseconds() const noexcept { return sample_period_picos_; }
+    /// Access the sample period (use .picoseconds(), .seconds(), .rate_hz(), .is_exact(), etc.)
+    const SamplePeriod& period() const noexcept { return period_; }
 
-    double sample_period() const noexcept {
-        return static_cast<double>(sample_period_picos_) /
-               static_cast<double>(time_point::PICOSECONDS_PER_SECOND);
+    /// Number of samples elapsed since construction or last reset
+    uint64_t elapsed_samples() const noexcept {
+        // Use Duration division which supports full ±68 year range via double arithmetic
+        Duration period_dur = period_.to_duration();
+        if (period_dur.is_zero())
+            return 0;
+        int64_t samples = accumulated_ / period_dur;
+        return samples >= 0 ? static_cast<uint64_t>(samples) : 0;
     }
-
-    double sample_rate() const noexcept {
-        // sample_period_picos_ is guaranteed > 0 after construction
-        return static_cast<double>(time_point::PICOSECONDS_PER_SECOND) /
-               static_cast<double>(sample_period_picos_);
-    }
-
-    /// Returns true if requested sample period is exactly representable in picoseconds
-    bool is_exact() const noexcept { return period_is_exact_; }
-
-    /// Returns the rounding error in picoseconds (requested - actual)
-    long double error_picoseconds() const noexcept { return period_error_picos_; }
-
-    /// Returns the rounding error in parts per million (ppm)
-    /// This represents both period and frequency error (they're equal for small errors)
-    double error_ppm() const noexcept {
-        if (sample_period_picos_ == 0) {
-            return 0.0;
-        }
-        return (static_cast<double>(period_error_picos_) /
-                static_cast<double>(sample_period_picos_)) *
-               1e6;
-    }
-
-    uint64_t elapsed_samples() const noexcept { return total_picos_ / sample_period_picos_; }
 
 private:
     void resolve_start() noexcept {
         auto resolved = start_spec_.resolve();
-        start_seconds_ = resolved.tsi();
-        start_fractional_ = resolved.tsf();
+        start_ = time_point(resolved.tsi(), resolved.tsf());
     }
 
-    static uint64_t normalize_period(double seconds) {
+    static SamplePeriod make_period(double seconds) {
         if (!std::isfinite(seconds)) {
             throw std::invalid_argument("sample period must be finite");
         }
         if (seconds <= 0.0) {
             throw std::invalid_argument("sample period must be positive");
         }
-
-        long double scaled = static_cast<long double>(seconds) *
-                             static_cast<long double>(time_point::PICOSECONDS_PER_SECOND);
-
-        if (scaled > static_cast<long double>(UINT64_MAX)) {
-            throw std::overflow_error("sample period in picoseconds overflows uint64_t");
+        auto period = SamplePeriod::from_seconds(seconds);
+        if (!period) {
+            throw std::invalid_argument("sample period rounds to zero or overflows");
         }
-
-        uint64_t rounded = static_cast<uint64_t>(std::llround(scaled));
-        if (rounded == 0) {
-            throw std::invalid_argument("sample period rounds to zero picoseconds");
-        }
-        return rounded;
+        return *period;
     }
 
-    static long double compute_period_error(double seconds, uint64_t rounded) noexcept {
-        if (!std::isfinite(seconds) || seconds <= 0.0) {
-            return 0.0L;
-        }
-
-        long double scaled = static_cast<long double>(seconds) *
-                             static_cast<long double>(time_point::PICOSECONDS_PER_SECOND);
-
-        if (scaled > static_cast<long double>(UINT64_MAX)) {
-            return 0.0L;
-        }
-
-        // Return signed error: positive means requested > actual (rounded down)
-        long double error = scaled - static_cast<long double>(rounded);
-
-        // Treat errors below 1 femtosecond as zero (floating-point noise)
-        // Sub-femtosecond errors are physically meaningless for RF timing
-        constexpr long double ROUNDING_TOLERANCE_PICOS = 1e-6L; // 1 femtosecond
-        if (std::fabs(error) < ROUNDING_TOLERANCE_PICOS) {
-            return 0.0L;
-        }
-
-        return error;
-    }
-
-    static uint64_t checked_add(uint64_t a, uint64_t b) {
-        uint64_t sum = a + b;
-        if (sum < a) {
-            throw std::overflow_error("SampleClock tick overflow");
-        }
-        return sum;
-    }
-
-    static uint64_t checked_multiply(uint64_t a, uint64_t b) {
-        if (a == 0 || b == 0) {
-            return 0;
-        }
-        if (a > (UINT64_MAX / b)) {
-            throw std::overflow_error("SampleClock tick overflow");
-        }
-        return a * b;
-    }
-
-    time_point make_time_point(uint64_t offset_picos) const noexcept {
-        uint64_t fractional =
-            start_fractional_ + (offset_picos % time_point::PICOSECONDS_PER_SECOND);
-        uint64_t carry_seconds = fractional / time_point::PICOSECONDS_PER_SECOND;
-        fractional %= time_point::PICOSECONDS_PER_SECOND;
-
-        uint64_t seconds = static_cast<uint64_t>(start_seconds_) +
-                           (offset_picos / time_point::PICOSECONDS_PER_SECOND) + carry_seconds;
-
-        if (seconds > UINT32_MAX) {
-            return time_point(UINT32_MAX, time_point::MAX_FRACTIONAL);
-        }
-
-        return time_point(static_cast<uint32_t>(seconds), fractional);
-    }
-
-    uint64_t sample_period_picos_{1};
-    long double period_error_picos_{0.0L};
-    bool period_is_exact_{true};
-    uint64_t total_picos_{0};
+    SamplePeriod period_{SamplePeriod::from_picoseconds(1)};
+    Duration accumulated_{};
     StartTime start_spec_{};
-    uint32_t start_seconds_{0};
-    uint64_t start_fractional_{0};
+    time_point start_{};
 };
 
 /**

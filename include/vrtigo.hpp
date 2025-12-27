@@ -30,6 +30,9 @@
 // Core types and enums (users need these for parameters and return values)
 #include "vrtigo/types.hpp"
 
+// Duration and SamplePeriod for exact picosecond arithmetic
+#include "vrtigo/duration.hpp"
+
 // Timestamp types (users instantiate these directly)
 #include "vrtigo/timestamp.hpp"
 

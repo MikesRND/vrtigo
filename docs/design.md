@@ -163,6 +163,63 @@ for system errors so they can integrate cleanly with host I/O abstractions.
 - All public APIs are `noexcept` (except where noted)
 - Field access is thread-safe for const packets (read-only)
 
+## Time Math Design
+
+### Representation
+
+Duration uses a 12-byte split representation matching VITA 49 wire format:
+- `int32_t seconds_` - whole seconds (±68 years range)
+- `uint64_t picoseconds_` - subsecond part, always [0, 10^12)
+
+Negative values use **floor semantics**: `-1.5 seconds` = `{seconds: -2, picoseconds: 500e9}`.
+
+Primary accessors:
+- `seconds()` - whole seconds (signed)
+- `picoseconds()` - subsecond part only [0, 10^12)
+- `total_picoseconds()` - full value (saturates if > 106 days)
+- `to_seconds()` - full precision as double
+
+### Overflow Policy
+
+All time arithmetic uses **saturation semantics**. On overflow:
+- Duration saturates to `Duration::min()` or `Duration::max()`
+- Timestamp saturates to zero or max timestamp
+- No exceptions are thrown
+- No `expected<>` return types
+
+**Rationale:** With ±68 year Duration range, overflow indicates programmer error
+(not a recoverable condition). The complexity of dual code paths (checked + unchecked)
+is not justified for truly exceptional conditions.
+
+### Saturation Detection
+
+Use `saturated(result)` helper to check for overflow when needed:
+
+```cpp
+Duration result = a + b;
+if (saturated(result)) {
+    // Handle overflow
+}
+
+auto ts = clock.tick();
+if (saturated(ts)) {
+    // Handle timestamp saturation
+}
+```
+
+**Caller responsibility:** There is no implicit error channel. Callers running
+long-duration loops (e.g., SampleClock for 68+ years) should guard if safety
+is required.
+
+### Centralized Math
+
+All time arithmetic is implemented in `detail/time_math.hpp` to ensure consistency
+between Duration and Timestamp operations:
+- `add_time()`, `sub_time()` - core arithmetic with int64_t intermediate
+- `clamp_to_duration()`, `clamp_to_timestamp()` - final storage clamping
+
+This prevents divergence between Duration and Timestamp math implementations.
+
 ## Extension Points
 
 - Custom timestamp types via template parameters

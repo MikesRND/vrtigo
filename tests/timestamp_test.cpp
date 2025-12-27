@@ -129,20 +129,20 @@ TEST_F(TimestampTest, GreaterThan) {
 
 // Arithmetic operation tests
 TEST_F(TimestampTest, AdditionWithDuration) {
-    UtcRealTimestamp ts(100, 500'000'000'000ULL); // 100 seconds + 500 microseconds
+    UtcRealTimestamp ts(100, 500'000'000'000ULL); // 100.5 seconds
 
-    // Add 1 millisecond (1,000,000 nanoseconds = 1,000,000,000 picoseconds)
-    auto result = ts + std::chrono::milliseconds(1);
+    // Add 1 millisecond (1e9 picoseconds)
+    auto result = ts + Duration::from_milliseconds(1);
 
     EXPECT_EQ(result.tsi(), 100);
-    EXPECT_EQ(result.tsf(), 501'000'000'000ULL); // 501 microseconds
+    EXPECT_EQ(result.tsf(), 501'000'000'000ULL); // 501 milliseconds
 }
 
 TEST_F(TimestampTest, AdditionWithOverflow) {
     UtcRealTimestamp ts(100, 999'000'000'000ULL); // 100 seconds + 999 milliseconds
 
     // Add 2 milliseconds, should overflow to next second
-    auto result = ts + std::chrono::milliseconds(2);
+    auto result = ts + Duration::from_milliseconds(2);
 
     EXPECT_EQ(result.tsi(), 101);
     EXPECT_EQ(result.tsf(), 1'000'000'000ULL); // 1 millisecond
@@ -152,7 +152,7 @@ TEST_F(TimestampTest, SubtractionWithDuration) {
     UtcRealTimestamp ts(100, 500'000'000'000ULL); // 100 seconds + 500 milliseconds
 
     // Subtract 100 microseconds (100,000,000 picoseconds)
-    auto result = ts - std::chrono::microseconds(100);
+    auto result = ts - Duration::from_microseconds(100);
 
     EXPECT_EQ(result.tsi(), 100);
     EXPECT_EQ(result.tsf(), 499'900'000'000ULL); // 499.9 milliseconds
@@ -163,7 +163,7 @@ TEST_F(TimestampTest, SubtractionWithBorrow) {
                         100'000'000ULL); // 100 seconds + 100 microseconds (100,000,000 picoseconds)
 
     // Subtract 200 microseconds (200,000,000 picoseconds), should borrow from seconds
-    auto result = ts - std::chrono::microseconds(200);
+    auto result = ts - Duration::from_microseconds(200);
 
     EXPECT_EQ(result.tsi(), 99);
     EXPECT_EQ(result.tsf(), 999'900'000'000ULL); // 999.9 milliseconds
@@ -173,7 +173,7 @@ TEST_F(TimestampTest, SubtractionUnderflow) {
     UtcRealTimestamp ts(1, 0); // 1 second
 
     // Subtract 2 seconds, should clamp to zero
-    auto result = ts - std::chrono::seconds(2);
+    auto result = ts - Duration::from_seconds(int64_t{2});
 
     EXPECT_EQ(result.tsi(), 0);
     EXPECT_EQ(result.tsf(), 0);
@@ -185,79 +185,107 @@ TEST_F(TimestampTest, DifferenceBetweenTimestamps) {
 
     auto diff = ts2 - ts1;
 
-    // Difference should be 0.7 seconds = 700,000,000 nanoseconds
+    // Difference should be 0.7 seconds = 700,000,000,000 picoseconds
     // (101.2 - 100.5 = 0.7 seconds)
-    EXPECT_EQ(diff.count(), 700'000'000); // in nanoseconds
+    EXPECT_EQ(diff.seconds(), 0);
+    EXPECT_EQ(diff.picoseconds(), 700'000'000'000); // subsecond picoseconds
+    EXPECT_EQ(diff.total_picoseconds(), 700'000'000'000);
 }
 
-// Test large timestamp differences that would have caused overflow in old implementation
+// Test large timestamp differences - Duration now supports ~68 years
 TEST_F(TimestampTest, LargeTimestampDifferences) {
-    // Test 150 days difference (> 106 days which was the old overflow threshold)
+    // Test 150 days difference - within Duration's 68-year range
     uint32_t days_150_seconds = 150 * 24 * 3600; // 12,960,000 seconds
     UtcRealTimestamp ts1(1000000000, 100'000'000'000ULL);
     UtcRealTimestamp ts2(1000000000 + days_150_seconds, 200'000'000'000ULL);
 
     auto diff = ts2 - ts1;
 
-    // Expected: 150 days + 0.1 seconds in nanoseconds
-    int64_t expected_nanos =
-        static_cast<int64_t>(days_150_seconds) * 1'000'000'000LL + 100'000'000LL;
-    EXPECT_EQ(diff.count(), expected_nanos);
+    // Duration now handles 150 days without saturation
+    EXPECT_NE(diff, Duration::max());
+    EXPECT_EQ(diff.seconds(), static_cast<int32_t>(days_150_seconds));
+    EXPECT_EQ(diff.picoseconds(), 100'000'000'000ULL);
 }
 
 TEST_F(TimestampTest, YearLongTimestampDifference) {
-    // Test 1 year difference
+    // Test 1 year difference - within Duration's 68-year range
     uint32_t year_seconds = 365 * 24 * 3600; // 31,536,000 seconds
     UtcRealTimestamp ts1(500000000, 0);
     UtcRealTimestamp ts2(500000000 + year_seconds, 0);
 
     auto diff = ts2 - ts1;
 
-    // Expected: 365 days in nanoseconds
-    int64_t expected_nanos = static_cast<int64_t>(year_seconds) * 1'000'000'000LL;
-    EXPECT_EQ(diff.count(), expected_nanos);
+    // Duration now handles 1 year without saturation
+    EXPECT_NE(diff, Duration::max());
+    EXPECT_EQ(diff.seconds(), static_cast<int32_t>(year_seconds));
+    EXPECT_EQ(diff.picoseconds(), 0);
 }
 
 TEST_F(TimestampTest, DecadeLongTimestampDifference) {
-    // Test 10 year difference
-    uint32_t decade_seconds = 10 * 365 * 24 * 3600;                     // ~315,360,000 seconds
-    UtcRealTimestamp ts1(100000000, 999'999'999'999ULL);                // With max picoseconds
-    UtcRealTimestamp ts2(100000000 + decade_seconds, 1'000'000'000ULL); // Small picoseconds
+    // Test 10 year difference - within Duration's 68-year range
+    uint32_t decade_seconds = 10 * 365 * 24 * 3600; // ~315,360,000 seconds
+    UtcRealTimestamp ts1(100000000, 500'000'000'000ULL);
+    UtcRealTimestamp ts2(100000000 + decade_seconds, 700'000'000'000ULL);
 
     auto diff = ts2 - ts1;
 
-    // Expected: 10 years minus ~999ms in nanoseconds
-    int64_t expected_nanos = static_cast<int64_t>(decade_seconds) * 1'000'000'000LL - 998'999'999LL;
-    EXPECT_EQ(diff.count(), expected_nanos);
+    // Duration now handles 10 years without saturation
+    EXPECT_NE(diff, Duration::max());
+    EXPECT_EQ(diff.seconds(), static_cast<int32_t>(decade_seconds));
+    EXPECT_EQ(diff.picoseconds(), 200'000'000'000ULL);
 }
 
 TEST_F(TimestampTest, NegativeLargeTimestampDifference) {
-    // Test large negative difference (ts1 > ts2)
+    // Test large negative difference (200 days) - within Duration range
     uint32_t days_200_seconds = 200 * 24 * 3600; // 17,280,000 seconds
     UtcRealTimestamp ts1(2000000000, 500'000'000'000ULL);
     UtcRealTimestamp ts2(2000000000 - days_200_seconds, 400'000'000'000ULL);
 
     auto diff = ts2 - ts1;
 
-    // Expected: -200 days - 0.1 seconds in nanoseconds
-    int64_t expected_nanos =
-        -static_cast<int64_t>(days_200_seconds) * 1'000'000'000LL - 100'000'000LL;
-    EXPECT_EQ(diff.count(), expected_nanos);
+    // Duration now handles -200 days without saturation
+    EXPECT_NE(diff, Duration::min());
+    EXPECT_TRUE(diff.is_negative());
 }
 
 TEST_F(TimestampTest, MaxSafeTimestampDifference) {
-    // Test near maximum safe difference (~292 years)
-    // Max safe seconds = INT64_MAX / 10^9 ≈ 9.2e9 seconds ≈ 292 years
-    // Note: uint32_t max is ~136 years, so test with that limit instead
+    // Test 50 years difference - well within Duration's 68-year range
+    constexpr uint32_t years_50_seconds = 50U * 365U * 24U * 3600U; // ~1.58e9 seconds
 
-    UtcRealTimestamp ts1(0, 0);
-    UtcRealTimestamp ts2(UINT32_MAX, 0); // Maximum possible seconds (~136 years)
+    UtcRealTimestamp ts1(1000000000, 0);
+    UtcRealTimestamp ts2(1000000000 + years_50_seconds, 0);
 
     auto diff = ts2 - ts1;
 
-    // Expected: UINT32_MAX seconds in nanoseconds
-    int64_t expected_nanos = static_cast<int64_t>(UINT32_MAX) * 1'000'000'000LL;
-    EXPECT_EQ(diff.count(), expected_nanos);
+    // Should NOT saturate - 50 years is within 68-year range
+    EXPECT_NE(diff, Duration::max());
+    EXPECT_EQ(diff.seconds(), static_cast<int32_t>(years_50_seconds));
+}
+
+TEST_F(TimestampTest, SaturationAt68YearBoundary) {
+    // Test difference at Duration's 68-year limit (INT32_MAX seconds)
+    // Create two timestamps that differ by more than 68 years
+    // Since UINT32_MAX is ~136 years, and Duration is ±68 years, we can test saturation
+    UtcRealTimestamp ts1(0, 0);
+    UtcRealTimestamp ts2(static_cast<uint32_t>(std::numeric_limits<int32_t>::max()) + 1000, 0);
+
+    auto diff = ts2 - ts1;
+
+    // Should saturate to max since difference exceeds 68 years
+    EXPECT_EQ(diff, Duration::max());
+    EXPECT_TRUE(saturated(diff));
+}
+
+TEST_F(TimestampTest, NegativeSaturationAt68YearBoundary) {
+    // Test negative saturation at 68-year limit
+    UtcRealTimestamp ts1(static_cast<uint32_t>(std::numeric_limits<int32_t>::max()) + 1000, 0);
+    UtcRealTimestamp ts2(0, 0);
+
+    auto diff = ts2 - ts1;
+
+    // Should saturate to min since difference exceeds -68 years
+    EXPECT_EQ(diff, Duration::min());
+    EXPECT_TRUE(saturated(diff));
 }
 
 // Integration with SignalPacket tests
@@ -352,7 +380,7 @@ TEST_F(TimestampTest, AddSmallNegativeDuration) {
     UtcRealTimestamp ts(100, 500'000'000'000ULL); // 100.5 seconds
 
     // Add -1 nanosecond (should subtract properly, not wrap to huge positive)
-    auto result = ts + std::chrono::nanoseconds(-1);
+    auto result = ts + Duration::from_nanoseconds(-1);
 
     EXPECT_EQ(result.tsi(), 100);
     EXPECT_EQ(result.tsf(), 499'999'999'000ULL); // 1 nanosecond less
@@ -362,7 +390,7 @@ TEST_F(TimestampTest, SubtractNegativeDuration) {
     UtcRealTimestamp ts(100, 500'000'000'000ULL); // 100.5 seconds
 
     // Subtract -1 millisecond (double negative = addition)
-    auto result = ts - std::chrono::milliseconds(-1);
+    auto result = ts - Duration::from_milliseconds(-1);
 
     EXPECT_EQ(result.tsi(), 100);
     EXPECT_EQ(result.tsf(), 501'000'000'000ULL); // Added 1 millisecond
@@ -372,7 +400,7 @@ TEST_F(TimestampTest, AddLargeNegativeDuration) {
     UtcRealTimestamp ts(1000, 200'000'000'000ULL); // 1000.2 seconds
 
     // Add -10 seconds
-    auto result = ts + std::chrono::seconds(-10);
+    auto result = ts + Duration::from_seconds(int64_t{-10});
 
     EXPECT_EQ(result.tsi(), 990);
     EXPECT_EQ(result.tsf(), 200'000'000'000ULL); // Picoseconds unchanged
@@ -382,14 +410,14 @@ TEST_F(TimestampTest, MixedPositiveNegativeOperations) {
     UtcRealTimestamp ts(500, 0); // 500 seconds exactly
 
     // Add 5 seconds then subtract 3 seconds
-    ts += std::chrono::seconds(5);
-    ts -= std::chrono::seconds(3);
+    ts += Duration::from_seconds(int64_t{5});
+    ts -= Duration::from_seconds(int64_t{3});
 
     EXPECT_EQ(ts.tsi(), 502); // 500 + 5 - 3 = 502
     EXPECT_EQ(ts.tsf(), 0);
 
     // Now add negative duration
-    ts += std::chrono::seconds(-2);
+    ts += Duration::from_seconds(int64_t{-2});
 
     EXPECT_EQ(ts.tsi(), 500); // Back to 500
     EXPECT_EQ(ts.tsf(), 0);
@@ -399,7 +427,7 @@ TEST_F(TimestampTest, NegativeDurationWithBorrow) {
     UtcRealTimestamp ts(100, 100'000'000ULL); // 100 seconds + 100 microseconds
 
     // Add -500 microseconds (should borrow from seconds)
-    auto result = ts + std::chrono::microseconds(-500);
+    auto result = ts + Duration::from_microseconds(-500);
 
     EXPECT_EQ(result.tsi(), 99);
     EXPECT_EQ(result.tsf(), 999'600'000'000ULL); // Borrowed and subtracted
@@ -409,7 +437,7 @@ TEST_F(TimestampTest, LargeNegativeDurationNearZero) {
     UtcRealTimestamp ts(5, 0); // 5 seconds
 
     // Add -10 seconds (should clamp to zero, not underflow)
-    auto result = ts + std::chrono::seconds(-10);
+    auto result = ts + Duration::from_seconds(int64_t{-10});
 
     EXPECT_EQ(result.tsi(), 0);
     EXPECT_EQ(result.tsf(), 0);
@@ -419,13 +447,13 @@ TEST_F(TimestampTest, CompoundAssignmentNegativeDuration) {
     UtcRealTimestamp ts(1000, 0);
 
     // Use compound assignment with negative duration
-    ts += std::chrono::milliseconds(-500);
+    ts += Duration::from_milliseconds(-500);
 
     EXPECT_EQ(ts.tsi(), 999);
     EXPECT_EQ(ts.tsf(), 500'000'000'000ULL); // 0.5 seconds
 
     // Another compound assignment
-    ts -= std::chrono::milliseconds(-250); // Double negative = addition
+    ts -= Duration::from_milliseconds(-250); // Double negative = addition
 
     EXPECT_EQ(ts.tsi(), 999);
     EXPECT_EQ(ts.tsf(), 750'000'000'000ULL); // 0.75 seconds
@@ -435,13 +463,13 @@ TEST_F(TimestampTest, VerySmallNegativeDurations) {
     UtcRealTimestamp ts(100, 1000); // 100 seconds + 1000 picoseconds
 
     // Subtract 1 nanosecond (1000 picoseconds)
-    ts -= std::chrono::nanoseconds(1);
+    ts -= Duration::from_nanoseconds(1);
 
     EXPECT_EQ(ts.tsi(), 100);
     EXPECT_EQ(ts.tsf(), 0); // Exactly zero picoseconds
 
     // Subtract another nanosecond (should borrow)
-    ts -= std::chrono::nanoseconds(1);
+    ts -= Duration::from_nanoseconds(1);
 
     EXPECT_EQ(ts.tsi(), 99);
     EXPECT_EQ(ts.tsf(), 999'999'999'000ULL); // Borrowed from seconds
@@ -592,7 +620,7 @@ TEST_F(TimestampTest, ArithmeticWithNearMaxTimestamp) {
     UtcRealTimestamp ts(UINT32_MAX - 1, 500'000'000'000ULL);
 
     // Add 2 seconds - should clamp to max
-    ts += std::chrono::seconds(2);
+    ts += Duration::from_seconds(int64_t{2});
 
     EXPECT_EQ(ts.tsi(), UINT32_MAX);
     EXPECT_EQ(ts.tsf(), 999'999'999'999ULL);
@@ -603,82 +631,83 @@ TEST_F(TimestampTest, ArithmeticCausesNormalizationOverflow) {
     UtcRealTimestamp ts(UINT32_MAX, 100'000'000'000ULL); // Already at max seconds
 
     // Add 1.5 seconds worth of nanoseconds - would cause overflow
-    ts += std::chrono::nanoseconds(1'500'000'000);
+    ts += Duration::from_nanoseconds(1'500'000'000);
 
     // Should clamp to max values
     EXPECT_EQ(ts.tsi(), UINT32_MAX);
     EXPECT_EQ(ts.tsf(), 999'999'999'999ULL);
 }
 
-// Tests for large duration arithmetic (> 106 days)
+// Tests for duration arithmetic within Duration range (~106 days)
 TEST_F(TimestampTest, AddVeryLargeDuration) {
-    // Test adding a duration > 106 days
+    // Test adding 100 days (within Duration range of ~106 days)
     UtcRealTimestamp ts(1000, 0);
 
-    // Add 150 days worth of nanoseconds
-    auto large_duration = std::chrono::nanoseconds(
-        std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::hours(150 * 24)).count());
+    // Add 100 days = 8,640,000 seconds = 8.64e15 picoseconds (within Duration range)
+    auto large_duration = Duration::from_seconds(int64_t{100 * 24 * 3600});
     ts += large_duration;
 
-    // Should have added 150 days = 12,960,000 seconds
-    EXPECT_EQ(ts.tsi(), 1000 + 12'960'000);
+    // Should have added 100 days = 8,640,000 seconds
+    EXPECT_EQ(ts.tsi(), 1000 + 8'640'000);
     EXPECT_EQ(ts.tsf(), 0);
 }
 
 TEST_F(TimestampTest, SubtractVeryLargeDuration) {
-    // Test subtracting a duration > 106 days
+    // Test subtracting 100 days (within Duration range)
     UtcRealTimestamp ts(20'000'000, 0); // Start with a large timestamp
 
-    // Subtract 150 days
-    auto large_duration = std::chrono::nanoseconds(
-        std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::hours(150 * 24)).count());
+    // Subtract 100 days
+    auto large_duration = Duration::from_seconds(int64_t{100 * 24 * 3600});
     ts -= large_duration;
 
-    // Should have subtracted 12,960,000 seconds
-    EXPECT_EQ(ts.tsi(), 20'000'000 - 12'960'000);
+    // Should have subtracted 8,640,000 seconds
+    EXPECT_EQ(ts.tsi(), 20'000'000 - 8'640'000);
     EXPECT_EQ(ts.tsf(), 0);
 }
 
-TEST_F(TimestampTest, SubtractNanosecondMin) {
-    // Test subtracting nanoseconds::min() (special case for UB avoidance)
-    UtcRealTimestamp ts(1'000'000'000, 0); // Start with a billion seconds
+TEST_F(TimestampTest, SubtractDurationMin) {
+    // Test subtracting Duration::min()
+    // Duration::min() = {INT32_MIN, 0} = about -68 years (~-2.1 billion seconds)
+    // Subtracting min adds ~2.1 billion seconds
+    UtcRealTimestamp ts(1'000'000'000, 500'000'000'000ULL);
 
-    // Subtract nanoseconds::min() (~-292 years)
-    ts -= std::chrono::nanoseconds::min();
+    ts -= Duration::min();
 
-    // nanoseconds::min() is approximately -9,223,372,036,854,775,808 nanoseconds
-    // Which is about +9.22e18 nanoseconds when negated (adding)
-    // That's about 9,223,372,036 seconds (about 292 years)
-
-    // We expect overflow clamping since this would exceed UINT32_MAX
-    EXPECT_EQ(ts.tsi(), UINT32_MAX);
-    EXPECT_EQ(ts.tsf(), 999'999'999'999ULL);
+    // Subtracting Duration::min() (INT32_MIN seconds) adds about 2.1 billion seconds
+    // 1e9 + 2.1e9 = 3.1e9, which is less than UINT32_MAX (4.3e9), so no saturation
+    // INT32_MIN = -2147483648, so -INT32_MIN = 2147483648 as uint32
+    uint32_t expected_sec = 1'000'000'000U + 2'147'483'648U;
+    EXPECT_EQ(ts.tsi(), expected_sec);
+    EXPECT_EQ(ts.tsf(),
+              500'000'000'000ULL); // fractional unchanged since Duration::min() has 0 picos
 }
 
-TEST_F(TimestampTest, AddNanosecondMax) {
-    // Test adding nanoseconds::max() (largest positive duration)
+TEST_F(TimestampTest, AddDurationMax) {
+    // Test adding Duration::max()
+    // Duration::max() = {INT32_MAX, MAX_PICOS} = about +68 years (2.1 billion seconds)
     UtcRealTimestamp ts(1000, 0);
 
-    // Add nanoseconds::max() (~292 years)
-    ts += std::chrono::nanoseconds::max();
+    ts += Duration::max();
 
-    // Should clamp to max values since this exceeds UINT32_MAX seconds
-    EXPECT_EQ(ts.tsi(), UINT32_MAX);
-    EXPECT_EQ(ts.tsf(), 999'999'999'999ULL);
+    // Duration::max() is about 2.1 billion seconds
+    // 1000 + 2.1e9 is within UINT32_MAX (~4.3e9), so no saturation
+    EXPECT_EQ(ts.tsi(), 1000U + static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
+    EXPECT_EQ(ts.tsf(), Duration::MAX_PICOSECONDS);
 }
 
 TEST_F(TimestampTest, MultiMonthSpanArithmetic) {
-    // Test arithmetic with multi-month spans (user-visible use case)
+    // Test arithmetic with multi-month spans within Duration's 68-year range
+    constexpr uint32_t days_100_seconds = 100 * 24 * 3600;                 // 8,640,000 seconds
     UtcRealTimestamp ts1 = UtcRealTimestamp::from_utc_seconds(1700000000); // Nov 2023
-    UtcRealTimestamp ts2 = UtcRealTimestamp::from_utc_seconds(1710000000); // Mar 2024
+    UtcRealTimestamp ts2 = UtcRealTimestamp::from_utc_seconds(1700000000 + days_100_seconds);
 
-    // Calculate difference (about 115 days)
+    // Calculate difference (100 days)
     auto diff = ts2 - ts1;
 
-    // Should handle the large difference correctly
-    auto days = std::chrono::duration_cast<std::chrono::hours>(diff).count() / 24;
-    EXPECT_GT(days, 100); // Should be > 100 days
-    EXPECT_LT(days, 120); // Should be < 120 days
+    // Should handle this difference correctly (within Duration range)
+    EXPECT_NE(diff, Duration::max()); // Should not saturate
+    int32_t days = diff.seconds() / (24 * 3600);
+    EXPECT_EQ(days, 100);
 
     // Add the difference back to ts1
     auto ts3 = ts1 + diff;
@@ -687,14 +716,14 @@ TEST_F(TimestampTest, MultiMonthSpanArithmetic) {
 }
 
 TEST_F(TimestampTest, YearSpanArithmetic) {
-    // Test arithmetic spanning a full year
+    // Test arithmetic spanning 1 full year - within Duration's 68-year range
     UtcRealTimestamp ts(1700000000, 0); // Nov 2023
 
-    // Add 365 days
-    auto year_duration = std::chrono::hours(365 * 24);
-    ts += year_duration;
+    // Add 1 year = 365 days = 31,536,000 seconds
+    auto one_year = Duration::from_seconds(int64_t{365 * 24 * 3600});
+    ts += one_year;
 
-    // Should have added 31,536,000 seconds (365 days)
+    // Should have added 31,536,000 seconds (1 year)
     EXPECT_EQ(ts.tsi(), 1700000000 + 31'536'000);
     EXPECT_EQ(ts.tsf(), 0);
 }
@@ -790,15 +819,15 @@ TEST_F(TimestampTest, MultiSecondBorrow) {
     UtcRealTimestamp ts(10, 100'000'000'000ULL); // 10s + 0.1s
 
     // Subtract 2.5 seconds worth of picoseconds
-    ts -= std::chrono::nanoseconds(2'500'000'000); // 2.5 seconds
+    ts -= Duration::from_nanoseconds(2'500'000'000); // 2.5 seconds
 
     EXPECT_EQ(ts.tsi(), 7);
     EXPECT_EQ(ts.tsf(), 600'000'000'000ULL); // 0.6 seconds (10.1 - 2.5 = 7.6)
 }
 
 TEST_F(TimestampTest, MultiSecondBorrowUnderflow) {
-    UtcRealTimestamp ts(3, 200'000'000'000ULL);    // 3s + 0.2s
-    ts -= std::chrono::nanoseconds(5'000'000'000); // 5 seconds
+    UtcRealTimestamp ts(3, 200'000'000'000ULL);      // 3s + 0.2s
+    ts -= Duration::from_nanoseconds(5'000'000'000); // 5 seconds
 
     EXPECT_EQ(ts.tsi(), 0); // Clamped to zero
     EXPECT_EQ(ts.tsf(), 0);
@@ -808,7 +837,7 @@ TEST_F(TimestampTest, ThreeSecondBorrow) {
     UtcRealTimestamp ts(5, 900'000'000'000ULL); // 5.9 seconds
 
     // Subtract 3.2 seconds requiring 3-second borrow
-    ts -= std::chrono::nanoseconds(3'200'000'000);
+    ts -= Duration::from_nanoseconds(3'200'000'000);
 
     EXPECT_EQ(ts.tsi(), 2);
     EXPECT_EQ(ts.tsf(), 700'000'000'000ULL); // 0.7 seconds
@@ -820,7 +849,7 @@ TEST_F(TimestampTest, ThreeSecondBorrow) {
 
 TEST_F(TimestampTest, ArithmeticOverflowUsesSentinel) {
     UtcRealTimestamp ts(UINT32_MAX, 500'000'000'000ULL);
-    ts += std::chrono::seconds(1);
+    ts += Duration::from_seconds(int64_t{1});
 
     EXPECT_EQ(ts.tsi(), UINT32_MAX);
     EXPECT_EQ(ts.tsf(), UtcRealTimestamp::MAX_FRACTIONAL);
@@ -1018,4 +1047,186 @@ TEST_F(TimestampTest, SetMaxValues) {
     ts.set(UINT32_MAX, UtcRealTimestamp::MAX_FRACTIONAL);
     EXPECT_EQ(ts.tsi(), UINT32_MAX);
     EXPECT_EQ(ts.tsf(), UtcRealTimestamp::MAX_FRACTIONAL);
+}
+
+// ==============================================================================
+// ShortDuration Arithmetic Tests
+// ==============================================================================
+
+TEST_F(TimestampTest, AddShortDuration) {
+    UtcRealTimestamp ts(100, 500'000'000'000ULL);
+    auto sd = ShortDuration::from_picoseconds(1'500'000'000'000); // 1.5 seconds
+
+    ts += sd;
+    EXPECT_EQ(ts.tsi(), 102);
+    EXPECT_EQ(ts.tsf(), 0);
+}
+
+TEST_F(TimestampTest, SubtractShortDuration) {
+    UtcRealTimestamp ts(100, 500'000'000'000ULL);
+    auto sd = ShortDuration::from_picoseconds(700'000'000'000); // 0.7 seconds
+
+    ts -= sd;
+    EXPECT_EQ(ts.tsi(), 99);
+    EXPECT_EQ(ts.tsf(), 800'000'000'000ULL);
+}
+
+TEST_F(TimestampTest, AddShortDurationOperator) {
+    UtcRealTimestamp ts(100, 0);
+    auto sd = ShortDuration::from_picoseconds(2'000'000'000'000); // 2 seconds
+
+    auto result = ts + sd;
+    EXPECT_EQ(result.tsi(), 102);
+    EXPECT_EQ(result.tsf(), 0);
+}
+
+TEST_F(TimestampTest, SubtractShortDurationOperator) {
+    UtcRealTimestamp ts(100, 0);
+    auto sd = ShortDuration::from_picoseconds(500'000'000'000); // 0.5 seconds
+
+    auto result = ts - sd;
+    EXPECT_EQ(result.tsi(), 99);
+    EXPECT_EQ(result.tsf(), 500'000'000'000ULL);
+}
+
+TEST_F(TimestampTest, AddNegativeShortDuration) {
+    UtcRealTimestamp ts(100, 500'000'000'000ULL);
+    auto sd = ShortDuration::from_picoseconds(-1'000'000'000'000); // -1 second
+
+    ts += sd;
+    EXPECT_EQ(ts.tsi(), 99);
+    EXPECT_EQ(ts.tsf(), 500'000'000'000ULL);
+}
+
+TEST_F(TimestampTest, ShortDurationOverflowSaturates) {
+    UtcRealTimestamp ts(UINT32_MAX - 1, 500'000'000'000ULL);
+    auto sd = ShortDuration::from_picoseconds(2'000'000'000'000); // 2 seconds - will overflow
+
+    ts += sd;
+    // Should saturate to max timestamp
+    EXPECT_EQ(ts.tsi(), UINT32_MAX);
+    EXPECT_EQ(ts.tsf(), UtcRealTimestamp::MAX_FRACTIONAL);
+}
+
+TEST_F(TimestampTest, ShortDurationUnderflowSaturates) {
+    UtcRealTimestamp ts(1, 500'000'000'000ULL);
+    auto sd = ShortDuration::from_picoseconds(3'000'000'000'000); // 3 seconds - will underflow
+
+    ts -= sd;
+    // Should saturate to zero
+    EXPECT_EQ(ts.tsi(), 0);
+    EXPECT_EQ(ts.tsf(), 0);
+}
+
+TEST_F(TimestampTest, ShortDurationNearMaxPicos) {
+    // Test with picoseconds near 10^12 boundary
+    UtcRealTimestamp ts(100, 999'999'999'999ULL); // Just under 1 second
+    auto sd = ShortDuration::from_picoseconds(2); // 2 picoseconds
+
+    ts += sd;
+    EXPECT_EQ(ts.tsi(), 101);
+    EXPECT_EQ(ts.tsf(), 1); // Carried over
+}
+
+TEST_F(TimestampTest, ShortDurationZero) {
+    UtcRealTimestamp ts(100, 500'000'000'000ULL);
+    auto sd = ShortDuration::zero();
+
+    ts += sd;
+    EXPECT_EQ(ts.tsi(), 100);
+    EXPECT_EQ(ts.tsf(), 500'000'000'000ULL);
+}
+
+// =============================================================================
+// Timestamp::offset() and Timestamp::offset_samples() tests
+// =============================================================================
+
+TEST_F(TimestampTest, OffsetPositive) {
+    UtcRealTimestamp ts(100, 0);
+    auto sd = ShortDuration::from_picoseconds(500'000'000'000); // 0.5 seconds
+
+    auto result = ts.offset(sd);
+    EXPECT_EQ(result.tsi(), 100);
+    EXPECT_EQ(result.tsf(), 500'000'000'000ULL);
+}
+
+TEST_F(TimestampTest, OffsetNegative) {
+    UtcRealTimestamp ts(100, 500'000'000'000ULL);
+    auto sd = ShortDuration::from_picoseconds(-200'000'000'000); // -0.2 seconds
+
+    auto result = ts.offset(sd);
+    EXPECT_EQ(result.tsi(), 100);
+    EXPECT_EQ(result.tsf(), 300'000'000'000ULL);
+}
+
+TEST_F(TimestampTest, OffsetDoesNotModifyOriginal) {
+    UtcRealTimestamp ts(100, 0);
+    auto sd = ShortDuration::from_picoseconds(500'000'000'000);
+
+    auto result = ts.offset(sd);
+
+    // Original should be unchanged
+    EXPECT_EQ(ts.tsi(), 100);
+    EXPECT_EQ(ts.tsf(), 0);
+    // Result should be modified
+    EXPECT_EQ(result.tsi(), 100);
+    EXPECT_EQ(result.tsf(), 500'000'000'000ULL);
+}
+
+TEST_F(TimestampTest, OffsetSamplesBasic) {
+    UtcRealTimestamp ts(100, 0);
+    auto period = SamplePeriod::from_rate_hz(1e6); // 1 MHz = 1 us per sample
+    ASSERT_TRUE(period.has_value());
+
+    // 1000 samples at 1 MHz = 1 millisecond forward
+    auto result = ts.offset_samples(1000, *period);
+
+    EXPECT_EQ(result.tsi(), 100);
+    EXPECT_EQ(result.tsf(), 1'000'000'000ULL); // 1 ms = 1e9 picos
+}
+
+TEST_F(TimestampTest, OffsetSamplesNegative) {
+    UtcRealTimestamp ts(100, 500'000'000'000ULL); // 100.5 seconds
+    auto period = SamplePeriod::from_rate_hz(1e6);
+    ASSERT_TRUE(period.has_value());
+
+    // -500 samples = -500 us backward
+    auto result = ts.offset_samples(-500, *period);
+
+    EXPECT_EQ(result.tsi(), 100);
+    EXPECT_EQ(result.tsf(), 499'500'000'000ULL); // 0.5 - 0.0005 = 0.4995 seconds
+}
+
+TEST_F(TimestampTest, OffsetSamplesCrossesSecondBoundary) {
+    UtcRealTimestamp ts(100, 999'000'000'000ULL); // 100.999 seconds
+    auto period = SamplePeriod::from_rate_hz(1e6);
+    ASSERT_TRUE(period.has_value());
+
+    // 2000 samples = 2 ms forward, should cross second boundary
+    auto result = ts.offset_samples(2000, *period);
+
+    EXPECT_EQ(result.tsi(), 101);
+    EXPECT_EQ(result.tsf(), 1'000'000'000ULL); // 0.001 seconds into next second
+}
+
+TEST_F(TimestampTest, OffsetSamplesHighRate) {
+    UtcRealTimestamp ts(0, 0);
+    auto period = SamplePeriod::from_picoseconds(10); // 100 GHz
+
+    // 1 million samples at 10 ps each = 10 microseconds
+    auto result = ts.offset_samples(1'000'000, period);
+
+    EXPECT_EQ(result.tsi(), 0);
+    EXPECT_EQ(result.tsf(), 10'000'000ULL); // 10 us = 10e6 picos
+}
+
+TEST_F(TimestampTest, OffsetSamplesZero) {
+    UtcRealTimestamp ts(100, 500'000'000'000ULL);
+    auto period = SamplePeriod::from_rate_hz(1e6);
+    ASSERT_TRUE(period.has_value());
+
+    auto result = ts.offset_samples(0, *period);
+
+    EXPECT_EQ(result.tsi(), 100);
+    EXPECT_EQ(result.tsf(), 500'000'000'000ULL);
 }

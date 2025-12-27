@@ -1,8 +1,7 @@
 #pragma once
 
+#include "vrtigo/duration.hpp"
 #include "vrtigo/timestamp.hpp"
-
-#include <chrono>
 
 #include <cstdint>
 
@@ -23,10 +22,12 @@ namespace vrtigo::utils {
  *
  * Example usage:
  * @code
- *   SampleClock clock(1e-6, StartTime::now());                    // Start immediately
- *   SampleClock clock(1e-6, StartTime::now_plus(500ms));          // Start after setup time
- *   SampleClock clock(1e-6, StartTime::at_next_second());         // PPS alignment
- *   SampleClock clock(1e-6, StartTime::at_next_second_plus(100ms)); // PPS + offset
+ *   SampleClock clock(1e-6, StartTime::now());              // Start immediately
+ *   SampleClock clock(1e-6, StartTime::now_plus(
+ *       Duration::from_milliseconds(500)));                 // Start after setup time
+ *   SampleClock clock(1e-6, StartTime::at_next_second());   // PPS alignment
+ *   SampleClock clock(1e-6, StartTime::at_next_second_plus(
+ *       Duration::from_milliseconds(100)));                 // PPS + offset
  * @endcode
  */
 struct StartTime {
@@ -47,7 +48,7 @@ struct StartTime {
     static constexpr StartTime now() noexcept { return StartTime{Base::now, {}, {}}; }
 
     /// Start from current time + offset
-    static constexpr StartTime now_plus(std::chrono::nanoseconds offset) noexcept {
+    static constexpr StartTime now_plus(Duration offset) noexcept {
         return StartTime{Base::now, {}, offset};
     }
 
@@ -68,8 +69,8 @@ struct StartTime {
     }
 
     /// Start at next whole-second boundary + offset
-    /// Example: at_next_second_plus(100ms) for "100ms after PPS edge"
-    static constexpr StartTime at_next_second_plus(std::chrono::nanoseconds offset) noexcept {
+    /// Example: at_next_second_plus(Duration::from_milliseconds(100)) for "100ms after PPS edge"
+    static constexpr StartTime at_next_second_plus(Duration offset) noexcept {
         return StartTime{Base::next_second, {}, offset};
     }
 
@@ -103,18 +104,17 @@ struct StartTime {
     constexpr Base base() const noexcept { return base_; }
 
     /// Get the offset (only meaningful for now and next_second bases)
-    constexpr std::chrono::nanoseconds offset() const noexcept { return offset_; }
+    constexpr Duration offset() const noexcept { return offset_; }
 
 private:
-    constexpr StartTime(Base base, UtcRealTimestamp abs_time,
-                        std::chrono::nanoseconds offset) noexcept
+    constexpr StartTime(Base base, UtcRealTimestamp abs_time, Duration offset) noexcept
         : base_(base),
           absolute_time_(abs_time),
           offset_(offset) {}
 
     Base base_{Base::zero};
     UtcRealTimestamp absolute_time_{};
-    std::chrono::nanoseconds offset_{0};
+    Duration offset_{};
 };
 
 } // namespace vrtigo::utils

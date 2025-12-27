@@ -1,5 +1,7 @@
 #pragma once
 
+#include "vrtigo/detail/time_math.hpp"
+#include "vrtigo/duration.hpp"
 #include "vrtigo/types.hpp"
 
 #include <chrono>
@@ -74,7 +76,26 @@ private:
     TsfType tsf_kind_{TsfType::none};
 };
 
-// Primary template - works for ALL timestamp combinations
+/**
+ * Typed timestamp with compile-time TSI/TSF specification.
+ *
+ * ## Storage
+ * 12 bytes: uint32_t seconds + uint64_t fractional (picoseconds).
+ * Matches VITA 49 wire format exactly.
+ *
+ * ## Overflow Policy
+ * All arithmetic with Duration saturates on overflow/underflow:
+ * - Addition saturates to max timestamp (UINT32_MAX, MAX_FRACTIONAL)
+ * - Subtraction saturates to zero timestamp (0, 0)
+ * - Use `saturated(timestamp)` helper to detect overflow when needed
+ *
+ * **Rationale:** Same as Duration - with large range, overflow indicates
+ * programmer error. No `expected<>` return types, no exceptions.
+ *
+ * ## Breaking Changes from Previous API
+ * - Removed: Result type alias, add_checked(), sub_checked(), diff_checked()
+ * - Duration arithmetic now uses new 12-byte Duration with ±68 year range
+ */
 template <TsiType TSI, TsfType TSF>
 class Timestamp {
     // Helper constant for readability and maintenance
@@ -82,10 +103,10 @@ class Timestamp {
 
 public:
     // Constants (always available, compiler optimizes away if unused)
-    static constexpr uint64_t PICOSECONDS_PER_SECOND = 1'000'000'000'000ULL;
+    static constexpr uint64_t PICOSECONDS_PER_SECOND = detail::PICOS_PER_SEC;
     static constexpr uint64_t NANOSECONDS_PER_SECOND = 1'000'000'000ULL;
     static constexpr uint64_t PICOSECONDS_PER_NANOSECOND = 1'000ULL;
-    static constexpr uint64_t MAX_FRACTIONAL = PICOSECONDS_PER_SECOND - 1;
+    static constexpr uint64_t MAX_FRACTIONAL = detail::MAX_PICOS;
 
     // Constructors - basic API available for all timestamp types
     constexpr Timestamp() noexcept = default;
@@ -193,157 +214,142 @@ public:
         return static_cast<std::time_t>(seconds_);
     }
 
-    // UTC-specific arithmetic operations
-    Timestamp& operator+=(std::chrono::nanoseconds duration) noexcept
-        requires(is_utc_real_time)
+    // Arithmetic with Duration (saturates on overflow/underflow)
+    Timestamp& operator+=(Duration d) noexcept
+        requires(TSF == TsfType::real_time)
     {
-        // Decompose duration into seconds and nanosecond remainder to avoid overflow
-        // This handles durations up to the full range of nanoseconds (~292 years)
-        auto sec_duration = std::chrono::duration_cast<std::chrono::seconds>(duration);
-        auto nano_remainder = duration - sec_duration;
-
-        int64_t seconds_to_add = sec_duration.count();
-        int64_t nanos_to_add = nano_remainder.count();
-
-        // Handle seconds component
-        if (seconds_to_add >= 0) {
-            // Adding positive seconds
-            uint64_t new_seconds =
-                static_cast<uint64_t>(seconds_) + static_cast<uint64_t>(seconds_to_add);
-            if (new_seconds > UINT32_MAX) {
-                // Overflow - clamp to max
-                seconds_ = UINT32_MAX;
-                fractional_ = MAX_FRACTIONAL;
-                return *this;
-            }
-            seconds_ = static_cast<uint32_t>(new_seconds);
-        } else {
-            // Subtracting seconds
-            uint64_t secs_to_sub = static_cast<uint64_t>(-seconds_to_add);
-            if (secs_to_sub > seconds_) {
-                // Underflow - clamp to zero
-                seconds_ = 0;
-                fractional_ = 0;
-                return *this;
-            }
-            seconds_ -= static_cast<uint32_t>(secs_to_sub);
-        }
-
-        // Handle nanosecond remainder (always < 1 second in magnitude)
-        // Safe to multiply by 1000 since |nanos_to_add| < 10^9
-        int64_t picos_to_add = nanos_to_add * static_cast<int64_t>(PICOSECONDS_PER_NANOSECOND);
-
-        if (picos_to_add >= 0) {
-            // Adding positive picoseconds
-            fractional_ += static_cast<uint64_t>(picos_to_add);
-            normalize(); // Handle carry to seconds if needed
-        } else {
-            // Subtracting picoseconds - handle multi-second borrow properly
-            uint64_t picos_to_sub = static_cast<uint64_t>(-picos_to_add);
-
-            if (fractional_ >= picos_to_sub) {
-                // Simple case: no borrow needed
-                fractional_ -= picos_to_sub;
-            } else {
-                // Need to borrow from seconds
-                // Calculate how many full seconds we need to borrow
-                uint64_t deficit = picos_to_sub - fractional_;
-                uint32_t seconds_to_borrow = static_cast<uint32_t>(
-                    (deficit + PICOSECONDS_PER_SECOND - 1) / PICOSECONDS_PER_SECOND);
-
-                if (seconds_to_borrow > seconds_) {
-                    // Would underflow - clamp to zero
-                    seconds_ = 0;
-                    fractional_ = 0;
-                } else {
-                    // Borrow the seconds and adjust fractional
-                    seconds_ -= seconds_to_borrow;
-                    fractional_ =
-                        (seconds_to_borrow * PICOSECONDS_PER_SECOND + fractional_) - picos_to_sub;
-                }
-            }
-        }
-
+        auto [sec, picos] = detail::add_time(static_cast<int64_t>(seconds_), fractional_,
+                                             static_cast<int64_t>(d.seconds()), d.picoseconds());
+        seconds_ = detail::clamp_to_timestamp(sec, picos);
+        fractional_ = picos;
         return *this;
     }
 
-    Timestamp& operator-=(std::chrono::nanoseconds duration) noexcept
-        requires(is_utc_real_time)
+    Timestamp& operator-=(Duration d) noexcept
+        requires(TSF == TsfType::real_time)
     {
-        // Guard against nanoseconds::min() which cannot be negated
-        if (duration == std::chrono::nanoseconds::min()) {
-            // nanoseconds::min() is approximately -9.22e18
-            // Subtracting it means: *this - (-9.22e18) = *this + 9.22e18
-            // We can't negate min() directly, so we add max() then add 1
-            // This gives us: *this + max() + 1 = *this + abs(min())
-            *this += std::chrono::nanoseconds::max();
-            return *this += std::chrono::nanoseconds(1);
-        }
-
-        // Normal case: negate and add
-        return *this += -duration;
+        auto [sec, picos] = detail::sub_time(static_cast<int64_t>(seconds_), fractional_,
+                                             static_cast<int64_t>(d.seconds()), d.picoseconds());
+        seconds_ = detail::clamp_to_timestamp(sec, picos);
+        fractional_ = picos;
+        return *this;
     }
 
-    // Friend operators with inline definitions (UTC-specific)
-    friend Timestamp operator+(Timestamp ts, std::chrono::nanoseconds duration) noexcept
-        requires(is_utc_real_time)
+    // Friend operators with Duration
+    friend Timestamp operator+(Timestamp ts, Duration d) noexcept
+        requires(TSF == TsfType::real_time)
     {
-        ts += duration;
+        ts += d;
         return ts;
     }
 
-    friend Timestamp operator-(Timestamp ts, std::chrono::nanoseconds duration) noexcept
-        requires(is_utc_real_time)
+    friend Timestamp operator-(Timestamp ts, Duration d) noexcept
+        requires(TSF == TsfType::real_time)
     {
-        ts -= duration;
+        ts -= d;
         return ts;
     }
 
-    friend std::chrono::nanoseconds operator-(const Timestamp& lhs, const Timestamp& rhs) noexcept
-        requires(is_utc_real_time)
+    // ShortDuration arithmetic - forwards to Duration overloads
+    Timestamp& operator+=(ShortDuration d) noexcept
+        requires(TSF == TsfType::real_time)
     {
-        int64_t sec_diff = static_cast<int64_t>(lhs.seconds_) - static_cast<int64_t>(rhs.seconds_);
-        int64_t frac_diff =
-            static_cast<int64_t>(lhs.fractional_) - static_cast<int64_t>(rhs.fractional_);
+        return *this += d.to_duration();
+    }
 
-        // Convert seconds to nanoseconds directly to avoid overflow
-        // This implementation: sec_diff * 10^9 is safe for differences up to ~292 years
-        int64_t total_nanos = sec_diff * static_cast<int64_t>(NANOSECONDS_PER_SECOND);
+    Timestamp& operator-=(ShortDuration d) noexcept
+        requires(TSF == TsfType::real_time)
+    {
+        return *this -= d.to_duration();
+    }
 
-        // Add the fractional difference converted to nanoseconds
-        // Since fractional_ is always < 1 second (for real_time), frac_diff is in range [-10^12,
-        // +10^12] Dividing by 1000 gives range [-10^9, +10^9] which fits safely in int64_t
-        total_nanos += frac_diff / static_cast<int64_t>(PICOSECONDS_PER_NANOSECOND);
+    friend Timestamp operator+(Timestamp ts, ShortDuration d) noexcept
+        requires(TSF == TsfType::real_time)
+    {
+        ts += d;
+        return ts;
+    }
 
-        return std::chrono::nanoseconds(total_nanos);
+    friend Timestamp operator-(Timestamp ts, ShortDuration d) noexcept
+        requires(TSF == TsfType::real_time)
+    {
+        ts -= d;
+        return ts;
+    }
+
+    // Convenience helpers for common offset operations
+
+    /// Offset timestamp by ShortDuration - more readable than operator+
+    Timestamp offset(ShortDuration d) const noexcept
+        requires(TSF == TsfType::real_time)
+    {
+        return *this + d;
+    }
+
+    /// Offset timestamp by sample count - combines from_samples + offset
+    Timestamp offset_samples(int64_t count, SamplePeriod period) const noexcept
+        requires(TSF == TsfType::real_time)
+    {
+        return *this + ShortDuration::from_samples(count, period);
+    }
+
+    // Timestamp difference returns Duration
+    // With new ±68 year Duration range, saturation is rare
+    friend Duration operator-(const Timestamp& lhs, const Timestamp& rhs) noexcept
+        requires(TSF == TsfType::real_time)
+    {
+        auto [sec, picos] = detail::sub_time(static_cast<int64_t>(lhs.seconds_), lhs.fractional_,
+                                             static_cast<int64_t>(rhs.seconds_), rhs.fractional_);
+
+        // Clamp to Duration range (±68 years)
+        uint64_t result_picos = picos;
+        int32_t result_sec = detail::clamp_to_duration(sec, result_picos);
+
+        // Construct Duration from seconds + picoseconds
+        return Duration::from_seconds(static_cast<int64_t>(result_sec)) +
+               Duration::from_picoseconds(static_cast<int64_t>(result_picos));
     }
 
 private:
     uint32_t seconds_{0};    // TSI component - default initialized to zero
     uint64_t fractional_{0}; // TSF component - default initialized to zero
 
-    // TSF-aware normalization
+    // TSF-aware normalization using centralized detail::normalize()
+    // Same path as arithmetic operators - ensures consistent behavior and shared bug fixes
     constexpr void normalize() noexcept {
         if constexpr (TSF == TsfType::real_time) {
-            // Only normalize for real_time TSF
-            if (fractional_ >= PICOSECONDS_PER_SECOND) {
-                uint32_t extra_seconds =
-                    static_cast<uint32_t>(fractional_ / PICOSECONDS_PER_SECOND);
-
-                // Check for overflow before adding
-                if (extra_seconds > (UINT32_MAX - seconds_)) {
-                    // Would overflow - clamp to max
-                    seconds_ = UINT32_MAX;
-                    fractional_ = MAX_FRACTIONAL;
-                } else {
-                    seconds_ += extra_seconds;
-                    fractional_ %= PICOSECONDS_PER_SECOND;
-                }
-            }
+            // Reuse centralized normalize (handles carry) + clamp_to_timestamp
+            // Cast to signed for normalize, then clamp back to uint32_t
+            // Note: fractional_ should be < 2^63 for any valid picoseconds input
+            auto [sec, picos] = detail::normalize(static_cast<int64_t>(seconds_),
+                                                  static_cast<int64_t>(fractional_));
+            seconds_ = detail::clamp_to_timestamp(sec, picos);
+            fractional_ = picos;
         }
         // No normalization for sample_count, free_running, none
     }
 };
+
+/**
+ * Check if a Timestamp has saturated to max value.
+ *
+ * Use this after arithmetic operations to detect overflow:
+ * ```cpp
+ * auto ts = clock.tick();
+ * if (saturated(ts)) {
+ *     // Handle overflow - timestamp is at maximum
+ * }
+ * ```
+ *
+ * Note: This only checks for max (overflow). Underflow saturates to zero,
+ * which is also a valid timestamp. For SampleClock, compare against previous
+ * timestamp to detect stuck-at-zero condition.
+ */
+template <TsiType TSI, TsfType TSF>
+constexpr bool saturated(const Timestamp<TSI, TSF>& ts) noexcept {
+    return ts.tsi() == std::numeric_limits<uint32_t>::max() &&
+           ts.tsf() == Timestamp<TSI, TSF>::MAX_FRACTIONAL;
+}
 
 // Out-of-line definition of TimestampValue::as<>() - requires complete Timestamp type
 template <TsiType TSI, TsfType TSF>
