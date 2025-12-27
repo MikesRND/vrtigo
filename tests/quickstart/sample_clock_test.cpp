@@ -10,12 +10,11 @@
 #include <vrtigo/vrtigo_utils.hpp>
 
 using namespace vrtigo;
-using namespace std::chrono_literals;
 using utils::SampleClock;
 using utils::StartTime;
 
 // [TEXT]
-// All examples assume `using namespace vrtigo;` and `using namespace std::chrono_literals;`.
+// All examples assume `using namespace vrtigo;`.
 // [/TEXT]
 
 // [EXAMPLE]
@@ -37,7 +36,7 @@ TEST(QuickstartSnippet, BasicTimestampGeneration) {
     // Query current time without advancing (starts at 0)
     auto t0 = clock.now(); // 0.000000 seconds
 
-    // Advance by one sample
+    // Advance by one sample (returns time_point directly)
     auto t1 = clock.tick(); // 0.000001 seconds
 
     // Advance by multiple samples
@@ -139,14 +138,17 @@ TEST(QuickstartSnippet, PPSAlignment) {
 TEST(QuickstartSnippet, DelayedStartWithOffset) {
     // [SNIPPET]
     // Start 500ms from now (setup/coordination time)
-    SampleClock<TsiType::utc> clock1(1e-6, StartTime::now_plus(500ms));
+    SampleClock<TsiType::utc> clock1(1e-6, StartTime::now_plus(Duration::from_milliseconds(500)));
 
     // Start 100ms after next second boundary (PPS + processing offset)
-    SampleClock<TsiType::utc> clock2(1e-6, StartTime::at_next_second_plus(100ms));
+    SampleClock<TsiType::utc> clock2(
+        1e-6, StartTime::at_next_second_plus(Duration::from_milliseconds(100)));
 
     auto ts = clock2.now();
     // ts.tsf() == 100ms in picoseconds
     // [/SNIPPET]
+
+    (void)clock1; // Suppress unused variable warning
 
     // Verify clock2 starts at exactly 100ms into the second
     EXPECT_EQ(ts.tsf(), 100'000'000'000ULL); // 100ms in picoseconds

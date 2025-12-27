@@ -5,7 +5,6 @@
 #include <vrtigo/vrtigo_utils.hpp>
 
 using namespace vrtigo;
-using namespace std::chrono_literals;
 using utils::SampleClock;
 using utils::StartTime;
 
@@ -57,17 +56,17 @@ TEST(StartTimeTest, NowResolvesToApproximateCurrentTime) {
 
 TEST(StartTimeTest, NowPlusPositiveOffset) {
     auto before = UtcRealTimestamp::now();
-    auto st = StartTime::now_plus(100ms);
+    auto st = StartTime::now_plus(Duration::from_milliseconds(100));
     auto resolved = st.resolve();
 
     // resolved should be at least 100ms after 'before'
-    auto expected_min = before + 100ms;
+    auto expected_min = before + Duration::from_milliseconds(100);
     EXPECT_GE(resolved, expected_min);
 }
 
 TEST(StartTimeTest, NowPlusZeroOffset) {
     auto before = UtcRealTimestamp::now();
-    auto st = StartTime::now_plus(0ns);
+    auto st = StartTime::now_plus(Duration::zero());
     auto resolved = st.resolve();
     auto after = UtcRealTimestamp::now();
 
@@ -77,7 +76,7 @@ TEST(StartTimeTest, NowPlusZeroOffset) {
 
 TEST(StartTimeTest, NowPlusNegativeOffset) {
     auto now_approx = UtcRealTimestamp::now();
-    auto st = StartTime::now_plus(-100ms);
+    auto st = StartTime::now_plus(Duration::from_milliseconds(-100));
     auto resolved = st.resolve();
 
     // resolved should be approximately 100ms before now
@@ -126,7 +125,7 @@ TEST(StartTimeTest, AtNextSecondAdvancesIfNotOnBoundary) {
 // =============================================================================
 
 TEST(StartTimeTest, AtNextSecondPlusAppliesOffset) {
-    auto st = StartTime::at_next_second_plus(100ms);
+    auto st = StartTime::at_next_second_plus(Duration::from_milliseconds(100));
     auto resolved = st.resolve();
 
     // Fractional should be 100ms in picoseconds
@@ -134,7 +133,7 @@ TEST(StartTimeTest, AtNextSecondPlusAppliesOffset) {
 }
 
 TEST(StartTimeTest, AtNextSecondPlusLargeOffsetCarriesSeconds) {
-    auto st = StartTime::at_next_second_plus(1500ms); // 1.5 seconds
+    auto st = StartTime::at_next_second_plus(Duration::from_milliseconds(1500)); // 1.5 seconds
     auto resolved = st.resolve();
 
     // Should have 500ms fractional (1 second carried to tsi)
@@ -161,7 +160,7 @@ TEST(StartTimeTest, AtNextSecondSaturatesAtMaxSeconds) {
 TEST(StartTimeTest, LargeOffsetSaturates) {
     // Use absolute with a high tsi and add a huge offset
     UtcRealTimestamp near_max(UINT32_MAX - 1, 0);
-    auto st = StartTime::absolute(near_max + std::chrono::nanoseconds::max());
+    auto st = StartTime::absolute(near_max + Duration::max());
 
     // Timestamp arithmetic should saturate
     auto resolved = st.resolve();
@@ -174,19 +173,23 @@ TEST(StartTimeTest, LargeOffsetSaturates) {
 
 TEST(StartTimeTest, BaseAccessorReturnsCorrectType) {
     EXPECT_EQ(StartTime::now().base(), StartTime::Base::now);
-    EXPECT_EQ(StartTime::now_plus(100ms).base(), StartTime::Base::now);
+    EXPECT_EQ(StartTime::now_plus(Duration::from_milliseconds(100)).base(), StartTime::Base::now);
     EXPECT_EQ(StartTime::at_next_second().base(), StartTime::Base::next_second);
-    EXPECT_EQ(StartTime::at_next_second_plus(100ms).base(), StartTime::Base::next_second);
+    EXPECT_EQ(StartTime::at_next_second_plus(Duration::from_milliseconds(100)).base(),
+              StartTime::Base::next_second);
     EXPECT_EQ(StartTime::absolute(UtcRealTimestamp{}).base(), StartTime::Base::absolute);
     EXPECT_EQ(StartTime::zero().base(), StartTime::Base::zero);
 }
 
 TEST(StartTimeTest, OffsetAccessorReturnsCorrectValue) {
-    EXPECT_EQ(StartTime::now().offset(), 0ns);
-    EXPECT_EQ(StartTime::now_plus(100ms).offset(), 100ms);
-    EXPECT_EQ(StartTime::now_plus(-50ms).offset(), -50ms);
-    EXPECT_EQ(StartTime::at_next_second().offset(), 0ns);
-    EXPECT_EQ(StartTime::at_next_second_plus(200ms).offset(), 200ms);
+    EXPECT_EQ(StartTime::now().offset(), Duration::zero());
+    EXPECT_EQ(StartTime::now_plus(Duration::from_milliseconds(100)).offset(),
+              Duration::from_milliseconds(100));
+    EXPECT_EQ(StartTime::now_plus(Duration::from_milliseconds(-50)).offset(),
+              Duration::from_milliseconds(-50));
+    EXPECT_EQ(StartTime::at_next_second().offset(), Duration::zero());
+    EXPECT_EQ(StartTime::at_next_second_plus(Duration::from_milliseconds(200)).offset(),
+              Duration::from_milliseconds(200));
 }
 
 // =============================================================================
@@ -201,8 +204,9 @@ TEST(StartTimeTest, SampleClockWithStartTimeNow) {
     auto current = UtcRealTimestamp::now();
 
     // Clock's time should be close to current time (within a few ms)
-    auto diff_ns = current - ts;
-    EXPECT_LT(std::abs(diff_ns.count()), 100'000'000); // Within 100ms
+    auto diff = current - ts;
+    // 100ms = 100,000,000 ns = 100,000,000,000 picoseconds
+    EXPECT_LT(diff.abs().total_picoseconds(), 100'000'000'000); // Within 100ms
 }
 
 TEST(StartTimeTest, SampleClockWithStartTimeZero) {
@@ -254,7 +258,7 @@ TEST(StartTimeTest, SampleClockAbsoluteStart) {
     EXPECT_EQ(clock.now().tsf(), 0u);
 
     // After ticking and reset, should return to same start
-    clock.tick(100);
+    (void)clock.tick(100);
     clock.reset();
 
     EXPECT_EQ(clock.now().tsi(), 500u);
@@ -270,9 +274,9 @@ TEST(StartTimeTest, FactoryMethodsAreConstexpr) {
     constexpr auto st_zero = StartTime::zero();
     constexpr auto st_abs = StartTime::absolute(UtcRealTimestamp{100u, 0});
     constexpr auto st_now = StartTime::now();
-    constexpr auto st_now_plus = StartTime::now_plus(100ms);
+    constexpr auto st_now_plus = StartTime::now_plus(Duration::from_milliseconds(100));
     constexpr auto st_next = StartTime::at_next_second();
-    constexpr auto st_next_plus = StartTime::at_next_second_plus(100ms);
+    constexpr auto st_next_plus = StartTime::at_next_second_plus(Duration::from_milliseconds(100));
 
     // Verify they have expected bases
     static_assert(st_zero.base() == StartTime::Base::zero);
@@ -300,7 +304,7 @@ TEST(StartTimeTest, ResolveCanBeCalledMultipleTimes) {
     auto st = StartTime::now();
 
     auto first = st.resolve();
-    std::this_thread::sleep_for(10ms);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
     auto second = st.resolve();
 
     // Second resolution should be later than first
