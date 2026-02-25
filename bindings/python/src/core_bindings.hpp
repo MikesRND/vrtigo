@@ -150,35 +150,6 @@ inline void bind_core(nb::module_& m) {
             return oss.str();
         });
 
-    // =========================================================================
-    // Timestamp
-    // =========================================================================
-
-    nb::class_<vrtigo::TimestampValue>(m, "Timestamp",
-                                       "Type-erased VRT timestamp (TSI + TSF)")
-        .def_prop_ro("tsi", &vrtigo::TimestampValue::tsi,
-                     "Integer timestamp value (seconds)")
-        .def_prop_ro("tsf", &vrtigo::TimestampValue::tsf,
-                     "Fractional timestamp value (picoseconds for real_time)")
-        .def_prop_ro("tsi_kind", &vrtigo::TimestampValue::tsi_kind,
-                     "Integer timestamp type (TsiType)")
-        .def_prop_ro("tsf_kind", &vrtigo::TimestampValue::tsf_kind,
-                     "Fractional timestamp type (TsfType)")
-        .def_prop_ro("has_tsi", &vrtigo::TimestampValue::has_tsi,
-                     "True if integer timestamp is present")
-        .def_prop_ro("has_tsf", &vrtigo::TimestampValue::has_tsf,
-                     "True if fractional timestamp is present")
-        .def("__eq__",
-             [](const vrtigo::TimestampValue& a, const vrtigo::TimestampValue& b) {
-                 return a == b;
-             })
-        .def("__repr__", [](const vrtigo::TimestampValue& ts) {
-            std::ostringstream oss;
-            oss << "Timestamp(tsi=" << ts.tsi() << ", tsf=" << ts.tsf()
-                << ", tsi_kind=" << vrtigo::tsi_type_string(ts.tsi_kind())
-                << ", tsf_kind=" << vrtigo::tsf_type_string(ts.tsf_kind()) << ")";
-            return oss.str();
-        });
 }
 
 } // namespace vrtigo_python

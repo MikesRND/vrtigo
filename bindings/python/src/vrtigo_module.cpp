@@ -5,6 +5,7 @@
 
 // Binding components
 #include "core_bindings.hpp"
+#include "time_bindings.hpp"
 #include "error_bindings.hpp"
 #include "owning_packet_bindings.hpp"
 #include "packet_view_bindings.hpp"
@@ -23,10 +24,13 @@ NB_MODULE(vrtigo, m) {
     m.doc() = "VRTIGO - VRT (VITA 49.2) packet library";
 
     // Bind components in dependency order:
-    // 1. Core types (enums, ClassId, Timestamp) - no dependencies
+    // 1. Core types (enums, ClassId) - no dependencies
     vrtigo_python::bind_core(m);
 
-    // 2. Error types (sets parse_error_type, vrt_io_error_type) - needs core enums
+    // 2. Time types (Duration, SamplePeriod, Timestamp, StartTime, SampleClock) - needs core enums
+    vrtigo_python::bind_time(m);
+
+    // 3. Error types (sets parse_error_type, vrt_io_error_type) - needs core enums
     vrtigo_python::bind_errors(m);
 
     // 3. Packet views (DataPacketView, ContextPacketView) - needs core types
