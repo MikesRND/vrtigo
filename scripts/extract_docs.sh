@@ -37,12 +37,42 @@ rm -f "$DOCS_DIR"/*.md
 
 echo "Extracting $TARGET documentation..." >&2
 
-# Process each matching test file
-for testfile in "$SRC_DIR"/$PATTERN; do
+# Helper: strip comment prefix based on file type
+# Usage: strip_comment "$line" "$comment_prefix"
+strip_comment() {
+    local line="$1"
+    local prefix="$2"
+    # Strip leading whitespace
+    line="${line#"${line%%[![:space:]]*}"}"
+    # Strip comment prefix with space, then without
+    line="${line#$prefix }"
+    line="${line#$prefix}"
+    echo "$line"
+}
+
+# Process each matching test file (C++ and Python)
+for testfile in "$SRC_DIR"/$PATTERN "$SRC_DIR"/${PATTERN%.cpp}.py; do
     [ -f "$testfile" ] || continue
 
     filename=$(basename "$testfile")
-    basename="${filename%_test.cpp}"
+
+    # Detect language from extension
+    case "$filename" in
+        *.cpp)
+            lang="cpp"
+            comment_prefix="//"
+            basename="${filename%_test.cpp}"
+            ;;
+        *.py)
+            lang="python"
+            comment_prefix="#"
+            basename="${filename%_test.py}"
+            ;;
+        *)
+            continue
+            ;;
+    esac
+
     output_file="$DOCS_DIR/${basename}.md"
 
     echo "  Processing $filename..." >&2
@@ -56,10 +86,7 @@ for testfile in "$SRC_DIR"/$PATTERN; do
         elif [[ $line =~ \[/TITLE\] ]]; then
             break
         elif [ $in_title -eq 1 ]; then
-            # Strip leading whitespace and comment markers
-            title_line="${line#"${line%%[![:space:]]*}"}"  # Strip leading whitespace
-            title_line="${title_line#// }"                  # Strip "// "
-            title_line="${title_line#//}"                   # Strip "//" if no space
+            title_line="$(strip_comment "$line" "$comment_prefix")"
             if [ -n "$title" ]; then
                 title="$title"$'\n'"$title_line"
             else
@@ -108,10 +135,7 @@ EOF
             fi
             text_block=""
         elif [ $in_text -eq 1 ]; then
-            # Strip leading whitespace and comment markers
-            text_line="${line#"${line%%[![:space:]]*}"}"
-            text_line="${text_line#// }"
-            text_line="${text_line#//}"
+            text_line="$(strip_comment "$line" "$comment_prefix")"
             if [ -n "$text_block" ]; then
                 text_block="$text_block"$'\n'"$text_line"
             else
@@ -126,10 +150,7 @@ EOF
         elif [[ $line =~ \[/EXAMPLE\] ]]; then
             in_example=0
         elif [ $in_example -eq 1 ]; then
-            # Strip leading whitespace and comment markers
-            heading_line="${line#"${line%%[![:space:]]*}"}"
-            heading_line="${heading_line#// }"
-            heading_line="${heading_line#//}"
+            heading_line="$(strip_comment "$line" "$comment_prefix")"
             if [ -n "$example_heading" ]; then
                 example_heading="$example_heading"$'\n'"$heading_line"
             else
@@ -144,10 +165,7 @@ EOF
         elif [[ $line =~ \[/DESCRIPTION\] ]]; then
             in_description=0
         elif [ $in_description -eq 1 ]; then
-            # Strip leading whitespace and comment markers
-            desc_line="${line#"${line%%[![:space:]]*}"}"
-            desc_line="${desc_line#// }"
-            desc_line="${desc_line#//}"
+            desc_line="$(strip_comment "$line" "$comment_prefix")"
             if [ -n "$description" ]; then
                 description="$description"$'\n'"$desc_line"
             else
@@ -174,7 +192,7 @@ EOF
                 fi
 
                 # Write snippet
-                echo '```cpp' >> "$output_file"
+                echo "\`\`\`$lang" >> "$output_file"
                 echo "$snippet" >> "$output_file"
                 echo '```' >> "$output_file"
                 echo "" >> "$output_file"

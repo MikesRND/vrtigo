@@ -10,6 +10,7 @@ Get started with VRTIGO by exploring these executable examples. Each example is 
 | [Context Packet](quickstart/context_packet.md) | Create a VRT context packet with signal metadata fields |
 | [Reading VRT Files](quickstart/file_reader.md) | Read and process VRT packets from files |
 | [Parsing Packets](quickstart/packet_parsing.md) | Parse and validate packets from raw buffers |
+| [Python Timestamp Math](quickstart/python_timestamp_math.md) | Duration, SamplePeriod, Timestamp arithmetic, and SampleClock from Python |
 
 
 ## Adding New Examples
