@@ -577,6 +577,93 @@ class TestTimestampEq:
         assert ts1 != ts2
 
 
+class TestTimestampOrdering:
+    """test_timestamp_ordering -- <, <=, >, >= on UTC real_time timestamps."""
+
+    def test_less_than_different_tsi(self):
+        t1 = vrtigo.Timestamp(100, 0, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        t2 = vrtigo.Timestamp(200, 0, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        assert t1 < t2
+        assert not (t2 < t1)
+
+    def test_less_than_same_tsi_different_tsf(self):
+        t1 = vrtigo.Timestamp(100, 0, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        t2 = vrtigo.Timestamp(100, 500_000_000_000, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        assert t1 < t2
+
+    def test_greater_than(self):
+        t1 = vrtigo.Timestamp(200, 0, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        t2 = vrtigo.Timestamp(100, 0, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        assert t1 > t2
+        assert not (t2 > t1)
+
+    def test_less_equal_when_equal(self):
+        t1 = vrtigo.Timestamp(100, 500, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        t2 = vrtigo.Timestamp(100, 500, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        assert t1 <= t2
+        assert t2 <= t1
+
+    def test_less_equal_when_less(self):
+        t1 = vrtigo.Timestamp(100, 0, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        t2 = vrtigo.Timestamp(200, 0, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        assert t1 <= t2
+
+    def test_greater_equal_when_equal(self):
+        t1 = vrtigo.Timestamp(100, 0, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        t2 = vrtigo.Timestamp(100, 0, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        assert t1 >= t2
+        assert t2 >= t1
+
+    def test_greater_equal_when_greater(self):
+        t1 = vrtigo.Timestamp(200, 0, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        t2 = vrtigo.Timestamp(100, 0, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        assert t1 >= t2
+
+    @pytest.mark.parametrize(
+        "tsi_kind",
+        [vrtigo.TsiType.utc, vrtigo.TsiType.gps, vrtigo.TsiType.other, vrtigo.TsiType.none],
+    )
+    def test_ordering_all_tsi_kinds(self, tsi_kind):
+        t1 = vrtigo.Timestamp(100, 0, tsi_kind, vrtigo.TsfType.real_time)
+        t2 = vrtigo.Timestamp(200, 0, tsi_kind, vrtigo.TsfType.real_time)
+        assert t1 < t2
+        assert t2 > t1
+
+
+class TestTimestampOrderingErrors:
+    """test_timestamp_ordering_errors -- TypeError for non-real_time or mismatched tsi_kind."""
+
+    def test_mismatched_tsi_kind_raises(self):
+        t_utc = vrtigo.Timestamp(100, 0, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        t_gps = vrtigo.Timestamp(100, 0, vrtigo.TsiType.gps, vrtigo.TsfType.real_time)
+        with pytest.raises(TypeError):
+            t_utc < t_gps
+
+    def test_sample_count_ordering_raises(self):
+        t1 = vrtigo.Timestamp(100, 0, vrtigo.TsiType.utc, vrtigo.TsfType.sample_count)
+        t2 = vrtigo.Timestamp(200, 0, vrtigo.TsiType.utc, vrtigo.TsfType.sample_count)
+        with pytest.raises(TypeError):
+            t1 < t2
+
+    def test_free_running_ordering_raises(self):
+        t1 = vrtigo.Timestamp(100, 0, vrtigo.TsiType.utc, vrtigo.TsfType.free_running)
+        t2 = vrtigo.Timestamp(200, 0, vrtigo.TsiType.utc, vrtigo.TsfType.free_running)
+        with pytest.raises(TypeError):
+            t1 < t2
+
+    def test_tsf_none_ordering_raises(self):
+        t1 = vrtigo.Timestamp(100, 0, vrtigo.TsiType.utc, vrtigo.TsfType.none)
+        t2 = vrtigo.Timestamp(200, 0, vrtigo.TsiType.utc, vrtigo.TsfType.none)
+        with pytest.raises(TypeError):
+            t1 < t2
+
+    def test_mixed_tsf_kind_ordering_raises(self):
+        t1 = vrtigo.Timestamp(100, 0, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        t2 = vrtigo.Timestamp(100, 0, vrtigo.TsiType.utc, vrtigo.TsfType.sample_count)
+        with pytest.raises(TypeError):
+            t1 < t2
+
+
 class TestTimestampRepr:
     """test_timestamp_repr -- verify repr contains 'Timestamp'."""
 

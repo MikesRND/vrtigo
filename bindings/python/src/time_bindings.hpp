@@ -328,6 +328,47 @@ inline void bind_time(nb::module_& m) {
         .def("__eq__", [](const vrtigo::TimestampValue& a, const vrtigo::TimestampValue& b) {
             return a == b;
         }, nb::is_operator())
+        // Ordering (real_time only, matching tsi_kind)
+        .def("__lt__", [](const vrtigo::TimestampValue& a, const vrtigo::TimestampValue& b) {
+            if (a.tsf_kind() != vrtigo::TsfType::real_time ||
+                b.tsf_kind() != vrtigo::TsfType::real_time) {
+                throw nb::type_error("Timestamp ordering requires both tsf_kind == real_time");
+            }
+            if (a.tsi_kind() != b.tsi_kind()) {
+                throw nb::type_error("Timestamp ordering requires both timestamps to have the same tsi_kind");
+            }
+            return a < b;
+        }, nb::is_operator())
+        .def("__le__", [](const vrtigo::TimestampValue& a, const vrtigo::TimestampValue& b) {
+            if (a.tsf_kind() != vrtigo::TsfType::real_time ||
+                b.tsf_kind() != vrtigo::TsfType::real_time) {
+                throw nb::type_error("Timestamp ordering requires both tsf_kind == real_time");
+            }
+            if (a.tsi_kind() != b.tsi_kind()) {
+                throw nb::type_error("Timestamp ordering requires both timestamps to have the same tsi_kind");
+            }
+            return a <= b;
+        }, nb::is_operator())
+        .def("__gt__", [](const vrtigo::TimestampValue& a, const vrtigo::TimestampValue& b) {
+            if (a.tsf_kind() != vrtigo::TsfType::real_time ||
+                b.tsf_kind() != vrtigo::TsfType::real_time) {
+                throw nb::type_error("Timestamp ordering requires both tsf_kind == real_time");
+            }
+            if (a.tsi_kind() != b.tsi_kind()) {
+                throw nb::type_error("Timestamp ordering requires both timestamps to have the same tsi_kind");
+            }
+            return a > b;
+        }, nb::is_operator())
+        .def("__ge__", [](const vrtigo::TimestampValue& a, const vrtigo::TimestampValue& b) {
+            if (a.tsf_kind() != vrtigo::TsfType::real_time ||
+                b.tsf_kind() != vrtigo::TsfType::real_time) {
+                throw nb::type_error("Timestamp ordering requires both tsf_kind == real_time");
+            }
+            if (a.tsi_kind() != b.tsi_kind()) {
+                throw nb::type_error("Timestamp ordering requires both timestamps to have the same tsi_kind");
+            }
+            return a >= b;
+        }, nb::is_operator())
         // Timestamp + Duration
         .def("__add__", [](const vrtigo::TimestampValue& self, const vrtigo::Duration& d) {
             return timestamp_add_duration(self, d);
