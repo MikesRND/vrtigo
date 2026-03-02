@@ -173,6 +173,23 @@ class TestDurationComparison:
         assert pos > neg
 
 
+class TestDurationHash:
+    """test_duration_hash -- equal durations have equal hashes; set deduplicates."""
+
+    def test_equal_durations_have_equal_hashes(self):
+        a = vrtigo.Duration.from_seconds_float(1.5)
+        b = vrtigo.Duration.from_seconds_float(1.5)
+        assert a == b
+        assert hash(a) == hash(b)
+
+    def test_set_deduplicates_equal_durations(self):
+        a = vrtigo.Duration.from_seconds(2)
+        b = vrtigo.Duration.from_seconds(2)
+        c = vrtigo.Duration.from_seconds(3)
+        s = {a, b, c}
+        assert len(s) == 2
+
+
 class TestDurationPredicates:
     """test_duration_predicates -- is_zero, is_negative, is_positive."""
 
@@ -335,6 +352,23 @@ class TestSamplePeriodComparison:
         a = vrtigo.SamplePeriod.from_picoseconds(200)
         b = vrtigo.SamplePeriod.from_picoseconds(100)
         assert a >= b
+
+
+class TestSamplePeriodHash:
+    """test_sample_period_hash -- equal periods have equal hashes; set deduplicates."""
+
+    def test_equal_periods_have_equal_hashes(self):
+        a = vrtigo.SamplePeriod.from_picoseconds(100_000)
+        b = vrtigo.SamplePeriod.from_picoseconds(100_000)
+        assert a == b
+        assert hash(a) == hash(b)
+
+    def test_set_deduplicates_equal_periods(self):
+        a = vrtigo.SamplePeriod.from_picoseconds(100_000)
+        b = vrtigo.SamplePeriod.from_picoseconds(100_000)
+        c = vrtigo.SamplePeriod.from_picoseconds(200_000)
+        s = {a, b, c}
+        assert len(s) == 2
 
 
 class TestSamplePeriodRepr:
@@ -575,6 +609,23 @@ class TestTimestampEq:
         ts1 = vrtigo.Timestamp(1000, 0, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
         ts2 = vrtigo.Timestamp(1000, 1, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
         assert ts1 != ts2
+
+
+class TestTimestampHash:
+    """test_timestamp_hash -- equal timestamps have equal hashes; set deduplicates."""
+
+    def test_equal_timestamps_have_equal_hashes(self):
+        a = vrtigo.Timestamp(1000, 500, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        b = vrtigo.Timestamp(1000, 500, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        assert a == b
+        assert hash(a) == hash(b)
+
+    def test_set_deduplicates_equal_timestamps(self):
+        a = vrtigo.Timestamp(1000, 0, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        b = vrtigo.Timestamp(1000, 0, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        c = vrtigo.Timestamp(2000, 0, vrtigo.TsiType.utc, vrtigo.TsfType.real_time)
+        s = {a, b, c}
+        assert len(s) == 2
 
 
 class TestTimestampOrdering:

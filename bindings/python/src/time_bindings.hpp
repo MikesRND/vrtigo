@@ -11,6 +11,7 @@
 #include <vrtigo/utils/start_time.hpp>
 
 #include <chrono>
+#include <functional>
 #include <sstream>
 
 namespace nb = nanobind;
@@ -238,6 +239,12 @@ inline void bind_time(nb::module_& m) {
         .def("__ge__", [](const vrtigo::Duration& a, const vrtigo::Duration& b) {
             return a >= b;
         }, nb::is_operator())
+        // __hash__
+        .def("__hash__", [](const vrtigo::Duration& d) {
+            auto h = std::hash<int32_t>{}(d.seconds());
+            h ^= std::hash<uint64_t>{}(d.picoseconds()) + 0x9e3779b9ULL + (h << 6) + (h >> 2);
+            return h;
+        })
         // __repr__
         .def("__repr__", [](const vrtigo::Duration& d) {
             std::ostringstream oss;
@@ -299,6 +306,10 @@ inline void bind_time(nb::module_& m) {
         .def("__ge__", [](const vrtigo::SamplePeriod& a, const vrtigo::SamplePeriod& b) {
             return a >= b;
         }, nb::is_operator())
+        // __hash__
+        .def("__hash__", [](const vrtigo::SamplePeriod& sp) {
+            return std::hash<uint64_t>{}(sp.picoseconds());
+        })
         // __repr__
         .def("__repr__", [](const vrtigo::SamplePeriod& sp) {
             std::ostringstream oss;
@@ -369,6 +380,14 @@ inline void bind_time(nb::module_& m) {
             }
             return a >= b;
         }, nb::is_operator())
+        // __hash__
+        .def("__hash__", [](const vrtigo::TimestampValue& ts) {
+            auto h = std::hash<uint32_t>{}(ts.tsi());
+            h ^= std::hash<uint64_t>{}(ts.tsf()) + 0x9e3779b9ULL + (h << 6) + (h >> 2);
+            h ^= std::hash<int>{}(static_cast<int>(ts.tsi_kind())) + 0x9e3779b9ULL + (h << 6) + (h >> 2);
+            h ^= std::hash<int>{}(static_cast<int>(ts.tsf_kind())) + 0x9e3779b9ULL + (h << 6) + (h >> 2);
+            return h;
+        })
         // Timestamp + Duration
         .def("__add__", [](const vrtigo::TimestampValue& self, const vrtigo::Duration& d) {
             return timestamp_add_duration(self, d);
