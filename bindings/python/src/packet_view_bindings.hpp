@@ -54,6 +54,13 @@ inline void bind_packet_views(nb::module_& m) {
                      "True if packet has timestamp")
         .def_prop_ro("has_trailer", &vrtigo::dynamic::DataPacketView::has_trailer,
                      "True if packet has trailer")
+        .def_prop_ro("trailer_raw",
+            [](const vrtigo::dynamic::DataPacketView& pkt) -> std::optional<uint32_t> {
+                auto t = pkt.trailer();
+                if (!t) return std::nullopt;
+                return t->raw();
+            },
+            "Raw 32-bit trailer word (host byte order), or None if no trailer")
         .def_prop_ro("stream_id", &vrtigo::dynamic::DataPacketView::stream_id,
                      "Stream ID if present, else None")
         .def_prop_ro("class_id", &vrtigo::dynamic::DataPacketView::class_id,
@@ -73,6 +80,21 @@ inline void bind_packet_views(nb::module_& m) {
                 return nb::bytes(reinterpret_cast<const char*>(span.data()), span.size());
             },
             "Payload data as bytes")
+        .def_prop_ro("payload_view",
+            [](const vrtigo::dynamic::DataPacketView& pkt) -> nb::object {
+                auto span = pkt.payload();
+                static char dummy = 0;
+                char* ptr = span.empty()
+                    ? &dummy
+                    : const_cast<char*>(reinterpret_cast<const char*>(span.data()));
+                PyObject* mv = PyMemoryView_FromMemory(
+                    ptr, static_cast<Py_ssize_t>(span.size()), PyBUF_READ);
+                if (!mv) throw nb::python_error();
+                return nb::steal(mv);
+            },
+            nb::keep_alive<0, 1>(),
+            nb::sig("def payload_view(self) -> memoryview"),
+            "Read-only zero-copy memoryview over payload (lifetime tied to view)")
         .def("__repr__", [](const vrtigo::dynamic::DataPacketView& pkt) {
             std::ostringstream oss;
             oss << "DataPacketView(type=" << vrtigo::packet_type_string(pkt.type())

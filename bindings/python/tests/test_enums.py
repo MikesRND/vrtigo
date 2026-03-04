@@ -334,6 +334,228 @@ def test_data_packet_payload_access():
     assert pkt.payload == b"\xaa\xbb\xcc\xdd\x11\x22\x33\x44"
 
 
+# =============================================================================
+# trailer_raw
+# =============================================================================
+
+
+def test_trailer_raw_none_without_trailer_view():
+    """DataPacketView.trailer_raw is None when no trailer."""
+    import vrtigo
+
+    header = (1 << 28) | 3  # signal_data, no trailer, 3 words
+    packet_bytes = struct.pack(">III", header, 0x12345678, 0xDEADBEEF)
+    pkt = vrtigo.DataPacketView.parse(packet_bytes)
+    assert pkt.trailer_raw is None
+
+
+def test_trailer_raw_none_without_trailer_owning():
+    """DataPacket.trailer_raw is None when no trailer."""
+    import vrtigo
+
+    header = (1 << 28) | 3
+    packet_bytes = struct.pack(">III", header, 0x12345678, 0xDEADBEEF)
+    pkt = vrtigo.DataPacket.from_bytes(packet_bytes)
+    assert pkt.trailer_raw is None
+
+
+def test_trailer_raw_value_view():
+    """DataPacketView.trailer_raw returns correct host-order int."""
+    import vrtigo
+    from test_packets import DataPacketBuilder
+
+    trailer_val = 0xCAFEBABE
+    raw = DataPacketBuilder() \
+        .with_stream_id(0x1234) \
+        .with_payload(b'\x00' * 4) \
+        .with_trailer(trailer_val) \
+        .build()
+    pkt = vrtigo.DataPacketView.parse(raw)
+    assert pkt.has_trailer is True
+    assert pkt.trailer_raw == trailer_val
+
+
+def test_trailer_raw_value_owning():
+    """DataPacket.trailer_raw returns correct host-order int."""
+    import vrtigo
+    from test_packets import DataPacketBuilder
+
+    trailer_val = 0xCAFEBABE
+    raw = DataPacketBuilder() \
+        .with_stream_id(0x1234) \
+        .with_payload(b'\x00' * 4) \
+        .with_trailer(trailer_val) \
+        .build()
+    pkt = vrtigo.DataPacket.from_bytes(raw)
+    assert pkt.has_trailer is True
+    assert pkt.trailer_raw == trailer_val
+
+
+# =============================================================================
+# payload_view
+# =============================================================================
+
+
+def test_payload_view_is_memoryview_view():
+    """DataPacketView.payload_view returns a memoryview."""
+    import vrtigo
+    from test_packets import DataPacketBuilder
+
+    raw = DataPacketBuilder() \
+        .with_stream_id(0x1234) \
+        .with_payload(b'\xAA\xBB\xCC\xDD') \
+        .build()
+    pkt = vrtigo.DataPacketView.parse(raw)
+    mv = pkt.payload_view
+    assert isinstance(mv, memoryview)
+    assert mv.readonly is True
+    assert mv.ndim == 1
+
+
+def test_payload_view_is_memoryview_owning():
+    """DataPacket.payload_view returns a memoryview."""
+    import vrtigo
+    from test_packets import DataPacketBuilder
+
+    raw = DataPacketBuilder() \
+        .with_stream_id(0x1234) \
+        .with_payload(b'\xAA\xBB\xCC\xDD') \
+        .build()
+    pkt = vrtigo.DataPacket.from_bytes(raw)
+    mv = pkt.payload_view
+    assert isinstance(mv, memoryview)
+    assert mv.readonly is True
+    assert mv.ndim == 1
+
+
+def test_payload_view_matches_payload_view():
+    """DataPacketView.payload_view content matches payload."""
+    import vrtigo
+    from test_packets import DataPacketBuilder
+
+    payload = b'\x01\x02\x03\x04\x05\x06\x07\x08'
+    raw = DataPacketBuilder() \
+        .with_stream_id(0x1234) \
+        .with_payload(payload) \
+        .build()
+    pkt = vrtigo.DataPacketView.parse(raw)
+    mv = pkt.payload_view
+    assert mv.nbytes == len(payload)
+    assert mv.tobytes() == pkt.payload
+
+
+def test_payload_view_matches_payload_owning():
+    """DataPacket.payload_view content matches payload."""
+    import vrtigo
+    from test_packets import DataPacketBuilder
+
+    payload = b'\x01\x02\x03\x04\x05\x06\x07\x08'
+    raw = DataPacketBuilder() \
+        .with_stream_id(0x1234) \
+        .with_payload(payload) \
+        .build()
+    pkt = vrtigo.DataPacket.from_bytes(raw)
+    mv = pkt.payload_view
+    assert mv.nbytes == len(payload)
+    assert mv.tobytes() == pkt.payload
+
+
+def test_payload_view_lifetime_from_temporary_owning():
+    """memoryview survives after DataPacket temporary is collected."""
+    import vrtigo
+    from test_packets import DataPacketBuilder
+
+    payload = b'\xDE\xAD\xBE\xEF'
+    raw = DataPacketBuilder() \
+        .with_stream_id(0x1234) \
+        .with_payload(payload) \
+        .build()
+    mv = vrtigo.DataPacket.from_bytes(raw).payload_view
+    assert mv.tobytes() == payload
+
+
+def test_payload_view_lifetime_from_temporary_view():
+    """memoryview survives after DataPacketView temporary is collected."""
+    import vrtigo
+    from test_packets import DataPacketBuilder
+
+    payload = b'\xDE\xAD\xBE\xEF'
+    raw = DataPacketBuilder() \
+        .with_stream_id(0x1234) \
+        .with_payload(payload) \
+        .build()
+    mv = vrtigo.DataPacketView.parse(raw).payload_view
+    assert mv.tobytes() == payload
+
+
+def test_payload_view_write_raises_view():
+    """Writing through DataPacketView.payload_view raises TypeError."""
+    import vrtigo
+    from test_packets import DataPacketBuilder
+
+    raw = DataPacketBuilder() \
+        .with_stream_id(0x1234) \
+        .with_payload(b'\x00' * 4) \
+        .build()
+    pkt = vrtigo.DataPacketView.parse(raw)
+    mv = pkt.payload_view
+    try:
+        mv[0] = 0xFF
+        assert False, "Should have raised TypeError"
+    except TypeError:
+        pass
+
+
+def test_payload_view_write_raises_owning():
+    """Writing through DataPacket.payload_view raises TypeError."""
+    import vrtigo
+    from test_packets import DataPacketBuilder
+
+    raw = DataPacketBuilder() \
+        .with_stream_id(0x1234) \
+        .with_payload(b'\x00' * 4) \
+        .build()
+    pkt = vrtigo.DataPacket.from_bytes(raw)
+    mv = pkt.payload_view
+    try:
+        mv[0] = 0xFF
+        assert False, "Should have raised TypeError"
+    except TypeError:
+        pass
+
+
+def test_payload_view_empty_view():
+    """DataPacketView.payload_view with zero payload returns empty memoryview."""
+    import vrtigo
+    from test_packets import DataPacketBuilder
+
+    raw = DataPacketBuilder() \
+        .with_stream_id(0x1234) \
+        .with_payload(b'') \
+        .build()
+    pkt = vrtigo.DataPacketView.parse(raw)
+    mv = pkt.payload_view
+    assert isinstance(mv, memoryview)
+    assert mv.nbytes == 0
+    assert mv.tobytes() == b""
+
+
+def test_payload_view_empty_owning():
+    """DataPacket.payload_view with zero payload returns empty memoryview."""
+    import vrtigo
+    from test_packets import DataPacketBuilder
+
+    raw = DataPacketBuilder() \
+        .with_stream_id(0x1234) \
+        .with_payload(b'') \
+        .build()
+    pkt = vrtigo.DataPacket.from_bytes(raw)
+    mv = pkt.payload_view
+    assert isinstance(mv, memoryview)
+    assert mv.nbytes == 0
+    assert mv.tobytes() == b""
+
+
 if __name__ == "__main__":
     import sys
 
