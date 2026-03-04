@@ -21,6 +21,9 @@ jobs:
       - name: Check Formatting
         run: ./scripts/ci/format-check.sh
 
+      - name: Check Markdown Links
+        run: python3 ./scripts/ci/markdown_link_check.py
+
   quick-check:
     runs-on: ubuntu-24.04
     steps:

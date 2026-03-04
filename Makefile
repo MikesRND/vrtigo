@@ -3,7 +3,7 @@
 .PHONY: all clean configure debug release help check
 .PHONY: test install uninstall autodocs
 .PHONY: quick-check coverage debug-build clang-build install-verify ci-full clean-all
-.PHONY: format-check format-fix format-diff clang-tidy clang-tidy-fix
+.PHONY: format-check format-fix format-diff docs-check clang-tidy clang-tidy-fix
 .PHONY: python python-test python-stubs python-clean
 .PHONY: gpu-test gpu-syntax-check gpu-install-verify
 
@@ -86,6 +86,7 @@ check: test
 ci-full:
 	@echo "Running full CI validation..."
 	@$(MAKE) format-check
+	@$(MAKE) docs-check
 	@$(MAKE) quick-check
 	@$(MAKE) debug-build
 	@$(MAKE) clang-build
@@ -153,6 +154,10 @@ uninstall:
 # Check code formatting (CI-friendly, returns error if changes needed)
 format-check:
 	@./scripts/ci/format-check.sh
+
+# Check local markdown links
+docs-check:
+	@python3 ./scripts/ci/markdown_link_check.py
 
 # Auto-fix code formatting
 format-fix:
@@ -240,6 +245,7 @@ help:
 	@echo ""
 	@echo "  Code Quality:"
 	@echo "    make format-check        Check code formatting"
+	@echo "    make docs-check          Check local markdown links"
 	@echo "    make format-fix          Auto-fix code formatting"
 	@echo "    make format-diff         Show formatting differences"
 	@echo "    make clang-tidy          Run static analysis"

@@ -36,6 +36,7 @@ PYTHONPATH=build/bindings/python .venv/bin/pytest bindings/python/tests/test_enu
 
 # Code quality
 make format-check       # Check clang-format (CI gate)
+make docs-check         # Check local markdown links
 make format-fix         # Auto-fix formatting
 make clang-tidy         # Static analysis
 make autodocs           # Regenerate documentation extracted from tests
