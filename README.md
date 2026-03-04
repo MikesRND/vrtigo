@@ -2,7 +2,7 @@
   <img src="docs/images/VRTigo-600x600.png" alt="vrtigo logo" width="128">
 </p>
 
-# vrtigo
+# VRTigo
 
 [![CI](https://github.com/MikesRND/vrtigo/actions/workflows/ci.yml/badge.svg)](https://github.com/MikesRND/vrtigo/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -14,29 +14,20 @@
 
 An experimental C++20 VRT I/O library co-authored with AI
 
-## Goals
+## Overview
 
-- Lightweight, header‑only C++20 library for VITA 49.2 packet building and parsing.
-- Targeting high-performance and low-latency applications.
-- Compile‑time packet definitions with automatic size/structure validation.
-- Allocation-free so packets operate entirely on user-provided buffers.
-- Clean API for building and parsing VRT packets
+Header-only, allocation-free C++20 library for building and parsing VITA 49.2 VRT packets. Includes Python bindings and optional CUDA support.
 
-## Initial Development
+See [DEVELOPMENT.md](DEVELOPMENT.md) for build instructions, architecture, and development conventions.
 
-This library was initially co-developed by a half-decent programmer using AI agents such as Claude Code, OpenAI Codex, and GitHub Copilot. This library currently has very little hand-written code.
+## Documentation
 
-Initial attempts focused on making fast progress, so AI agents were given a little more leeway than might be given in a production environment. This resulted in some rough edges and a bit of bloat, but the API is quickly stabilizing and interoperability work with continues to prove compliance.
-
-## Development Environment
-
-- C++20
-- CMake build system
-- Unit tests with GoogleTest
-- Makefile wrapper for common tasks
-- Continuous Integration with GitHub Actions
-
-
+- [Quickstart Guide](docs/quickstart.md) — Executable examples for data packets, context packets, file I/O, and parsing
+- [Timestamp Math](docs/timestamp-math.md) — Picosecond-accurate time arithmetic
+- [CIF Field Access](docs/cif_access.md) — Context Information Field accessors
+- [I/O Helpers](docs/utils/io-helpers.md) — File, PCAP, and UDP readers/writers
+- [GPU Extensions](docs/gpu-extensions.md) — CUDA-compatible packet parsing
+- [Endianness Model](docs/endianness-model.md) — Byte-order handling
 
 
 
