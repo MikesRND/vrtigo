@@ -12,6 +12,10 @@ VRTIGO is a header-only C++20 library for creating and parsing VITA 49.2 VRT (VI
 - CMake 3.24+
 - C++20 compiler (GCC 13+ or Clang 16+)
 
+When changing version floors, update the code and docs together. The canonical
+touchpoints are `bindings/python/CMakeLists.txt`, `bindings/python/pyproject.toml`,
+and this file.
+
 ## Build Commands
 
 Run these commands from the repository root unless noted otherwise.
@@ -34,7 +38,16 @@ PYTHONPATH=build/bindings/python .venv/bin/pytest bindings/python/tests/test_enu
 make format-check       # Check clang-format (CI gate)
 make format-fix         # Auto-fix formatting
 make clang-tidy         # Static analysis
+make autodocs           # Regenerate documentation extracted from tests
 ```
+
+## Quickstart Autodoc
+
+Quickstart pages are generated from tested examples in `tests/quickstart/`,
+which helps keep the published snippets correct and current.
+
+For marker format and doc-generation tooling details, see
+`tests/quickstart/README.md`.
 
 ## Architecture
 
