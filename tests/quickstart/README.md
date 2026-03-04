@@ -45,12 +45,11 @@ Use `[TEXT]` blocks to add connecting prose between examples:
 // [/TEXT]
 ```
 
-## Current Test Files
+## Current Coverage
 
-- `data_packet_test.cpp` → `docs/quickstart/data_packet.md`
-- `context_packet_test.cpp` → `docs/quickstart/context_packet.md`
-- `file_reader_test.cpp` → `docs/quickstart/file_reader.md` (2 examples)
-- `packet_parsing_test.cpp` → `docs/quickstart/packet_parsing.md` (4 examples)
+The quickstart pages in `docs/quickstart/` are generated from the test files in
+this directory. Keep the source tests and generated docs aligned, but avoid
+hand-maintaining a file-by-file inventory here.
 
 ## Generating Documentation
 

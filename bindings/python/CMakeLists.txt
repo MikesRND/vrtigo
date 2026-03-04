@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find Python with NumPy support
-find_package(Python 3.8 REQUIRED COMPONENTS Interpreter Development.Module NumPy)
+find_package(Python 3.11 REQUIRED COMPONENTS Interpreter Development.Module NumPy)
 
 # Fetch nanobind
 include(FetchContent)
