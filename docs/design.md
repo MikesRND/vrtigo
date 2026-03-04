@@ -1,6 +1,7 @@
 # VRTIGO Design Principles
 
-Technical architecture decisions that guide implementation. For code style and formatting, see style.md.
+This page captures design rationale and invariants. For build commands,
+conventions, and contributor workflow, see [../DEVELOPMENT.md](../DEVELOPMENT.md).
 
 ## Architecture Principles
 
@@ -26,22 +27,6 @@ for system errors so they can integrate cleanly with host I/O abstractions.
 - All buffer I/O uses `std::memcpy` to avoid alignment UB
 - Use `std::span` with compile-time extent where possible
 - Never copy payload data - always reference user buffer directly
-
-## Dual API Design
-
-### Runtime Path (`vrtigo::dynamic`)
-- Use when packet structure unknown (receive side)
-- Type-erased parsing with automatic validation
-- All field access returns `std::optional` for safety
-- Read-only (const) - cannot modify received packets
-- Types: `dynamic::DataPacketView`, `dynamic::ContextPacketView`
-
-### Compile-Time Path (`vrtigo::typed`)
-- Use when packet structure known at compile time (transmit side)
-- Template parameters encode structure: `typed::DataPacketBuilder<Type, ClassId, Timestamp>`
-- Zero runtime overhead - all offsets computed at compile time
-- Strong type safety - compilation fails if accessing unsupported field
-- Types: `typed::DataPacketBuilder`, `typed::ContextPacketBuilder`
 
 ## Type Hierarchy (C++20 Concepts)
 
@@ -71,15 +56,6 @@ for system errors so they can integrate cleanly with host I/O abstractions.
   - `.value()` - interpreted values (Hz, dBm) - optional
 - Lazy evaluation - field not read until proxy dereferenced
 - Works for both compile-time and runtime packets
-
-## Minimal API
-
-- Public headers: types.hpp, timestamp.hpp, class_id.hpp, field_tags.hpp, dynamic.hpp, typed.hpp
-- Single entry point: vrtigo.hpp (includes all public headers)
-- Namespace separation: `dynamic::` for runtime parsing, `typed::` for compile-time packets
-- All implementation in vrtigo/detail/, vrtigo/dynamic/, vrtigo/typed/ (never include directly)
-- Optional utilities in vrtigo/utils/ (may allocate/throw)
-- Concept-constrained to prevent misuse
 
 ## Builder Pattern
 

@@ -6,7 +6,15 @@ Guidance for working in this repository.
 
 VRTIGO is a header-only C++20 library for creating and parsing VITA 49.2 VRT (VITA Radio Transport) packets. It targets zero-allocation, high-performance RF signal processing. Python bindings are provided via nanobind v2.4.0.
 
+## Requirements
+
+- Python 3.11+ for Python bindings
+- CMake 3.24+
+- C++20 compiler (GCC 13+ or Clang 16+)
+
 ## Build Commands
+
+Run these commands from the repository root unless noted otherwise.
 
 ```bash
 # C++ (default build dir: build/)
@@ -70,9 +78,12 @@ Type stubs are auto-generated at `build/bindings/python/vrtigo.pyi` by the `vrti
 ## Conventions
 
 ### C++ Style
+- Items not specified here should generally follow the C++ Core Guidelines.
 - 100-column line limit, 4-space indent, LLVM-based clang-format
 - Naming: `CamelCase` classes, `lower_case` functions/variables, `lower_case_` private members, `kCamelCase` constexpr
 - Pointers left-aligned: `int* ptr`
+- Prefer snake_case getters and `set_`-prefixed setters; getters should generally be `const noexcept`
+- Prefer `enum class` with explicit underlying types and snake_case enumerators
 - No MSVC; requires GCC 13+ or Clang 16+
 
 ### Dependencies
