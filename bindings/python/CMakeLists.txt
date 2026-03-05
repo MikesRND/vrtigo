@@ -28,7 +28,25 @@ nanobind_add_module(
 # Link to the main vrtigo library (header-only)
 # When standalone (pip install), vrtigo::vrtigo doesn't exist - add include path directly
 if(VRTIGO_STANDALONE_PYTHON)
-    target_include_directories(vrtigo_py PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+    # Parse version from root CMakeLists.txt so standalone builds have version.hpp
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../../CMakeLists.txt" _root_cmake)
+    string(REGEX MATCH "VERSION ([0-9]+)\\.([0-9]+)\\.([0-9]+)" _ver_match "${_root_cmake}")
+    if(NOT _ver_match)
+        message(FATAL_ERROR "Failed to parse VERSION from ../../CMakeLists.txt")
+    endif()
+    set(PROJECT_VERSION_MAJOR "${CMAKE_MATCH_1}")
+    set(PROJECT_VERSION_MINOR "${CMAKE_MATCH_2}")
+    set(PROJECT_VERSION_PATCH "${CMAKE_MATCH_3}")
+    set(PROJECT_VERSION "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}.${CMAKE_MATCH_3}")
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/version.hpp.in
+        ${CMAKE_CURRENT_BINARY_DIR}/include/vrtigo/version.hpp
+        @ONLY
+    )
+    target_include_directories(vrtigo_py PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+        ${CMAKE_CURRENT_BINARY_DIR}/include
+    )
 else()
     target_link_libraries(vrtigo_py PRIVATE vrtigo::vrtigo)
 endif()

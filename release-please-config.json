@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "44344f8fc39f47b8e801223f2ad99c67699f10f8",
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "release-as": "0.1.0",
+      "extra-files": [
+        { "type": "generic", "path": "CMakeLists.txt" },
+        { "type": "generic", "path": "bindings/python/pyproject.toml" }
+      ],
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true
+    }
+  }
+}

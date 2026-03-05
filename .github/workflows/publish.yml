@@ -1,0 +1,119 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Git tag to publish (e.g. v0.1.0)"
+        required: true
+        type: string
+      pypi:
+        description: "Also publish to PyPI"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  resolve-tag:
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+    steps:
+      - name: Resolve tag
+        id: resolve
+        run: echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+
+  verify-release:
+    needs: resolve-tag
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify GitHub Release exists
+        run: gh release view "${{ needs.resolve-tag.outputs.tag }}"
+
+  ci:
+    needs: [verify-release, resolve-tag]
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.resolve-tag.outputs.tag }}
+
+  build-wheels:
+    needs: [ci, resolve-tag]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            qemu: false
+          - arch: aarch64
+            qemu: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve-tag.outputs.tag }}
+
+      - name: Set up QEMU
+        if: matrix.qemu
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/arm64
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.22
+        with:
+          package-dir: bindings/python
+          output-dir: wheelhouse
+        env:
+          CIBW_BUILD: "cp311-manylinux* cp312-manylinux* cp313-manylinux*"
+          CIBW_SKIP: "*-musllinux*"
+          CIBW_ARCHS_LINUX: ${{ matrix.arch }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux-${{ matrix.arch }}
+          path: wheelhouse/*.whl
+
+  upload-release-assets:
+    needs: [build-wheels, resolve-tag]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist
+
+      - name: Upload wheels to GitHub Release
+        run: gh release upload "${{ needs.resolve-tag.outputs.tag }}" dist/*.whl --clobber
+
+  publish-pypi:
+    if: inputs.pypi
+    needs: [build-wheels, upload-release-assets]
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
+    environment: pypi
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
