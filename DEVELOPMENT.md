@@ -133,6 +133,7 @@ Releases use [release-please](https://github.com/googleapis/release-please) with
 5. Maintainer runs `publish.yml` via **Actions → Run workflow** with the tag (e.g. `v0.1.0`)
 6. Publish workflow: verifies GitHub Release exists → runs CI → builds wheels → uploads to GitHub Release
 7. To also publish to **PyPI**: check the `pypi` checkbox in the workflow dispatch form
+8. If a release PR is not created, confirm the squash commit title is Conventional Commit format and rerun Release Please under GitHub actions.
 
 After the first release: remove `release-as` from `release-please-config.json` so
 subsequent versions are auto-determined from commit messages.
