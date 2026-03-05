@@ -2,6 +2,7 @@
 // Main module entry point - includes component bindings
 
 #include <nanobind/nanobind.h>
+#include <vrtigo/version.hpp>
 
 // Binding components
 #include "core_bindings.hpp"
@@ -22,6 +23,7 @@ PyObject* vrt_io_error_type = nullptr;
 
 NB_MODULE(vrtigo, m) {
     m.doc() = "VRTIGO - VRT (VITA 49.2) packet library";
+    m.attr("__version__") = VRTIGO_VERSION_STRING;
 
     // Bind components in dependency order:
     // 1. Core types (enums, ClassId) - no dependencies

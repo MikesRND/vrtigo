@@ -16,6 +16,17 @@ When changing version floors, update the code and docs together. The canonical
 touchpoints are `bindings/python/CMakeLists.txt`, `bindings/python/pyproject.toml`,
 and this file.
 
+### Versioning
+
+[release-please](https://github.com/googleapis/release-please) manages the project version
+in three files via `x-release-please-version` markers:
+
+- `CMakeLists.txt` (primary)
+- `bindings/python/pyproject.toml`
+- `.release-please-manifest.json` (derived mirror)
+
+Do not edit versions manually — the `version-check` CI job fails if they diverge.
+
 ## Build Commands
 
 Run these commands from the repository root unless noted otherwise.
@@ -106,6 +117,22 @@ Type stubs are auto-generated at `build/bindings/python/vrtigo.pyi` by the `vrti
 - Python: nanobind v2.4.0, scikit-build-core, Python 3.11+
 
 ### CI Pipeline (GitHub Actions)
-- **Required gates**: `format-check`, `quick-check`
+- **Required gates**: `format-check`, `quick-check`, `version-check`
 - **Advisory**: `static-analysis`, `debug-build`, `clang-build`, `python-bindings`
+- **PR title lint**: PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `chore:`, etc.)
 - Run `make format-check && make quick-check` before pushing
+
+### Release Process
+
+Releases use [release-please](https://github.com/googleapis/release-please) with squash merge on main.
+
+1. **PR titles** follow Conventional Commit format — enforced by the `pr-title-lint` CI check
+2. **Squash merge** PRs to main — the PR title becomes the commit message
+3. release-please auto-opens a **Release PR** that bumps versions and updates `CHANGELOG.md`
+4. Merge the Release PR → release-please creates a git tag (`vX.Y.Z`) and GitHub Release
+5. Maintainer runs `publish.yml` via **Actions → Run workflow** with the tag (e.g. `v0.1.0`)
+6. Publish workflow: verifies GitHub Release exists → runs CI → builds wheels → uploads to GitHub Release
+7. To also publish to **PyPI**: check the `pypi` checkbox in the workflow dispatch form
+
+After the first release: remove `release-as` from `release-please-config.json` so
+subsequent versions are auto-determined from commit messages.

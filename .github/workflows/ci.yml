@@ -5,13 +5,41 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to checkout (tag, branch, SHA)"
+        type: string
+        required: false
 
 jobs:
   # Tier 1: Fast validation - REQUIRED status checks
+  version-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Check version consistency
+        run: |
+          CMAKE_VER=$(grep -oP 'VERSION \K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt | head -1)
+          PYPROJECT_VER=$(grep -oP '^version = "\K[0-9]+\.[0-9]+\.[0-9]+' bindings/python/pyproject.toml)
+          MANIFEST_VER=$(python3 -c "import json; print(json.load(open('.release-please-manifest.json'))['.'])")
+          echo "CMakeLists.txt:  $CMAKE_VER"
+          echo "pyproject.toml:  $PYPROJECT_VER"
+          echo "manifest.json:   $MANIFEST_VER"
+          if [ "$CMAKE_VER" != "$PYPROJECT_VER" ] || [ "$CMAKE_VER" != "$MANIFEST_VER" ]; then
+            echo "::error::Version mismatch! All three files must agree."
+            exit 1
+          fi
+
   format-check:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
 
       - name: Install clang-format
         run: |
@@ -28,6 +56,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
 
       - name: Install GCC 13
         run: |
@@ -50,6 +80,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
 
       - name: Install dependencies
         run: |
@@ -71,6 +103,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
 
       - name: Install GCC 13
         run: |
@@ -92,6 +126,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
 
       - name: Install Clang 16
         run: |
@@ -113,6 +149,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
 
       - name: Install GCC 13
         run: |
@@ -129,6 +167,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
 
       - name: Install GCC 13
         run: |
@@ -152,6 +192,8 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
 
       - name: Install dependencies
         run: |
