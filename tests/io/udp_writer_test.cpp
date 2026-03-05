@@ -31,8 +31,8 @@ protected:
 // Basic Functionality Tests
 // =============================================================================
 
-TEST_F(UDPWriterTest, CreateBoundWriter) {
-    // Create writer in bound mode
+TEST_F(UDPWriterTest, CreateConnectedWriter) {
+    // Create writer in connected mode
     EXPECT_NO_THROW({
         UDPVRTWriter writer("127.0.0.1", test_port);
         EXPECT_EQ(writer.packets_sent(), 0);
@@ -40,8 +40,8 @@ TEST_F(UDPWriterTest, CreateBoundWriter) {
     });
 }
 
-TEST_F(UDPWriterTest, CreateUnboundWriter) {
-    // Create writer in unbound mode
+TEST_F(UDPWriterTest, CreateUnconnectedWriter) {
+    // Create writer in unconnected mode
     EXPECT_NO_THROW({
         UDPVRTWriter writer(0); // bind to any port
         EXPECT_EQ(writer.packets_sent(), 0);
@@ -229,17 +229,17 @@ TEST_F(UDPWriterTest, MTUAllowsValidPacket) {
 }
 
 // =============================================================================
-// Unbound Mode Tests
+// Unconnected Mode Tests
 // =============================================================================
 
-TEST_F(UDPWriterTest, UnboundModeMultipleDestinations) {
+TEST_F(UDPWriterTest, UnconnectedModeMultipleDestinations) {
     // Create two readers on different ports
     vrtigo::utils::netio::UDPVRTReader<> reader1(test_port);
     vrtigo::utils::netio::UDPVRTReader<> reader2(test_port_2);
     reader1.try_set_timeout(std::chrono::milliseconds(100));
     reader2.try_set_timeout(std::chrono::milliseconds(100));
 
-    // Create unbound writer
+    // Create unconnected writer
     UDPVRTWriter writer(0);
 
     // Create packet
@@ -280,6 +280,116 @@ TEST_F(UDPWriterTest, UnboundModeMultipleDestinations) {
 
     auto recv2 = reader2.read_next_packet();
     ASSERT_TRUE(recv2.has_value()) << vrtigo::utils::error_message(recv2.error());
+}
+
+// =============================================================================
+// Connected Mode with Local Port Tests
+// =============================================================================
+
+// Helper: allocate a free ephemeral port by binding to port 0 and reading back
+static uint16_t probe_free_port() {
+    int sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock < 0) {
+        throw std::runtime_error("probe_free_port: socket() failed");
+    }
+    struct sockaddr_in addr {};
+    addr.sin_family = AF_INET;
+    addr.sin_port = 0;
+    addr.sin_addr.s_addr = INADDR_ANY;
+    if (::bind(sock, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) < 0) {
+        ::close(sock);
+        throw std::runtime_error("probe_free_port: bind() failed");
+    }
+    socklen_t len = sizeof(addr);
+    if (::getsockname(sock, reinterpret_cast<struct sockaddr*>(&addr), &len) < 0) {
+        ::close(sock);
+        throw std::runtime_error("probe_free_port: getsockname() failed");
+    }
+    uint16_t port = ntohs(addr.sin_port);
+    ::close(sock);
+    return port;
+}
+
+TEST_F(UDPWriterTest, CreateConnectedWriterWithLocalPort) {
+    uint16_t src_port = probe_free_port();
+    EXPECT_NO_THROW({
+        UDPVRTWriter writer("127.0.0.1", test_port, src_port);
+        EXPECT_EQ(writer.packets_sent(), 0);
+        EXPECT_EQ(writer.bytes_sent(), 0);
+    });
+}
+
+TEST_F(UDPWriterTest, ConnectedWriterLocalPortDefaultZero) {
+    // Omitting local_port (default 0) should still work — backward compat
+    EXPECT_NO_THROW({
+        UDPVRTWriter writer("127.0.0.1", test_port);
+        EXPECT_EQ(writer.packets_sent(), 0);
+    });
+}
+
+TEST_F(UDPWriterTest, ConnectedWriterWithLocalPortRoundTrip) {
+    uint16_t src_port = probe_free_port();
+    uint16_t dst_port = probe_free_port();
+
+    // Create a raw receiver socket so we can use recvfrom to check sender port
+    int recv_sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+    ASSERT_GE(recv_sock, 0);
+
+    struct sockaddr_in recv_addr {};
+    recv_addr.sin_family = AF_INET;
+    recv_addr.sin_port = htons(dst_port);
+    recv_addr.sin_addr.s_addr = INADDR_ANY;
+    ASSERT_EQ(::bind(recv_sock, reinterpret_cast<struct sockaddr*>(&recv_addr), sizeof(recv_addr)),
+              0);
+
+    // Set receive timeout
+    struct timeval tv {};
+    tv.tv_sec = 0;
+    tv.tv_usec = 200000; // 200ms
+    ::setsockopt(recv_sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
+    // Create writer with specified source port
+    UDPVRTWriter writer("127.0.0.1", dst_port, src_port);
+
+    // Send a packet
+    using PacketType = vrtigo::typed::SignalDataPacketBuilder<64>;
+    alignas(4) std::array<uint8_t, PacketType::max_size_bytes()> buffer{};
+    PacketType packet(buffer);
+    packet.set_stream_id(0xAABBCCDD);
+    packet.set_packet_count(1);
+    EXPECT_TRUE(writer.write_packet(packet.as_bytes()));
+
+    // Receive and verify sender port
+    std::array<uint8_t, 2048> recv_buf{};
+    struct sockaddr_in sender_addr {};
+    socklen_t sender_len = sizeof(sender_addr);
+    ssize_t n = ::recvfrom(recv_sock, recv_buf.data(), recv_buf.size(), 0,
+                           reinterpret_cast<struct sockaddr*>(&sender_addr), &sender_len);
+    ASSERT_GT(n, 0) << "recvfrom failed or timed out";
+    EXPECT_EQ(ntohs(sender_addr.sin_port), src_port);
+
+    ::close(recv_sock);
+}
+
+TEST_F(UDPWriterTest, ConnectedWriterLocalPortConflict) {
+    // Bind a socket to an ephemeral port and hold it occupied
+    int blocker = ::socket(AF_INET, SOCK_DGRAM, 0);
+    ASSERT_GE(blocker, 0);
+
+    struct sockaddr_in addr {};
+    addr.sin_family = AF_INET;
+    addr.sin_port = 0;
+    addr.sin_addr.s_addr = INADDR_ANY;
+    ASSERT_EQ(::bind(blocker, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)), 0);
+
+    socklen_t len = sizeof(addr);
+    ASSERT_EQ(::getsockname(blocker, reinterpret_cast<struct sockaddr*>(&addr), &len), 0);
+    uint16_t occupied_port = ntohs(addr.sin_port);
+
+    // Constructing a writer with the occupied port should throw
+    EXPECT_THROW(UDPVRTWriter("127.0.0.1", test_port, occupied_port), std::runtime_error);
+
+    ::close(blocker);
 }
 
 // =============================================================================

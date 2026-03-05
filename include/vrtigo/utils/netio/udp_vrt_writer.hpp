@@ -34,8 +34,8 @@ namespace vrtigo::utils::netio {
  * Each packet is sent as a complete datagram (no fragmentation).
  *
  * Connection Modes:
- * - Bound mode: Connect to single endpoint, use send()
- * - Unbound mode: Specify destination per packet with sendto()
+ * - Connected mode: Connect to single endpoint, use send()
+ * - Unconnected mode: Specify destination per packet with sendto()
  *
  * Supported Packet Types:
  * - Raw bytes (std::span<const uint8_t>)
@@ -57,7 +57,7 @@ namespace vrtigo::utils::netio {
  *
  * Example usage:
  * @code
- * // Bound mode - single destination
+ * // Connected mode - single destination
  * UDPVRTWriter writer("192.168.1.100", 12345);
  *
  * // Create packet using typed::SignalDataPacketBuilder
@@ -77,7 +77,7 @@ namespace vrtigo::utils::netio {
  *     writer.write_packet(variant);
  * }
  *
- * // Unbound mode - per-packet destination
+ * // Unconnected mode - per-packet destination
  * UDPVRTWriter multi_writer(0);  // bind to any local port
  *
  * sockaddr_in dest1 {};
@@ -101,17 +101,18 @@ public:
     static constexpr size_t default_mtu = 1500; ///< Default MTU in bytes
 
     /**
-     * @brief Create writer in bound mode (single destination)
+     * @brief Create writer in connected mode (single destination)
      *
      * Connects to a single UDP endpoint. All packets are sent to this destination.
      *
      * @param host Destination hostname or IP address
      * @param port Destination UDP port
-     * @throws std::runtime_error if socket creation or DNS resolution fails
+     * @param local_port Local source port to bind (0 = OS-assigned ephemeral port)
+     * @throws std::runtime_error if socket creation, DNS resolution, bind, or connect fails
      */
-    explicit UDPVRTWriter(const std::string& host, uint16_t port)
+    explicit UDPVRTWriter(const std::string& host, uint16_t port, uint16_t local_port = 0)
         : socket_(-1),
-          bound_mode_(true),
+          connected_mode_(true),
           mtu_(default_mtu),
           packets_sent_(0),
           bytes_sent_(0) {
@@ -128,7 +129,21 @@ public:
             throw std::runtime_error("Failed to resolve address: " + host);
         }
 
-        // Connect socket to destination (bound mode)
+        // Bind to local port if specified
+        if (local_port > 0) {
+            struct sockaddr_in local_addr {};
+            local_addr.sin_family = AF_INET;
+            local_addr.sin_port = htons(local_port);
+            local_addr.sin_addr.s_addr = INADDR_ANY;
+            if (::bind(socket_, reinterpret_cast<struct sockaddr*>(&local_addr),
+                       sizeof(local_addr)) < 0) {
+                ::close(socket_);
+                throw std::runtime_error("Failed to bind UDP socket to local port " +
+                                         std::to_string(local_port));
+            }
+        }
+
+        // Connect socket to destination (connected mode)
         if (::connect(socket_, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) < 0) {
             ::close(socket_);
             throw std::runtime_error("Failed to connect UDP socket to " + host + ":" +
@@ -140,7 +155,7 @@ public:
     }
 
     /**
-     * @brief Create writer in unbound mode (per-packet destination)
+     * @brief Create writer in unconnected mode (per-packet destination)
      *
      * Binds to a local port but does not connect to a destination.
      * Caller must specify destination for each write_packet() call.
@@ -150,7 +165,7 @@ public:
      */
     explicit UDPVRTWriter(uint16_t local_port = 0)
         : socket_(-1),
-          bound_mode_(false),
+          connected_mode_(false),
           mtu_(default_mtu),
           packets_sent_(0),
           bytes_sent_(0) {
@@ -190,7 +205,7 @@ public:
 
     UDPVRTWriter(UDPVRTWriter&& other) noexcept
         : socket_(other.socket_),
-          bound_mode_(other.bound_mode_),
+          connected_mode_(other.connected_mode_),
           dest_addr_(other.dest_addr_),
           mtu_(other.mtu_),
           packets_sent_(other.packets_sent_),
@@ -210,7 +225,7 @@ public:
 
             // Move from other
             socket_ = other.socket_;
-            bound_mode_ = other.bound_mode_;
+            connected_mode_ = other.connected_mode_;
             dest_addr_ = other.dest_addr_;
             mtu_ = other.mtu_;
             packets_sent_ = other.packets_sent_;
@@ -226,17 +241,17 @@ public:
     }
 
     /**
-     * @brief Write raw packet bytes (bound mode)
+     * @brief Write raw packet bytes (connected mode)
      *
-     * Sends packet to connected destination. Only valid in bound mode.
+     * Sends packet to connected destination. Only valid in connected mode.
      *
      * @param bytes The packet bytes to write
      * @return true on success, false on I/O error
      * @note The span contents are copied; caller's buffer can be reused immediately after return.
      */
     bool write_packet(std::span<const uint8_t> bytes) noexcept {
-        if (!bound_mode_) {
-            // Bound mode required for this method
+        if (!connected_mode_) {
+            // Connected mode required for this method
             status_.state = UDPTransportStatus::State::socket_error;
             status_.errno_value = ENOTCONN;
             return false;
@@ -271,10 +286,10 @@ public:
     }
 
     /**
-     * @brief Write raw packet bytes to specific destination (unbound mode)
+     * @brief Write raw packet bytes to specific destination (unconnected mode)
      *
-     * Sends packet to specified destination. Can be used in both bound
-     * and unbound modes, but typically used in unbound mode for
+     * Sends packet to specified destination. Can be used in both connected
+     * and unconnected modes, but typically used in unconnected mode for
      * per-packet destination control.
      *
      * @param bytes The packet bytes to write
@@ -313,9 +328,9 @@ public:
     }
 
     /**
-     * @brief Write packet from variant (bound mode)
+     * @brief Write packet from variant (connected mode)
      *
-     * Sends packet to connected destination. Only valid in bound mode.
+     * Sends packet to connected destination. Only valid in connected mode.
      *
      * @param packet The packet variant to write (always valid)
      * @return true on success, false on I/O error
@@ -326,10 +341,10 @@ public:
     }
 
     /**
-     * @brief Write packet to specific destination (unbound mode)
+     * @brief Write packet to specific destination (unconnected mode)
      *
-     * Sends packet to specified destination. Can be used in both bound
-     * and unbound modes, but typically used in unbound mode for
+     * Sends packet to specified destination. Can be used in both connected
+     * and unconnected modes, but typically used in unconnected mode for
      * per-packet destination control.
      *
      * @param packet The packet variant to write (always valid)
@@ -457,8 +472,8 @@ private:
     }
 
     int socket_;                   ///< Socket file descriptor
-    bool bound_mode_;              ///< True if connected to single destination
-    struct sockaddr_in dest_addr_; ///< Destination address (bound mode)
+    bool connected_mode_;          ///< True if connected to single destination
+    struct sockaddr_in dest_addr_; ///< Destination address (connected mode)
     size_t mtu_;                   ///< Maximum transmission unit
     size_t packets_sent_;          ///< Total packets sent
     size_t bytes_sent_;            ///< Total bytes sent
