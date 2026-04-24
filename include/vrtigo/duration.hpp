@@ -390,6 +390,54 @@ public:
         return ShortDuration(ps);
     }
 
+    static constexpr ShortDuration from_nanoseconds(int64_t ns) noexcept {
+        constexpr int64_t MAX_SAFE_NS = std::numeric_limits<int64_t>::max() /
+                                        static_cast<int64_t>(Duration::PICOSECONDS_PER_NANOSECOND);
+        constexpr int64_t MIN_SAFE_NS = std::numeric_limits<int64_t>::min() /
+                                        static_cast<int64_t>(Duration::PICOSECONDS_PER_NANOSECOND);
+        if (ns > MAX_SAFE_NS)
+            return max();
+        if (ns < MIN_SAFE_NS)
+            return min();
+        return from_picoseconds(ns * static_cast<int64_t>(Duration::PICOSECONDS_PER_NANOSECOND));
+    }
+
+    static constexpr ShortDuration from_microseconds(int64_t us) noexcept {
+        constexpr int64_t MAX_SAFE_US = std::numeric_limits<int64_t>::max() /
+                                        static_cast<int64_t>(Duration::PICOSECONDS_PER_MICROSECOND);
+        constexpr int64_t MIN_SAFE_US = std::numeric_limits<int64_t>::min() /
+                                        static_cast<int64_t>(Duration::PICOSECONDS_PER_MICROSECOND);
+        if (us > MAX_SAFE_US)
+            return max();
+        if (us < MIN_SAFE_US)
+            return min();
+        return from_picoseconds(us * static_cast<int64_t>(Duration::PICOSECONDS_PER_MICROSECOND));
+    }
+
+    static constexpr ShortDuration from_milliseconds(int64_t ms) noexcept {
+        constexpr int64_t MAX_SAFE_MS = std::numeric_limits<int64_t>::max() /
+                                        static_cast<int64_t>(Duration::PICOSECONDS_PER_MILLISECOND);
+        constexpr int64_t MIN_SAFE_MS = std::numeric_limits<int64_t>::min() /
+                                        static_cast<int64_t>(Duration::PICOSECONDS_PER_MILLISECOND);
+        if (ms > MAX_SAFE_MS)
+            return max();
+        if (ms < MIN_SAFE_MS)
+            return min();
+        return from_picoseconds(ms * static_cast<int64_t>(Duration::PICOSECONDS_PER_MILLISECOND));
+    }
+
+    static constexpr ShortDuration from_seconds(int64_t s) noexcept {
+        constexpr int64_t MAX_SAFE_S =
+            std::numeric_limits<int64_t>::max() / static_cast<int64_t>(PICOS_PER_SEC);
+        constexpr int64_t MIN_SAFE_S =
+            std::numeric_limits<int64_t>::min() / static_cast<int64_t>(PICOS_PER_SEC);
+        if (s > MAX_SAFE_S)
+            return max();
+        if (s < MIN_SAFE_S)
+            return min();
+        return from_picoseconds(s * static_cast<int64_t>(PICOS_PER_SEC));
+    }
+
     // Convert from Duration - saturates if Duration exceeds ±106 days
     static constexpr ShortDuration from_duration(Duration d) noexcept {
         return ShortDuration(d.total_picoseconds()); // total_picoseconds() already saturates
