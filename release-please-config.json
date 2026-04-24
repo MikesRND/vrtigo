@@ -9,7 +9,7 @@
         { "type": "generic", "path": "bindings/python/pyproject.toml" }
       ],
       "changelog-path": "CHANGELOG.md",
-      "bump-minor-pre-major": true
+      "bump-minor-pre-major": false
     }
   }
 }
