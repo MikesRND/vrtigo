@@ -4,13 +4,12 @@
   "packages": {
     ".": {
       "release-type": "simple",
-      "release-as": "0.1.0",
       "extra-files": [
         { "type": "generic", "path": "CMakeLists.txt" },
         { "type": "generic", "path": "bindings/python/pyproject.toml" }
       ],
       "changelog-path": "CHANGELOG.md",
-      "bump-minor-pre-major": true
+      "bump-minor-pre-major": false
     }
   }
 }
