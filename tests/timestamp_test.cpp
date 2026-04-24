@@ -1073,7 +1073,7 @@ TEST_F(TimestampTest, SubtractShortDuration) {
 
 TEST_F(TimestampTest, AddShortDurationOperator) {
     UtcRealTimestamp ts(100, 0);
-    auto sd = ShortDuration::from_picoseconds(2'000'000'000'000); // 2 seconds
+    auto sd = ShortDuration::from_seconds(2);
 
     auto result = ts + sd;
     EXPECT_EQ(result.tsi(), 102);
@@ -1091,7 +1091,7 @@ TEST_F(TimestampTest, SubtractShortDurationOperator) {
 
 TEST_F(TimestampTest, AddNegativeShortDuration) {
     UtcRealTimestamp ts(100, 500'000'000'000ULL);
-    auto sd = ShortDuration::from_picoseconds(-1'000'000'000'000); // -1 second
+    auto sd = ShortDuration::from_seconds(-1);
 
     ts += sd;
     EXPECT_EQ(ts.tsi(), 99);
@@ -1100,7 +1100,7 @@ TEST_F(TimestampTest, AddNegativeShortDuration) {
 
 TEST_F(TimestampTest, ShortDurationOverflowSaturates) {
     UtcRealTimestamp ts(UINT32_MAX - 1, 500'000'000'000ULL);
-    auto sd = ShortDuration::from_picoseconds(2'000'000'000'000); // 2 seconds - will overflow
+    auto sd = ShortDuration::from_seconds(2); // will overflow
 
     ts += sd;
     // Should saturate to max timestamp
@@ -1110,7 +1110,7 @@ TEST_F(TimestampTest, ShortDurationOverflowSaturates) {
 
 TEST_F(TimestampTest, ShortDurationUnderflowSaturates) {
     UtcRealTimestamp ts(1, 500'000'000'000ULL);
-    auto sd = ShortDuration::from_picoseconds(3'000'000'000'000); // 3 seconds - will underflow
+    auto sd = ShortDuration::from_seconds(3); // will underflow
 
     ts -= sd;
     // Should saturate to zero

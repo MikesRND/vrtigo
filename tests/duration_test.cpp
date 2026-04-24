@@ -771,6 +771,150 @@ TEST_F(DurationTest, ShortDurationFromPicoseconds) {
     EXPECT_TRUE(d.is_positive());
 }
 
+TEST_F(DurationTest, ShortDurationFromNanoseconds) {
+    auto d = ShortDuration::from_nanoseconds(100);
+    EXPECT_EQ(d.picoseconds(), 100 * ONE_NS_PICOS);
+}
+
+TEST_F(DurationTest, ShortDurationFromNanosecondsNegative) {
+    auto d = ShortDuration::from_nanoseconds(-100);
+    EXPECT_EQ(d.picoseconds(), -100 * ONE_NS_PICOS);
+}
+
+TEST_F(DurationTest, ShortDurationFromNanosecondsOverflowSaturates) {
+    auto d = ShortDuration::from_nanoseconds(std::numeric_limits<int64_t>::max());
+    EXPECT_EQ(d, ShortDuration::max());
+    EXPECT_TRUE(saturated(d));
+}
+
+TEST_F(DurationTest, ShortDurationFromNanosecondsUnderflowSaturates) {
+    auto d = ShortDuration::from_nanoseconds(std::numeric_limits<int64_t>::min());
+    EXPECT_EQ(d, ShortDuration::min());
+    EXPECT_TRUE(saturated(d));
+}
+
+TEST_F(DurationTest, ShortDurationFromMicroseconds) {
+    auto d = ShortDuration::from_microseconds(5);
+    EXPECT_EQ(d.picoseconds(), 5 * ONE_US_PICOS);
+}
+
+TEST_F(DurationTest, ShortDurationFromMicrosecondsNegative) {
+    auto d = ShortDuration::from_microseconds(-5);
+    EXPECT_EQ(d.picoseconds(), -5 * ONE_US_PICOS);
+}
+
+TEST_F(DurationTest, ShortDurationFromMicrosecondsOverflowSaturates) {
+    auto d = ShortDuration::from_microseconds(std::numeric_limits<int64_t>::max());
+    EXPECT_EQ(d, ShortDuration::max());
+}
+
+TEST_F(DurationTest, ShortDurationFromMicrosecondsUnderflowSaturates) {
+    auto d = ShortDuration::from_microseconds(std::numeric_limits<int64_t>::min());
+    EXPECT_EQ(d, ShortDuration::min());
+}
+
+TEST_F(DurationTest, ShortDurationFromMilliseconds) {
+    auto d = ShortDuration::from_milliseconds(3);
+    EXPECT_EQ(d.picoseconds(), 3 * ONE_MS_PICOS);
+}
+
+TEST_F(DurationTest, ShortDurationFromMillisecondsNegative) {
+    auto d = ShortDuration::from_milliseconds(-3);
+    EXPECT_EQ(d.picoseconds(), -3 * ONE_MS_PICOS);
+}
+
+TEST_F(DurationTest, ShortDurationFromMillisecondsOverflowSaturates) {
+    auto d = ShortDuration::from_milliseconds(std::numeric_limits<int64_t>::max());
+    EXPECT_EQ(d, ShortDuration::max());
+}
+
+TEST_F(DurationTest, ShortDurationFromMillisecondsUnderflowSaturates) {
+    auto d = ShortDuration::from_milliseconds(std::numeric_limits<int64_t>::min());
+    EXPECT_EQ(d, ShortDuration::min());
+}
+
+TEST_F(DurationTest, ShortDurationFromMillisecondsBoundary) {
+    // MAX_SAFE_MS = INT64_MAX / 10^9 = 9'223'372'036 (ms)
+    constexpr int64_t MAX_SAFE_MS = std::numeric_limits<int64_t>::max() / ONE_MS_PICOS;
+    auto at_max = ShortDuration::from_milliseconds(MAX_SAFE_MS);
+    EXPECT_FALSE(saturated(at_max));
+    EXPECT_EQ(at_max.picoseconds(), MAX_SAFE_MS * ONE_MS_PICOS);
+
+    auto over_max = ShortDuration::from_milliseconds(MAX_SAFE_MS + 1);
+    EXPECT_EQ(over_max, ShortDuration::max());
+
+    constexpr int64_t MIN_SAFE_MS = std::numeric_limits<int64_t>::min() / ONE_MS_PICOS;
+    auto at_min = ShortDuration::from_milliseconds(MIN_SAFE_MS);
+    EXPECT_FALSE(saturated(at_min));
+    EXPECT_EQ(at_min.picoseconds(), MIN_SAFE_MS * ONE_MS_PICOS);
+
+    auto under_min = ShortDuration::from_milliseconds(MIN_SAFE_MS - 1);
+    EXPECT_EQ(under_min, ShortDuration::min());
+}
+
+TEST_F(DurationTest, ShortDurationFromSeconds) {
+    auto d = ShortDuration::from_seconds(int64_t{2});
+    EXPECT_EQ(d.picoseconds(), 2 * ONE_SECOND_PICOS);
+}
+
+TEST_F(DurationTest, ShortDurationFromSecondsNegative) {
+    auto d = ShortDuration::from_seconds(int64_t{-5});
+    EXPECT_EQ(d.picoseconds(), -5 * ONE_SECOND_PICOS);
+}
+
+TEST_F(DurationTest, ShortDurationFromSecondsEquivalentToPicoseconds) {
+    // Sanity check: the new factory produces the same value as the manual pattern
+    // callers had to write before.
+    EXPECT_EQ(ShortDuration::from_seconds(int64_t{1}),
+              ShortDuration::from_picoseconds(ONE_SECOND_PICOS));
+    EXPECT_EQ(ShortDuration::from_seconds(int64_t{-3}),
+              ShortDuration::from_picoseconds(-3 * ONE_SECOND_PICOS));
+}
+
+TEST_F(DurationTest, ShortDurationFromSecondsOverflowSaturates) {
+    auto d = ShortDuration::from_seconds(std::numeric_limits<int64_t>::max());
+    EXPECT_EQ(d, ShortDuration::max());
+    EXPECT_TRUE(saturated(d));
+}
+
+TEST_F(DurationTest, ShortDurationFromSecondsUnderflowSaturates) {
+    auto d = ShortDuration::from_seconds(std::numeric_limits<int64_t>::min());
+    EXPECT_EQ(d, ShortDuration::min());
+    EXPECT_TRUE(saturated(d));
+}
+
+TEST_F(DurationTest, ShortDurationFromSecondsBoundary) {
+    // ShortDuration stores int64_t picoseconds (~±106 days).
+    // MAX_SAFE_S = INT64_MAX / 10^12 = 9'223'372 (seconds ≈ 106.75 days).
+    constexpr int64_t MAX_SAFE_S = std::numeric_limits<int64_t>::max() / ONE_SECOND_PICOS;
+    auto at_max = ShortDuration::from_seconds(MAX_SAFE_S);
+    EXPECT_FALSE(saturated(at_max));
+    EXPECT_EQ(at_max.picoseconds(), MAX_SAFE_S * ONE_SECOND_PICOS);
+
+    auto over_max = ShortDuration::from_seconds(MAX_SAFE_S + 1);
+    EXPECT_EQ(over_max, ShortDuration::max());
+
+    constexpr int64_t MIN_SAFE_S = std::numeric_limits<int64_t>::min() / ONE_SECOND_PICOS;
+    auto at_min = ShortDuration::from_seconds(MIN_SAFE_S);
+    EXPECT_FALSE(saturated(at_min));
+    EXPECT_EQ(at_min.picoseconds(), MIN_SAFE_S * ONE_SECOND_PICOS);
+
+    auto under_min = ShortDuration::from_seconds(MIN_SAFE_S - 1);
+    EXPECT_EQ(under_min, ShortDuration::min());
+}
+
+TEST_F(DurationTest, ShortDurationConstexprFactoryKnownSafe) {
+    constexpr auto d1 = ShortDuration::from_seconds(int64_t{1});
+    constexpr auto d2 = ShortDuration::from_milliseconds(int64_t{1000});
+    constexpr auto d3 = ShortDuration::from_microseconds(int64_t{1'000'000});
+    constexpr auto d4 = ShortDuration::from_nanoseconds(int64_t{1'000'000'000});
+
+    EXPECT_EQ(d1.picoseconds(), ONE_SECOND_PICOS);
+    EXPECT_EQ(d2.picoseconds(), ONE_SECOND_PICOS);
+    EXPECT_EQ(d3.picoseconds(), ONE_SECOND_PICOS);
+    EXPECT_EQ(d4.picoseconds(), ONE_SECOND_PICOS);
+}
+
 TEST_F(DurationTest, ShortDurationNegative) {
     auto d = ShortDuration::from_picoseconds(-500'000'000'000); // -0.5 seconds
     EXPECT_EQ(d.picoseconds(), -500'000'000'000);
