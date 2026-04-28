@@ -2,7 +2,7 @@
 
 .PHONY: all clean configure debug release help check
 .PHONY: test install uninstall autodocs
-.PHONY: quick-check coverage debug-build clang-build install-verify ci-full clean-all
+.PHONY: version-check quick-check coverage debug-build clang-build install-verify ci-full clean-all
 .PHONY: format-check format-fix format-diff docs-check clang-tidy clang-tidy-fix
 .PHONY: python python-test python-stubs python-clean
 .PHONY: gpu-test gpu-syntax-check gpu-install-verify
@@ -85,6 +85,7 @@ check: test
 # Note: Some checks may be skipped if optional dependencies are missing
 ci-full:
 	@echo "Running full CI validation..."
+	@$(MAKE) version-check
 	@$(MAKE) format-check
 	@$(MAKE) docs-check
 	@$(MAKE) quick-check
@@ -100,6 +101,10 @@ ci-full:
 # Run this before every push to ensure CI gate will pass
 quick-check:
 	@./scripts/ci/quick-check.sh build-quick
+
+# Version consistency - matches CI version-check job (required gate)
+version-check:
+	@./scripts/ci/version-check.sh
 
 # Code coverage report - matches CI coverage job
 # Generates HTML report in build-coverage/coverage_html/index.html
@@ -253,6 +258,7 @@ help:
 	@echo "    make coverage            Generate coverage report"
 	@echo ""
 	@echo "  Other CI targets:"
+	@echo "    make version-check       Check release-managed versions"
 	@echo "    make quick-check         Fast validation (Release build)"
 	@echo "    make debug-build         Debug build (catch assertions)"
 	@echo "    make clang-build         Clang compiler test"

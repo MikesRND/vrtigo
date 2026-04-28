@@ -15,6 +15,20 @@ These scripts ensure that **local validation and CI validation are identical**:
 
 All scripts take an optional `BUILD_DIR` argument (defaults shown below):
 
+### `version-check.sh` (Required Gate)
+**Matches**: CI `version-check` job
+**Usage**: `./scripts/ci/version-check.sh`
+**What**: Verifies release-managed versions and release-please markers
+**When**: Run before pushing release config or version-touching changes
+
+```bash
+# Direct
+./scripts/ci/version-check.sh
+
+# Via Make
+make version-check
+```
+
 ### `quick-check.sh` (Required Gate)
 **Matches**: CI `quick-check` job (required status)
 **Usage**: `./scripts/ci/quick-check.sh [build-quick]`
@@ -40,7 +54,7 @@ make quick-check
 ./scripts/ci/debug-build.sh
 
 # Via Make
-make ci-debug
+make debug-build
 ```
 
 ### `clang-build.sh` (Advisory)
@@ -57,7 +71,7 @@ make ci-debug
 CXX=clang++-16 ./scripts/ci/clang-build.sh
 
 # Via Make
-make ci-clang
+make clang-build
 ```
 
 ### `install-verify.sh` (Advisory)
@@ -75,7 +89,7 @@ make ci-clang
 ./scripts/ci/install-verify.sh build /tmp/my-install
 
 # Via Make
-make ci-install-verify
+make install-verify
 ```
 
 ### `coverage.sh` (Informational)
@@ -89,7 +103,7 @@ make ci-install-verify
 ./scripts/ci/coverage.sh
 
 # Via Make
-make ci-coverage
+make coverage
 
 # View report
 open build-coverage/coverage_html/index.html
@@ -217,11 +231,13 @@ The `install-verify.sh` script builds a minimal library (tests/benchmarks OFF) t
 
 ### Before pushing
 ```bash
+./scripts/ci/version-check.sh
 ./scripts/ci/quick-check.sh
 ```
 
 ### Full local validation
 ```bash
+./scripts/ci/version-check.sh
 ./scripts/ci/quick-check.sh
 ./scripts/ci/debug-build.sh
 ./scripts/ci/clang-build.sh
@@ -235,6 +251,7 @@ open build-coverage/coverage_html/index.html
 
 ### Before release
 ```bash
+./scripts/ci/version-check.sh
 ./scripts/ci/install-verify.sh
 ```
 
