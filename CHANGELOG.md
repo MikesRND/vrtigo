@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/MikesRND/vrtigo/compare/v0.2.0...v0.2.1) (2026-04-28)
+
+
+### Bug Fixes
+
+* decode sample_rate and bandwidth as signed Q44.20 per VITA 49.2 ([#65](https://github.com/MikesRND/vrtigo/issues/65)) ([9f70591](https://github.com/MikesRND/vrtigo/commit/9f7059149353725feeb487274c7018585c9fa354))
+
 ## [0.2.0](https://github.com/MikesRND/vrtigo/compare/v0.1.0...v0.2.0) (2026-04-24)
 
 
