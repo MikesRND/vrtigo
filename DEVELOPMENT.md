@@ -25,7 +25,9 @@ in three files via `x-release-please-version` markers:
 - `bindings/python/pyproject.toml`
 - `.release-please-manifest.json` (derived mirror)
 
-Do not edit versions manually — the `version-check` CI job fails if they diverge.
+Do not edit versions manually outside a release-please release PR. Run
+`make version-check` locally when touching release files; the `version-check`
+CI job fails if these files diverge or a version marker is removed.
 
 ## Build Commands
 
@@ -46,6 +48,7 @@ PYTHONPATH=build/bindings/python .venv/bin/pytest bindings/python/tests/ -v
 PYTHONPATH=build/bindings/python .venv/bin/pytest bindings/python/tests/test_enums.py -v -k "some_pattern"
 
 # Code quality
+make version-check      # Check release-managed versions (CI gate)
 make format-check       # Check clang-format (CI gate)
 make docs-check         # Check local markdown links
 make format-fix         # Auto-fix formatting
@@ -120,11 +123,29 @@ Type stubs are auto-generated at `build/bindings/python/vrtigo.pyi` by the `vrti
 - **Required gates**: `format-check`, `quick-check`, `version-check`
 - **Advisory**: `static-analysis`, `debug-build`, `clang-build`, `python-bindings`
 - **PR title lint**: PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `chore:`, etc.)
-- Run `make format-check && make quick-check` before pushing
+- Run `make version-check && make format-check && make quick-check` before pushing
+
+### Version Control Workflow
+
+- Work on topic branches named for the change type, such as `feat/...`,
+  `fix/...`, `docs/...`, or `chore/...`.
+- Keep PR titles in Conventional Commit format. With squash merge enabled, the
+  PR title becomes the commit message that release-please reads on `main`.
+- While the project is pre-`1.0.0`, release-please treats `0.x` minor versions
+  as compatibility boundaries: breaking changes bump the minor version and
+  features or fixes bump the patch version.
+- Do not hand-edit `CHANGELOG.md`, `CMakeLists.txt` version, Python package
+  version, or `.release-please-manifest.json` for normal development. Those
+  changes belong in the release-please release PR.
+- Use direct version edits only for release recovery work. If `release-as` is
+  temporarily added to `release-please-config.json`, remove it in the same
+  recovery cycle after the intended release has been created.
 
 ### Release Process
 
-Releases use [release-please](https://github.com/googleapis/release-please) with squash merge on main.
+Releases use [release-please](https://github.com/googleapis/release-please)
+with squash merge on `main`. The first `v0.1.0` bootstrap release is complete;
+future versions are inferred from Conventional Commit messages.
 
 1. **PR titles** follow Conventional Commit format — enforced by the `pr-title-lint` CI check
 2. **Squash merge** PRs to main — the PR title becomes the commit message
@@ -134,6 +155,3 @@ Releases use [release-please](https://github.com/googleapis/release-please) with
 6. Publish workflow: verifies GitHub Release exists → runs CI → builds wheels → uploads to GitHub Release
 7. To also publish to **PyPI**: check the `pypi` checkbox in the workflow dispatch form
 8. If a release PR is not created, confirm the squash commit title is Conventional Commit format and rerun Release Please under GitHub actions.
-
-After the first release: remove `release-as` from `release-please-config.json` so
-subsequent versions are auto-determined from commit messages.

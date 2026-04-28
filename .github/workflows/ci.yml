@@ -22,17 +22,7 @@ jobs:
           ref: ${{ inputs.ref || github.sha }}
 
       - name: Check version consistency
-        run: |
-          CMAKE_VER=$(grep -oP 'VERSION \K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt | head -1)
-          PYPROJECT_VER=$(grep -oP '^version = "\K[0-9]+\.[0-9]+\.[0-9]+' bindings/python/pyproject.toml)
-          MANIFEST_VER=$(python3 -c "import json; print(json.load(open('.release-please-manifest.json'))['.'])")
-          echo "CMakeLists.txt:  $CMAKE_VER"
-          echo "pyproject.toml:  $PYPROJECT_VER"
-          echo "manifest.json:   $MANIFEST_VER"
-          if [ "$CMAKE_VER" != "$PYPROJECT_VER" ] || [ "$CMAKE_VER" != "$MANIFEST_VER" ]; then
-            echo "::error::Version mismatch! All three files must agree."
-            exit 1
-          fi
+        run: ./scripts/ci/version-check.sh
 
   format-check:
     runs-on: ubuntu-24.04
