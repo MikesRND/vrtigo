@@ -26,7 +26,7 @@ TEST_F(FieldProxyTest, BasicSetAndGet) {
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
 
-    // Set bandwidth raw value (Q52.12 format)
+    // Set bandwidth raw value (fixed-point on-wire format)
     packet[bandwidth].set_encoded(20'000'000ULL);
 
     // Get and verify raw value

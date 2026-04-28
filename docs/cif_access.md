@@ -13,7 +13,7 @@ packet[field_tag]  // Returns FieldProxy for the field
 Each field supports a **three-tier access pattern**:
 
 1. **`.bytes()`** - Raw bytes as they appear in the packet (network byte order)
-2. **`.encoded()`** - Structured but uninterpreted value (e.g., Q52.12 fixed-point)
+2. **`.encoded()`** - Structured but uninterpreted value (e.g., fixed-point encoding)
 3. **`.value()`** - Interpreted value with units (Hz, dBm, etc.) - *only for fields with interpretation support*
 
 Example:
@@ -24,7 +24,7 @@ if (packet[sample_rate]) {
     auto raw = packet[sample_rate].bytes();        // std::span<std::byte, 8>
 
     // Tier 2: Encoded value
-    uint64_t encoded = packet[sample_rate].encoded();  // Q52.12 fixed-point
+    uint64_t encoded = packet[sample_rate].encoded();  // Q44.20 fixed-point
 
     // Tier 3: Interpreted value (only for supported fields)
     double hz = packet[sample_rate].value();           // Hertz
@@ -49,7 +49,7 @@ The following fields provide `.value()` methods that return interpreted values w
 |-----|-----|-------|------|----------------|
 | CIF0 | 15 | [Data Payload Format](cif_access/cif0_15_payload_format.md) | `PayloadFormat::View` | Structured bitfield access |
 | CIF0 | 17 | [Device Identifier](cif_access/cif0_17_device_id.md) | `DeviceIdentifier::View` | Manufacturer OUI + device code |
-| CIF0 | 21 | [Sample Rate](cif_access/cif0_21_sample_rate.md) | `double` | Hz (from Q52.12) |
+| CIF0 | 21 | [Sample Rate](cif_access/cif0_21_sample_rate.md) | `double` | Hz (from Q44.20, two's complement) |
 | CIF0 | 22 | [Over-Range Count](cif_access/cif0_22_over_range_count.md) | `uint32_t` | Count of over-range samples |
 | CIF0 | 23 | [Gain](cif_access/cif0_23_gain.md) | `GainValue` | Two-stage gain in dB (from Q9.7) |
 | CIF0 | 24 | [Reference Level](cif_access/cif0_24_reference_level.md) | `double` | dBm (from Q9.7) |
@@ -57,7 +57,7 @@ The following fields provide `.value()` methods that return interpreted values w
 | CIF0 | 26 | [RF Frequency Offset](cif_access/cif0_26_rf_frequency_offset.md) | `double` | Hz (from Q44.20, two's complement) |
 | CIF0 | 27 | [RF Reference Frequency](cif_access/cif0_27_rf_reference_frequency.md) | `double` | Hz (from Q44.20, two's complement) |
 | CIF0 | 28 | [IF Reference Frequency](cif_access/cif0_28_if_reference_frequency.md) | `double` | Hz (from Q44.20, two's complement) |
-| CIF0 | 29 | [Bandwidth](cif_access/cif0_29_bandwidth.md) | `double` | Hz (from Q52.12) |
+| CIF0 | 29 | [Bandwidth](cif_access/cif0_29_bandwidth.md) | `double` | Hz (from Q44.20, two's complement) |
 | CIF0 | 30 | [Reference Point Identifier](cif_access/cif0_30_reference_point_id.md) | `uint32_t` | Stream ID of timing reference point |
 
 
@@ -102,7 +102,7 @@ Both compile-time (`ContextPacketBuilder<>`) and dynamic (`dynamic::ContextPacke
 |--------|----------------------|-----------------|-------------|
 | `bytes()` | ✓ read | ✓ read | Literal on-wire bytes |
 | `set_bytes(span)` | ✓ write | ✗ | Set on-wire bytes in bulk |
-| `encoded()` | ✓ read | ✓ read | Structured format (e.g., Q52.12 as `uint64_t`) |
+| `encoded()` | ✓ read | ✓ read | Structured on-wire format (e.g., fixed-point as `uint64_t`) |
 | `set_encoded(T)` | ✓ write | ✗ | Set structured value |
 | `value()` | ✓ read | ✓ read | Interpreted units (Hz, dBm, etc.) if defined |
 | `set_value(T)` | ✓ write | ✗ | Set interpreted value |

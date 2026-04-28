@@ -310,15 +310,15 @@ struct FieldTraits<0, 21> {
         cif::write_u64_safe(base, offset, v);
     }
 
-    // Interpreted support: Q52.12 fixed-point → Hz (double)
+    // Interpreted support: Q44.20 fixed-point (two's complement) → Hz (double)
     using interpreted_type = double;
 
     static interpreted_type to_interpreted(value_type raw) noexcept {
-        return FixedPoint<52, 12, false>::to_double(raw);
+        return FixedPoint<44, 20, true>::to_double(raw);
     }
 
     static value_type from_interpreted(interpreted_type hz) noexcept {
-        return FixedPoint<52, 12, false>::from_double(hz);
+        return FixedPoint<44, 20, true>::from_double(hz < 0.0 ? 0.0 : hz);
     }
 };
 
@@ -536,15 +536,15 @@ struct FieldTraits<0, 29> {
         cif::write_u64_safe(base, offset, v);
     }
 
-    // Interpreted support: Q52.12 fixed-point → Hz (double)
+    // Interpreted support: Q44.20 fixed-point (two's complement) → Hz (double)
     using interpreted_type = double;
 
     static interpreted_type to_interpreted(value_type raw) noexcept {
-        return FixedPoint<52, 12, false>::to_double(raw);
+        return FixedPoint<44, 20, true>::to_double(raw);
     }
 
     static value_type from_interpreted(interpreted_type hz) noexcept {
-        return FixedPoint<52, 12, false>::from_double(hz);
+        return FixedPoint<44, 20, true>::from_double(hz < 0.0 ? 0.0 : hz);
     }
 };
 

@@ -18,7 +18,7 @@ TEST_F(ContextPacketTest, CIF0_29_BasicAccess) {
     // [/EXAMPLE]
 
     // [DESCRIPTION]
-    // The Bandwidth field is a 64-bit Q52.12 fixed-point value representing
+    // The Bandwidth field is a 64-bit two's-complement Q44.20 fixed-point value representing
     // the signal bandwidth in Hz.
     // [/DESCRIPTION]
 
@@ -34,11 +34,22 @@ TEST_F(ContextPacketTest, CIF0_29_BasicAccess) {
     // Read back the value in Hz
     double bw_hz = packet[bandwidth].value();
 
-    // Can also access the encoded Q52.12 value directly
+    // Can also access the encoded Q44.20 value directly
     uint64_t encoded = packet[bandwidth].encoded();
     // [/SNIPPET]
 
     // Assertions
     EXPECT_DOUBLE_EQ(bw_hz, 20'000'000.0);
-    EXPECT_EQ(encoded >> 12, 20'000'000ULL);
+    EXPECT_EQ(encoded, 20'000'000ULL << 20);
+}
+
+TEST_F(ContextPacketTest, CIF0_29_RawQ44_20Decode) {
+    using BandwidthContext = typed::ContextPacketBuilder<NoTimestamp, NoClassId, bandwidth>;
+
+    alignas(4) std::array<uint8_t, BandwidthContext::size_bytes()> buffer{};
+    BandwidthContext packet(buffer);
+
+    // 100 MHz encoded with radix point 20 must decode to 100 MHz, not 25.6 GHz.
+    packet[bandwidth].set_encoded(100'000'000ULL << 20);
+    EXPECT_DOUBLE_EQ(packet[bandwidth].value(), 100'000'000.0);
 }

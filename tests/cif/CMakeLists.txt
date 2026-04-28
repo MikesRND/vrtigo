@@ -4,7 +4,7 @@
 # Field Proxy Interface Tests
 vrtigo_add_gtest(proxy_test proxy_test.cpp NAME cif_proxy_test)
 
-# Interpreted Value Tests (Q52.12 ↔ Hz conversion)
+# Interpreted Value Tests (Q44.20 ↔ Hz conversion)
 # Tests bandwidth and sample_rate fields
 vrtigo_add_gtest(value_test value_test.cpp NAME cif_value_test)
 

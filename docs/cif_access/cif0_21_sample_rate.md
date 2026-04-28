@@ -6,7 +6,7 @@
 
 ## Setting and Reading Sample Rate
 
-The Sample Rate field is a 64-bit Q52.12 fixed-point value representing
+The Sample Rate field is a 64-bit two's-complement Q44.20 fixed-point value representing
 the sample rate in Hz. Set and read the encoded value directly.
 
 ```cpp
@@ -21,7 +21,7 @@ the sample rate in Hz. Set and read the encoded value directly.
     // Read back the value in Hz
     double rate_hz = packet[sample_rate].value();
 
-    // Can also access the encoded Q52.12 value directly
+    // Can also access the encoded Q44.20 value directly
     uint64_t encoded = packet[sample_rate].encoded();
 ```
 
