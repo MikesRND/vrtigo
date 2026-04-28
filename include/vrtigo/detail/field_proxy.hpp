@@ -29,7 +29,7 @@ namespace vrtigo {
  *   auto bw = packet[field::bandwidth];
  *   if (bw) {
  *       auto bytes = bw.bytes();              // Raw on-wire bytes
- *       uint64_t enc = bw.encoded();          // Structured Q52.12 encoding
+ *       uint64_t enc = bw.encoded();          // Structured on-wire encoding
  *       double hz = bw.value();               // Interpreted Hz (if supported)
  *   }
  */
@@ -138,7 +138,7 @@ public:
      * Get structured on-wire field value (FieldTraits::value_type)
      *
      * Returns the field value as decoded by FieldTraits::read().
-     * This is NOT interpreted (e.g., Q52.12 encoding, not Hz).
+     * This is NOT interpreted (e.g., fixed-point encoding, not Hz).
      * For interpreted values (Hz, dBm, etc.), use .value() on fields that support it.
      *
      * @return Structured wire format (uint32_t, uint64_t, FieldView<N>, etc.)
@@ -158,7 +158,7 @@ public:
      * Write structured value to field (mutable packets only)
      *
      * Writes the value using FieldTraits::write().
-     * This writes the raw on-wire format (e.g., Q52.12 encoding).
+     * This writes the raw on-wire format (e.g., fixed-point encoding).
      * For interpreted writes (Hz, dBm, etc.), use .set_value() on fields that support it.
      *
      * @param v Value to write (FieldTraits::value_type)

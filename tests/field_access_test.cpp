@@ -64,12 +64,12 @@ int main() {
 
     // =======================================================================
     // Test make_field_proxy_unchecked() for known field (compile-time packets only)
-    // make_field_proxy_unchecked() returns raw values (Q52.12 for bandwidth)
+    // make_field_proxy_unchecked() returns raw values (Q44.20 for bandwidth)
     // =======================================================================
 
     [[maybe_unused]] uint64_t bw_direct = make_field_proxy_unchecked(packet, bandwidth);
-    // 1 MHz in Q52.12 format = 1'000'000 * 4096 = 4'096'000'000
-    assert(bw_direct == 4'096'000'000ULL &&
+    // 1 MHz in Q44.20 format = 1'000'000 * 1'048'576
+    assert(bw_direct == (1'000'000ULL << 20) &&
            "make_field_proxy_unchecked should return correct raw value");
 
     std::cout << "✓ All field access API tests passed!\n";

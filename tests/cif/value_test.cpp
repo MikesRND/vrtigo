@@ -8,9 +8,13 @@ using namespace vrtigo;
 using namespace vrtigo::field;
 
 // =============================================================================
-// Interpreted Value Tests - Q52.12 Fixed-Point ↔ Hz Conversion
+// Interpreted Value Tests - Q44.20 Fixed-Point ↔ Hz Conversion
 // Tests for CIF fields with interpreted support: bandwidth, sample_rate
 // =============================================================================
+
+namespace {
+constexpr uint64_t q44_20_hz(uint64_t hz) noexcept { return hz << 20; }
+} // namespace
 
 class InterpretedValueTest : public ::testing::Test {
 protected:
@@ -26,10 +30,10 @@ TEST_F(InterpretedValueTest, BandwidthInterpretedRead) {
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
 
-    // Set bandwidth to Q52.12 encoding for 100 MHz
+    // Set bandwidth to Q44.20 encoding for 100 MHz
     // 100 MHz = 100'000'000 Hz
-    // Q52.12: 100'000'000 * 4096 = 409'600'000'000
-    packet[bandwidth].set_encoded(409'600'000'000ULL);
+    // Q44.20: 100'000'000 * 1'048'576 = 104'857'600'000'000
+    packet[bandwidth].set_encoded(q44_20_hz(100'000'000ULL));
 
     // Read interpreted value
     double hz = packet[bandwidth].value();
@@ -47,9 +51,9 @@ TEST_F(InterpretedValueTest, BandwidthInterpretedWrite) {
     // Write interpreted value (50 MHz)
     packet[bandwidth].set_value(50'000'000.0);
 
-    // Verify raw value is correct Q52.12 encoding
-    // 50 MHz * 4096 = 204'800'000'000
-    EXPECT_EQ(packet[bandwidth].encoded(), 204'800'000'000ULL);
+    // Verify raw value is correct Q44.20 encoding
+    // 50 MHz * 1'048'576 = 52'428'800'000'000
+    EXPECT_EQ(packet[bandwidth].encoded(), q44_20_hz(50'000'000ULL));
 }
 
 TEST_F(InterpretedValueTest, BandwidthRoundTrip) {
@@ -97,10 +101,10 @@ TEST_F(InterpretedValueTest, BandwidthConversionPrecision) {
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
 
-    // Test Q52.12 conversion accuracy
+    // Test Q44.20 conversion accuracy
 
-    // Test 1: Exact value (divisible by 4096)
-    double exact_hz = 4096.0 * 1000.0; // 4'096'000 Hz
+    // Test 1: Exact integer-Hz value
+    double exact_hz = 4'096'000.0;
     packet[bandwidth].set_value(exact_hz);
     EXPECT_DOUBLE_EQ(packet[bandwidth].value(), exact_hz);
 
@@ -108,8 +112,8 @@ TEST_F(InterpretedValueTest, BandwidthConversionPrecision) {
     double inexact_hz = 1'234'567.89;
     packet[bandwidth].set_value(inexact_hz);
     double retrieved = packet[bandwidth].value();
-    // Should be within Q52.12 resolution (~0.244 Hz)
-    EXPECT_NEAR(retrieved, inexact_hz, 0.25);
+    // Should be within Q44.20 resolution (~0.95 microHz)
+    EXPECT_NEAR(retrieved, inexact_hz, 0.000001);
 }
 
 TEST_F(InterpretedValueTest, BandwidthEdgeCases) {
@@ -123,12 +127,21 @@ TEST_F(InterpretedValueTest, BandwidthEdgeCases) {
     EXPECT_EQ(packet[bandwidth].encoded(), 0ULL);
     EXPECT_DOUBLE_EQ(packet[bandwidth].value(), 0.0);
 
-    // Maximum Q52.12 value
-    uint64_t max_q52_12 = 0xFFFFFFFFFFFFFFFFULL;
-    packet[bandwidth].set_encoded(max_q52_12);
-    EXPECT_EQ(packet[bandwidth].encoded(), max_q52_12);
-    double expected_hz = static_cast<double>(max_q52_12) / 4096.0;
+    // Maximum positive Q44.20 value
+    uint64_t max_q44_20 = 0x7FFFFFFFFFFFFFFFULL;
+    packet[bandwidth].set_encoded(max_q44_20);
+    EXPECT_EQ(packet[bandwidth].encoded(), max_q44_20);
+    double expected_hz = static_cast<double>(max_q44_20) / 1'048'576.0;
     EXPECT_NEAR(packet[bandwidth].value(), expected_hz, 1.0);
+
+    // Raw signed negative values decode as signed Q44.20.
+    packet[bandwidth].set_encoded(0xFFFFFFFFFFFFFFFFULL);
+    EXPECT_NEAR(packet[bandwidth].value(), -1.0 / 1'048'576.0, 1e-12);
+
+    // Interpreted writes clamp negative bandwidths to zero.
+    packet[bandwidth].set_value(-1.0);
+    EXPECT_EQ(packet[bandwidth].encoded(), 0ULL);
+    EXPECT_DOUBLE_EQ(packet[bandwidth].value(), 0.0);
 }
 
 // =============================================================================
@@ -141,10 +154,10 @@ TEST_F(InterpretedValueTest, SampleRateInterpretedRead) {
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
 
-    // Set sample rate to Q52.12 encoding for 50 MHz (50 MSPS)
+    // Set sample rate to Q44.20 encoding for 50 MHz (50 MSPS)
     // 50 MHz = 50'000'000 Hz
-    // Q52.12: 50'000'000 * 4096 = 204'800'000'000
-    packet[sample_rate].set_encoded(204'800'000'000ULL);
+    // Q44.20: 50'000'000 * 1'048'576 = 52'428'800'000'000
+    packet[sample_rate].set_encoded(q44_20_hz(50'000'000ULL));
 
     // Read interpreted value
     double hz = packet[sample_rate].value();
@@ -162,9 +175,9 @@ TEST_F(InterpretedValueTest, SampleRateInterpretedWrite) {
     // Write interpreted value (25 MSPS)
     packet[sample_rate].set_value(25'000'000.0);
 
-    // Verify raw value is correct Q52.12 encoding
-    // 25 MHz * 4096 = 102'400'000'000
-    EXPECT_EQ(packet[sample_rate].encoded(), 102'400'000'000ULL);
+    // Verify raw value is correct Q44.20 encoding
+    // 25 MHz * 1'048'576 = 26'214'400'000'000
+    EXPECT_EQ(packet[sample_rate].encoded(), q44_20_hz(25'000'000ULL));
 }
 
 TEST_F(InterpretedValueTest, SampleRateRoundTrip) {
@@ -213,10 +226,10 @@ TEST_F(InterpretedValueTest, SampleRateConversionPrecision) {
     alignas(4) std::array<uint8_t, TestContext::size_bytes()> buffer{};
     TestContext packet(buffer);
 
-    // Test Q52.12 conversion accuracy
+    // Test Q44.20 conversion accuracy
 
-    // Test 1: Exact value (divisible by 4096)
-    double exact_hz = 4096.0 * 1000.0; // 4'096'000 Hz
+    // Test 1: Exact integer-Hz value
+    double exact_hz = 4'096'000.0;
     packet[sample_rate].set_value(exact_hz);
     EXPECT_DOUBLE_EQ(packet[sample_rate].value(), exact_hz);
 
@@ -224,8 +237,8 @@ TEST_F(InterpretedValueTest, SampleRateConversionPrecision) {
     double inexact_hz = 12'345'678.9;
     packet[sample_rate].set_value(inexact_hz);
     double retrieved = packet[sample_rate].value();
-    // Should be within Q52.12 resolution (~0.244 Hz)
-    EXPECT_NEAR(retrieved, inexact_hz, 0.25);
+    // Should be within Q44.20 resolution (~0.95 microHz)
+    EXPECT_NEAR(retrieved, inexact_hz, 0.000001);
 }
 
 TEST_F(InterpretedValueTest, SampleRateTypicalADCRates) {
@@ -265,17 +278,26 @@ TEST_F(InterpretedValueTest, SampleRateEdgeCases) {
     EXPECT_EQ(packet[sample_rate].encoded(), 0ULL);
     EXPECT_DOUBLE_EQ(packet[sample_rate].value(), 0.0);
 
-    // Maximum Q52.12 value
-    uint64_t max_q52_12 = 0xFFFFFFFFFFFFFFFFULL;
-    packet[sample_rate].set_encoded(max_q52_12);
-    EXPECT_EQ(packet[sample_rate].encoded(), max_q52_12);
-    double expected_hz = static_cast<double>(max_q52_12) / 4096.0;
+    // Maximum positive Q44.20 value
+    uint64_t max_q44_20 = 0x7FFFFFFFFFFFFFFFULL;
+    packet[sample_rate].set_encoded(max_q44_20);
+    EXPECT_EQ(packet[sample_rate].encoded(), max_q44_20);
+    double expected_hz = static_cast<double>(max_q44_20) / 1'048'576.0;
     EXPECT_NEAR(packet[sample_rate].value(), expected_hz, 1.0);
+
+    // Raw signed negative values decode as signed Q44.20.
+    packet[sample_rate].set_encoded(0xFFFFFFFFFFFFFFFFULL);
+    EXPECT_NEAR(packet[sample_rate].value(), -1.0 / 1'048'576.0, 1e-12);
+
+    // Interpreted writes clamp negative sample rates to zero.
+    packet[sample_rate].set_value(-1.0);
+    EXPECT_EQ(packet[sample_rate].encoded(), 0ULL);
+    EXPECT_DOUBLE_EQ(packet[sample_rate].value(), 0.0);
 
     // Very low sample rate (1 Hz - theoretical minimum)
     packet[sample_rate].set_value(1.0);
     double retrieved = packet[sample_rate].value();
-    EXPECT_NEAR(retrieved, 1.0, 0.25); // Within Q52.12 resolution
+    EXPECT_NEAR(retrieved, 1.0, 0.000001); // Within Q44.20 resolution
 }
 
 // =============================================================================
