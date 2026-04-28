@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/MikesRND/vrtigo/compare/v0.1.0...v0.2.0) (2026-04-24)
+
+
+### Features
+
+* add from_seconds/ms/us/ns factories to ShortDuration ([#59](https://github.com/MikesRND/vrtigo/issues/59)) ([657ab5c](https://github.com/MikesRND/vrtigo/commit/657ab5c2637f0a77923ebad269f8f142766daac6))
+
 ## [0.1.0](https://github.com/MikesRND/vrtigo/compare/v0.1.0...v0.1.0) (2026-03-05)
 
 
