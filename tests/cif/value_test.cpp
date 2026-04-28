@@ -13,7 +13,9 @@ using namespace vrtigo::field;
 // =============================================================================
 
 namespace {
-constexpr uint64_t q44_20_hz(uint64_t hz) noexcept { return hz << 20; }
+constexpr uint64_t q44_20_hz(uint64_t hz) noexcept {
+    return hz << 20;
+}
 } // namespace
 
 class InterpretedValueTest : public ::testing::Test {
