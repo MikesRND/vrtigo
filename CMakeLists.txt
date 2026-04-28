@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 project(
     vrtigo
-    VERSION 0.2.0 # x-release-please-version
+    VERSION 0.2.1 # x-release-please-version
     DESCRIPTION "Header-only C++20 library for VRT (VITA 49.2) packets"
     LANGUAGES CXX
 )
