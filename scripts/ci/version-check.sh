@@ -20,7 +20,11 @@ VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
 
 def read_text(path: str) -> str:
-    return (ROOT / path).read_text(encoding="utf-8")
+    try:
+        return (ROOT / path).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        print(f"Error: required file not found: {path}", file=sys.stderr)
+        sys.exit(1)
 
 
 def extract(pattern: str, text: str, label: str) -> str | None:

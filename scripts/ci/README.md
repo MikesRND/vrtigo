@@ -13,7 +13,8 @@ These scripts ensure that **local validation and CI validation are identical**:
 
 ## Available Scripts
 
-All scripts take an optional `BUILD_DIR` argument (defaults shown below):
+Build and test scripts take an optional `BUILD_DIR` argument (defaults shown
+below). Validation-only scripts, such as `version-check.sh`, do not.
 
 ### `version-check.sh` (Required Gate)
 **Matches**: CI `version-check` job
