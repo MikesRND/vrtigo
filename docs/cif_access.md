@@ -54,7 +54,7 @@ The following fields provide `.value()` methods that return interpreted values w
 | CIF0 | 23 | [Gain](cif_access/cif0_23_gain.md) | `GainValue` | Two-stage gain in dB (from Q9.7) |
 | CIF0 | 24 | [Reference Level](cif_access/cif0_24_reference_level.md) | `double` | dBm (from Q9.7) |
 | CIF0 | 25 | [IF Band Offset](cif_access/cif0_25_if_band_offset.md) | `double` | Hz (from Q44.20, two's complement) |
-| CIF0 | 26 | [RF Frequency Offset](cif_access/cif0_26_rf_frequency_offset.md) | `double` | Hz (from Q44.20, two's complement) |
+| CIF0 | 26 | [RF Reference Frequency Offset](cif_access/cif0_26_rf_reference_frequency_offset.md) | `double` | Hz (from Q44.20, two's complement) |
 | CIF0 | 27 | [RF Reference Frequency](cif_access/cif0_27_rf_reference_frequency.md) | `double` | Hz (from Q44.20, two's complement) |
 | CIF0 | 28 | [IF Reference Frequency](cif_access/cif0_28_if_reference_frequency.md) | `double` | Hz (from Q44.20, two's complement) |
 | CIF0 | 29 | [Bandwidth](cif_access/cif0_29_bandwidth.md) | `double` | Hz (from Q44.20, two's complement) |

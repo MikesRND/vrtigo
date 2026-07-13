@@ -38,7 +38,7 @@ inline constexpr field_tag_t<0, 22> over_range_count;
 inline constexpr field_tag_t<0, 23> gain;
 inline constexpr field_tag_t<0, 24> reference_level;
 inline constexpr field_tag_t<0, 25> if_band_offset;
-inline constexpr field_tag_t<0, 26> rf_frequency_offset;
+inline constexpr field_tag_t<0, 26> rf_reference_frequency_offset;
 inline constexpr field_tag_t<0, 27> rf_reference_frequency;
 inline constexpr field_tag_t<0, 28> if_reference_frequency;
 inline constexpr field_tag_t<0, 29> bandwidth;
