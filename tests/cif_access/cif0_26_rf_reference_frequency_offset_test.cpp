@@ -1,7 +1,7 @@
 // Self-Documenting CIF Access Test
-// Demonstrates accessing and manipulating the RF Frequency Offset field
+// Demonstrates accessing and manipulating the RF Reference Frequency Offset field
 //
-// This file auto-generates: docs/cif_access/cif0_26_rf_frequency_offset.md
+// This file auto-generates: docs/cif_access/cif0_26_rf_reference_frequency_offset.md
 
 #include "../context_test_fixture.hpp"
 
@@ -9,32 +9,33 @@ using namespace vrtigo;
 using namespace vrtigo::field;
 
 // [TITLE]
-// RF Frequency Offset Field (CIF0 bit 26)
+// RF Reference Frequency Offset Field (CIF0 bit 26)
 // [/TITLE]
 
 TEST_F(ContextPacketTest, CIF0_26_BasicAccess) {
     // [EXAMPLE]
-    // Setting and Reading RF Frequency Offset
+    // Setting and Reading RF Reference Frequency Offset
     // [/EXAMPLE]
 
     // [DESCRIPTION]
-    // The RF Frequency Offset field works with RF Reference Frequency to describe
-    // channelized signals. When present, the original frequency is RF Reference Frequency
-    // + RF Frequency Offset. Uses 64-bit two's complement Q44.20 fixed-point format.
+    // Per VITA 49.2 §9.5.11, the RF Reference Frequency Offset field works with
+    // RF Reference Frequency to describe channelized signals. When present, the
+    // original frequency is RF Reference Frequency + RF Reference Frequency Offset.
+    // Uses 64-bit two's complement Q44.20 fixed-point format.
     // [/DESCRIPTION]
 
     // [SNIPPET]
     using RFOffsetContext =
-        typed::ContextPacketBuilder<NoTimestamp, NoClassId, rf_frequency_offset>;
+        typed::ContextPacketBuilder<NoTimestamp, NoClassId, rf_reference_frequency_offset>;
 
     alignas(4) std::array<uint8_t, RFOffsetContext::size_bytes()> buffer{};
     RFOffsetContext packet(buffer);
 
-    // Set RF frequency offset to 1 MHz (channelizer offset)
-    packet[rf_frequency_offset].set_value(1.0e6);
+    // Set RF reference frequency offset to 1 MHz (channelizer offset)
+    packet[rf_reference_frequency_offset].set_value(1.0e6);
 
     // Read back the value in Hz
-    double offset_hz = packet[rf_frequency_offset].value();
+    double offset_hz = packet[rf_reference_frequency_offset].value();
     // [/SNIPPET]
 
     // Assertions
@@ -45,7 +46,7 @@ TEST_F(ContextPacketTest, CIF0_26_BasicAccess) {
 
 TEST_F(ContextPacketTest, CIF0_26_ChannelizerOffsets) {
     using RFOffsetContext =
-        typed::ContextPacketBuilder<NoTimestamp, NoClassId, rf_frequency_offset>;
+        typed::ContextPacketBuilder<NoTimestamp, NoClassId, rf_reference_frequency_offset>;
     alignas(4) std::array<uint8_t, RFOffsetContext::size_bytes()> buffer{};
     RFOffsetContext packet(buffer);
 
@@ -60,47 +61,47 @@ TEST_F(ContextPacketTest, CIF0_26_ChannelizerOffsets) {
     };
 
     for (double offset : test_offsets) {
-        packet[rf_frequency_offset].set_value(offset);
-        double readback = packet[rf_frequency_offset].value();
+        packet[rf_reference_frequency_offset].set_value(offset);
+        double readback = packet[rf_reference_frequency_offset].value();
         EXPECT_NEAR(readback, offset, std::abs(offset) * 1e-6 + 1e-3); // Within 1 ppm + 1 mHz
     }
 }
 
 TEST_F(ContextPacketTest, CIF0_26_SpecExamples) {
     using RFOffsetContext =
-        typed::ContextPacketBuilder<NoTimestamp, NoClassId, rf_frequency_offset>;
+        typed::ContextPacketBuilder<NoTimestamp, NoClassId, rf_reference_frequency_offset>;
     alignas(4) std::array<uint8_t, RFOffsetContext::size_bytes()> buffer{};
     RFOffsetContext packet(buffer);
 
     // Per VITA 49.2 spec observations:
     // 0x0000000000100000 = +1 Hz
-    packet[rf_frequency_offset].set_encoded(0x0000000000100000ULL);
-    EXPECT_NEAR(packet[rf_frequency_offset].value(), 1.0, 1e-6);
+    packet[rf_reference_frequency_offset].set_encoded(0x0000000000100000ULL);
+    EXPECT_NEAR(packet[rf_reference_frequency_offset].value(), 1.0, 1e-6);
 
     // 0xFFFFFFFFFFF00000 = -1 Hz
-    packet[rf_frequency_offset].set_encoded(0xFFFFFFFFFFF00000ULL);
-    EXPECT_NEAR(packet[rf_frequency_offset].value(), -1.0, 1e-6);
+    packet[rf_reference_frequency_offset].set_encoded(0xFFFFFFFFFFF00000ULL);
+    EXPECT_NEAR(packet[rf_reference_frequency_offset].value(), -1.0, 1e-6);
 
     // 0x0000000000000001 = +0.95 µHz
-    packet[rf_frequency_offset].set_encoded(0x0000000000000001ULL);
-    EXPECT_NEAR(packet[rf_frequency_offset].value(), 9.5367431640625e-7, 1e-12);
+    packet[rf_reference_frequency_offset].set_encoded(0x0000000000000001ULL);
+    EXPECT_NEAR(packet[rf_reference_frequency_offset].value(), 9.5367431640625e-7, 1e-12);
 }
 
 TEST_F(ContextPacketTest, CIF0_26_RuntimeAccess) {
     // Create a compile-time packet
     using RFOffsetContext =
-        typed::ContextPacketBuilder<NoTimestamp, NoClassId, rf_frequency_offset>;
+        typed::ContextPacketBuilder<NoTimestamp, NoClassId, rf_reference_frequency_offset>;
     alignas(4) std::array<uint8_t, RFOffsetContext::size_bytes()> buffer{};
     RFOffsetContext packet(buffer);
 
-    packet[rf_frequency_offset].set_value(1.0e6);
+    packet[rf_reference_frequency_offset].set_value(1.0e6);
 
     // Parse with runtime packet
     auto result = dynamic::ContextPacketView::parse(buffer);
     ASSERT_TRUE(result.has_value()) << result.error().message();
     const auto& runtime_packet = result.value();
 
-    if (runtime_packet[rf_frequency_offset]) {
-        EXPECT_NEAR(runtime_packet[rf_frequency_offset].value(), 1.0e6, 1.0);
+    if (runtime_packet[rf_reference_frequency_offset]) {
+        EXPECT_NEAR(runtime_packet[rf_reference_frequency_offset].value(), 1.0e6, 1.0);
     }
 }

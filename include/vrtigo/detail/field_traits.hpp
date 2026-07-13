@@ -444,11 +444,11 @@ struct FieldTraits<0, 25> {
     }
 };
 
-// CIF0 Bit 26: RF Frequency Offset (2 words)
+// CIF0 Bit 26: RF Reference Frequency Offset (2 words)
 template <>
 struct FieldTraits<0, 26> {
     using value_type = uint64_t;
-    static constexpr const char* name = "RF Frequency Offset";
+    static constexpr const char* name = "RF Reference Frequency Offset";
 
     static value_type read(const uint8_t* base, size_t offset) noexcept {
         return cif::read_u64_safe(base, offset);

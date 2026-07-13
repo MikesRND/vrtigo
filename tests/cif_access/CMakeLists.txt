@@ -26,8 +26,8 @@ vrtigo_add_gtest(cif0_24_reference_level_test cif0_24_reference_level_test.cpp)
 # CIF0 bit 25: IF Band Offset
 vrtigo_add_gtest(cif0_25_if_band_offset_test cif0_25_if_band_offset_test.cpp)
 
-# CIF0 bit 26: RF Frequency Offset
-vrtigo_add_gtest(cif0_26_rf_frequency_offset_test cif0_26_rf_frequency_offset_test.cpp)
+# CIF0 bit 26: RF Reference Frequency Offset
+vrtigo_add_gtest(cif0_26_rf_reference_frequency_offset_test cif0_26_rf_reference_frequency_offset_test.cpp)
 
 # CIF0 bit 27: RF Reference Frequency
 vrtigo_add_gtest(cif0_27_rf_reference_frequency_test cif0_27_rf_reference_frequency_test.cpp)

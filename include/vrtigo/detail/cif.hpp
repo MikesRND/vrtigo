@@ -48,38 +48,38 @@ inline void write_u64_safe(uint8_t* buffer, size_t offset, uint64_t value) noexc
 // COMPLETE CIF0 field table - all 32 bits with verified sizes from VITA 49.2
 constexpr FieldInfo CIF0_FIELDS[32] = {
     //  size, var,  supp, name
-    {0, false, false, "reserved"},                  // bit 0
-    {0, false, true, "cif1_enable"},                // bit 1 - control bit, supported
-    {0, false, true, "cif2_enable"},                // bit 2 - control bit, supported
-    {0, false, true, "cif3_enable"},                // bit 3 - control bit, supported
-    {0, false, false, "reserved"},                  // bit 4
-    {0, false, false, "reserved"},                  // bit 5
-    {0, false, false, "reserved"},                  // bit 6
-    {0, false, false, "field_attributes"},          // bit 7 - unsupported
-    {0, false, false, "reserved"},                  // bit 8
-    {0, true, true, "context_association_lists"},   // bit 9 - VARIABLE, SUPPORTED
-    {0, true, true, "gps_ascii"},                   // bit 10 - VARIABLE, SUPPORTED
-    {1, false, true, "ephemeris_ref_id"},           // bit 11
-    {13, false, true, "relative_ephemeris"},        // bit 12
-    {13, false, true, "ecef_ephemeris"},            // bit 13
-    {11, false, true, "formatted_gps_ins"},         // bit 14
-    {2, false, true, "data_payload_format"},        // bit 15
-    {1, false, true, "state_event_indicators"},     // bit 16
-    {2, false, true, "device_id"},                  // bit 17
-    {1, false, true, "temperature"},                // bit 18
-    {1, false, true, "timestamp_calibration_time"}, // bit 19
-    {2, false, true, "timestamp_adjustment"},       // bit 20
-    {2, false, true, "sample_rate"},                // bit 21
-    {1, false, true, "over_range_count"},           // bit 22
-    {1, false, true, "gain"},                       // bit 23
-    {1, false, true, "reference_level"},            // bit 24
-    {2, false, true, "if_band_offset"},             // bit 25
-    {2, false, true, "rf_frequency_offset"},        // bit 26
-    {2, false, true, "rf_reference_frequency"},     // bit 27
-    {2, false, true, "if_reference_frequency"},     // bit 28
-    {2, false, true, "bandwidth"},                  // bit 29
-    {1, false, true, "reference_point_id"},         // bit 30
-    {0, false, true, "change_indicator"}            // bit 31 - flag only
+    {0, false, false, "reserved"},                     // bit 0
+    {0, false, true, "cif1_enable"},                   // bit 1 - control bit, supported
+    {0, false, true, "cif2_enable"},                   // bit 2 - control bit, supported
+    {0, false, true, "cif3_enable"},                   // bit 3 - control bit, supported
+    {0, false, false, "reserved"},                     // bit 4
+    {0, false, false, "reserved"},                     // bit 5
+    {0, false, false, "reserved"},                     // bit 6
+    {0, false, false, "field_attributes"},             // bit 7 - unsupported
+    {0, false, false, "reserved"},                     // bit 8
+    {0, true, true, "context_association_lists"},      // bit 9 - VARIABLE, SUPPORTED
+    {0, true, true, "gps_ascii"},                      // bit 10 - VARIABLE, SUPPORTED
+    {1, false, true, "ephemeris_ref_id"},              // bit 11
+    {13, false, true, "relative_ephemeris"},           // bit 12
+    {13, false, true, "ecef_ephemeris"},               // bit 13
+    {11, false, true, "formatted_gps_ins"},            // bit 14
+    {2, false, true, "data_payload_format"},           // bit 15
+    {1, false, true, "state_event_indicators"},        // bit 16
+    {2, false, true, "device_id"},                     // bit 17
+    {1, false, true, "temperature"},                   // bit 18
+    {1, false, true, "timestamp_calibration_time"},    // bit 19
+    {2, false, true, "timestamp_adjustment"},          // bit 20
+    {2, false, true, "sample_rate"},                   // bit 21
+    {1, false, true, "over_range_count"},              // bit 22
+    {1, false, true, "gain"},                          // bit 23
+    {1, false, true, "reference_level"},               // bit 24
+    {2, false, true, "if_band_offset"},                // bit 25
+    {2, false, true, "rf_reference_frequency_offset"}, // bit 26
+    {2, false, true, "rf_reference_frequency"},        // bit 27
+    {2, false, true, "if_reference_frequency"},        // bit 28
+    {2, false, true, "bandwidth"},                     // bit 29
+    {1, false, true, "reference_point_id"},            // bit 30
+    {0, false, true, "change_indicator"}               // bit 31 - flag only
 };
 
 // COMPLETE CIF1 field table with verified sizes
@@ -215,7 +215,7 @@ constexpr uint32_t CIF0_SUPPORTED_MASK = (1U << 1) |  // CIF1 Enable (control bi
                                          (1U << 23) | // Gain
                                          (1U << 24) | // Reference Level
                                          (1U << 25) | // IF Band Offset
-                                         (1U << 26) | // RF Frequency Offset
+                                         (1U << 26) | // RF Reference Frequency Offset
                                          (1U << 27) | // RF Reference Freq
                                          (1U << 28) | // IF Reference Freq
                                          (1U << 29) | // Bandwidth
