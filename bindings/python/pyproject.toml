@@ -9,7 +9,7 @@ cmake.define.VRTIGO_STANDALONE_PYTHON = "ON"
 
 [project]
 name = "vrtigo"
-version = "0.3.0" # x-release-please-version
+version = "0.3.1" # x-release-please-version
 description = "Python bindings for VRTIGO VRT library"
 requires-python = ">=3.11"
 dependencies = ["numpy>=2.0"]
