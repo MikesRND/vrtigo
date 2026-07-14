@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/MikesRND/vrtigo/compare/v0.3.0...v0.3.1) (2026-07-14)
+
+
+### Bug Fixes
+
+* build release wheels on manylinux_2_28 and require numpy&gt;=2.0 ([#70](https://github.com/MikesRND/vrtigo/issues/70)) ([bc733c8](https://github.com/MikesRND/vrtigo/commit/bc733c85ea2d906e98840d1e83978d6a2807b7a8))
+
 ## [0.3.0](https://github.com/MikesRND/vrtigo/compare/v0.2.0...v0.3.0) (2026-07-13)
 
 
