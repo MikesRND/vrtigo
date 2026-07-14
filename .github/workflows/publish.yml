@@ -59,7 +59,9 @@ jobs:
           ref: ${{ needs.resolve-tag.outputs.tag }}
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.22
+        # Keep the cibuildwheel version and manylinux image tags below in sync with
+        # .github/workflows/wheel-smoke.yml, which exercises this same release build path.
+        uses: pypa/cibuildwheel@v4.1.0
         with:
           package-dir: bindings/python
           output-dir: wheelhouse
@@ -67,6 +69,14 @@ jobs:
           CIBW_BUILD: "cp311-manylinux* cp312-manylinux* cp313-manylinux*"
           CIBW_SKIP: "*-musllinux*"
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
+          # numpy ships only manylinux_2_28 wheels since 2.3.0; build on that baseline so the
+          # build env installs a prebuilt numpy instead of source-building it.
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
+          CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
+          # Import-test each built wheel (deps, incl. numpy>=2.0, are installed from the wheel)
+          # so we never upload a wheel that builds but can't import or run the ndarray path.
+          CIBW_TEST_REQUIRES: pytest>=8.0
+          CIBW_TEST_COMMAND: "pytest {package}/tests"
 
       - uses: actions/upload-artifact@v4
         with:

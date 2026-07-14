@@ -117,11 +117,11 @@ Type stubs are auto-generated at `build/bindings/python/vrtigo.pyi` by the `vrti
 ### Dependencies
 - Core library: zero external dependencies (header-only)
 - Tests: GoogleTest v1.14.0 (auto-fetched via FetchContent)
-- Python: nanobind v2.4.0, scikit-build-core, Python 3.11+
+- Python: nanobind v2.4.0, scikit-build-core, numpy ≥2.0, Python 3.11+
 
 ### CI Pipeline (GitHub Actions)
 - **Required gates**: `format-check`, `quick-check`, `version-check`
-- **Advisory**: `static-analysis`, `debug-build`, `clang-build`, `python-bindings`
+- **Advisory**: `static-analysis`, `debug-build`, `clang-build`, `python-bindings`, `wheel-smoke` (real cibuildwheel `manylinux_2_28` wheel build + import-test on PRs touching the bindings/build; must stay advisory — see `.github/workflows/wheel-smoke.yml`)
 - **PR title lint**: PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `chore:`, etc.)
 - Run `make version-check && make format-check && make quick-check` before pushing
 
